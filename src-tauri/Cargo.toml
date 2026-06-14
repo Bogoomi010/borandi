@@ -1,0 +1,28 @@
+[package]
+name = "rift-random-defense"
+version = "0.1.0"
+description = "차원 균열 랜덤 디펜스 - 2D 캐릭터 랜덤 디펜스 MVP"
+authors = ["kbk"]
+edition = "2021"
+
+[lib]
+name = "rift_random_defense_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.31", features = ["bundled"] }
+# workaround: time 0.3.48 (2026-06-12 릴리스)이 coherence 충돌(E0119)로 다운스트림 빌드를 깨뜨림.
+# time 측 수정판이 나오면 이 줄을 제거할 것.
+time = "=0.3.47"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+strip = true

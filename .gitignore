@@ -1,0 +1,8 @@
+node_modules
+dist
+.analysis
+src-tauri/target
+src-tauri/gen
+*.local
+.DS_Store
+yarn-error.log
