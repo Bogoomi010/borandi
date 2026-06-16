@@ -9,7 +9,7 @@ import { randomSeed } from "../core/rng";
 import { stateChecksum } from "../core/checksum";
 import {
   deleteSlot, listSlots, loadSlot, makeSaveRecord, recordResult,
-  saveSlot, writeReport, isTauri, openAppDataDir, type SlotMeta,
+  saveSlot, writeReport, isTauri, openAppDataDir, canOpenAppDataDir, type SlotMeta,
 } from "../save/saveApi";
 import { replay } from "../core/engine";
 import { runSimulation, reportToMarkdown } from "../sim/runner";
@@ -405,7 +405,7 @@ export function openAboutModal() {
     body.appendChild(el("div", "", "오리지널 IP 기반 2D 랜덤 디펜스 MVP 프로토타입. 에셋 없이 도형과 색으로만 표현합니다."));
     body.appendChild(el("div", "", `실행 환경: ${isTauri() ? "Tauri 데스크탑" : "브라우저 (저장은 localStorage)"}`));
     const row = el("div", "row-btns");
-    if (isTauri()) {
+    if (canOpenAppDataDir()) {
       const dir = el("button", "", "앱 데이터 폴더 열기");
       dir.onclick = () => void openAppDataDir();
       row.appendChild(dir);

@@ -8,7 +8,7 @@ import {
   openSaveModal, openSimModal, buildReportMarkdown, openAboutModal,
 } from "./modals";
 import { openCollection, openOptionsOverlay, toggleFullscreen, quitApp } from "./scenes";
-import { writeReport, openAppDataDir, isTauri } from "../save/saveApi";
+import { writeReport, openAppDataDir, canOpenAppDataDir } from "../save/saveApi";
 
 interface MenuItem {
   label: string;
@@ -71,7 +71,7 @@ export function renderMenubar(ctx: AppCtx) {
         "sep",
         {
           label: "앱 데이터 폴더 열기",
-          disabled: () => !isTauri(),
+          disabled: () => !canOpenAppDataDir(),
           onClick: () => void openAppDataDir(),
         },
       ],

@@ -11,6 +11,9 @@ export default defineConfig({
     target: "es2022",
     outDir: "dist",
   },
+  esbuild: {
+    drop: process.env.NODE_ENV === "production" ? ["console", "debugger"] : [],
+  },
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],

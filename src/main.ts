@@ -13,7 +13,6 @@ import { loadSlot, makeSaveRecord, saveSlot } from "./save/saveApi";
 import { loadSettings, profileMarkSeen, profileRecordRun } from "./ui/settings";
 import { GameAudio } from "./ui/audio";
 import { showGame, showTitle, openPauseMenu } from "./ui/scenes";
-import { openDevSpawnModal } from "./ui/devTools"; // ⚠ DEV전용 (출시 전 제거)
 import { UNIT_BY_ID } from "./data/units";
 import { analyzeRecipes } from "./core/advisor";
 
@@ -24,6 +23,10 @@ const canvas = document.getElementById("board") as HTMLCanvasElement;
 const renderer = new BoardRenderer(canvas);
 renderer.showLabels = settings.highContrast;
 renderer.showDamage = settings.showDamage;
+
+for (const eventName of ["contextmenu", "selectstart", "dragstart", "drop"]) {
+  window.addEventListener(eventName, (e) => e.preventDefault(), { capture: true });
+}
 
 /** 직전 시점에 "지금 제작 가능"하던 조합 id들 (신규 가능 알림용) */
 let craftableIds = new Set<string>();
@@ -293,8 +296,6 @@ function commandSelected(type: string, payload: Record<string, unknown>) {
   ctx.act(type, { unitIds: ids, ...payload });
 }
 
-canvas.addEventListener("contextmenu", (e) => e.preventDefault());
-
 canvas.addEventListener("pointerdown", (e) => {
   if (ctx.scene !== "game" || anyModalOpen()) return;
   const board = renderer.toBoard(e.clientX, e.clientY);
@@ -380,9 +381,6 @@ document.addEventListener("keydown", (e) => {
     return;
   }
   if (ctx.scene !== "game" || anyModalOpen()) return;
-
-  // ⚠ DEV전용: 백틱(`)으로 유닛 즉시 생성 팝업 (출시 전 제거)
-  if (e.key === "`") { e.preventDefault(); openDevSpawnModal(ctx); return; }
 
   const s = game.state;
 

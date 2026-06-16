@@ -209,8 +209,7 @@ export interface GameInput {
   tick: number;
   type: "summon" | "merge3" | "craft" | "sell" | "upgrade" | "toggleLock"
       | "startWave" | "nextRound" | "pickSelector" | "setSpeed"
-      | "cmdMove" | "cmdAttackMove" | "cmdAttack" | "cmdStop"
-      | "devSpawn"; // DEV전용: 원하는 유닛 즉시 생성 (출시 전 제거)
+      | "cmdMove" | "cmdAttackMove" | "cmdAttack" | "cmdStop";
   payload?: Record<string, unknown>;
 }
 

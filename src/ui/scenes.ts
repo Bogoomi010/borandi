@@ -12,6 +12,7 @@ import { FAMILY_COLOR, GRADE_COLOR } from "./board";
 import { listSlots, isTauri } from "../save/saveApi";
 import { APP_VERSION, DATA_VERSION } from "../data/version";
 import { DIFFICULTY_BY_ID } from "../data/difficulty";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 // ---------- 씬 전환 ----------
 
@@ -372,21 +373,10 @@ export function openCollection(ctx: AppCtx) {
 
 // ---------- 시스템 ----------
 
-interface TauriWindowApi {
-  window: {
-    getCurrentWindow(): {
-      close(): Promise<void>;
-      isFullscreen(): Promise<boolean>;
-      setFullscreen(v: boolean): Promise<void>;
-    };
-  };
-}
-
 export function quitApp() {
   if (isTauri()) {
     try {
-      const g = (window as unknown as { __TAURI__: TauriWindowApi }).__TAURI__;
-      void g.window.getCurrentWindow().close();
+      void getCurrentWindow().close();
       return;
     } catch { /* fallthrough */ }
   }
@@ -397,8 +387,7 @@ export function quitApp() {
 export async function toggleFullscreen() {
   if (isTauri()) {
     try {
-      const g = (window as unknown as { __TAURI__: TauriWindowApi }).__TAURI__;
-      const w = g.window.getCurrentWindow();
+      const w = getCurrentWindow();
       const cur = await w.isFullscreen();
       await w.setFullscreen(!cur);
       return;

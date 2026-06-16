@@ -19,5 +19,8 @@
     "vite": "^6.3.0",
     "vite-node": "^3.1.0",
     "vitest": "^3.1.0"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.5.0"
   }
 }

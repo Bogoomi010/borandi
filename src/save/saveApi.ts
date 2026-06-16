@@ -3,6 +3,7 @@
 
 import type { GameInput, ResultSummary } from "../core/types";
 import { SCHEMA_VERSION, APP_VERSION, DATA_VERSION } from "../data/version";
+import { invoke, isTauri as tauriRuntime } from "@tauri-apps/api/core";
 
 export interface SaveRecord {
   schemaVersion: number;
@@ -30,18 +31,16 @@ export interface SlotMeta {
   dataVersion: string;
 }
 
-// Tauri API는 npm 패키지 대신 withGlobalTauri(window.__TAURI__)를 사용한다.
-interface TauriGlobal {
-  core: { invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> };
+export function isTauri(): boolean {
+  return tauriRuntime();
 }
 
-export function isTauri(): boolean {
-  return typeof window !== "undefined" && "__TAURI__" in window;
+export function canOpenAppDataDir(): boolean {
+  return isTauri() && import.meta.env.DEV;
 }
 
 async function tauriInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  const g = (window as unknown as { __TAURI__: TauriGlobal }).__TAURI__;
-  return g.core.invoke<T>(cmd, args);
+  return invoke<T>(cmd, args);
 }
 
 // ---------- localStorage fallback ----------
@@ -136,7 +135,7 @@ export async function writeReport(filename: string, content: string): Promise<st
 }
 
 export async function openAppDataDir(): Promise<void> {
-  if (isTauri()) await tauriInvoke("open_app_data_dir");
+  if (canOpenAppDataDir()) await tauriInvoke("open_app_data_dir");
 }
 
 export function makeSaveRecord(args: {

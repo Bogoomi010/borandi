@@ -124,11 +124,6 @@ export class Game {
       case "cmdAttackMove": return this.cmdMoveLike("attackMove", p.unitIds as number[], p.x as number, p.y as number);
       case "cmdAttack": return this.cmdAttack(p.unitIds as number[], p.targetEid as number);
       case "cmdStop": return this.cmdStop(p.unitIds as number[]);
-      case "devSpawn": { // DEV전용: 보유칸 무시하고 즉시 생성
-        if (this.state.phase === "ended") return fail("게임이 끝났습니다.");
-        if (!UNIT_BY_ID[p.defId as string]) return fail("존재하지 않는 유닛입니다.");
-        return this.addUnit(p.defId as string, "DEV 생성") ? ok : fail("생성 실패");
-      }
       case "pickSelector": return this.pickSelector(p.selectorId as string, p.unitId as string);
       case "setSpeed": {
         this.state.speed = p.speed as 1 | 2 | 3;
