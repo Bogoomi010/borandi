@@ -522,7 +522,7 @@ function passiveChips(d: typeof UNIT_BY_ID[string]): string[] {
   return chips;
 }
 
-// COMPONENT: UnitDetail - renders the bottom-left selected unit or multi-selection detail panel.
+// COMPONENT: UnitDetail - renders the selected unit combat HUD over the field.
 export function renderUnitDetail(ctx: AppCtx) {
   const root = document.getElementById("unit-detail");
   if (!root) return;
@@ -532,11 +532,25 @@ export function renderUnitDetail(ctx: AppCtx) {
   const selected = s.units.filter((u) => ctx.renderer.selectedUids.has(u.uid));
 
   if (selected.length === 0) {
-    root.classList.add("empty");
-    root.appendChild(el("div", "ud-hint", "유닛을 선택하면 상세 정보가 표시됩니다 (전장 클릭/드래그 또는 좌측 목록)"));
+    root.classList.add("hidden");
+    root.classList.remove("multi");
     return;
   }
-  root.classList.remove("empty");
+  root.classList.remove("hidden", "empty", "multi");
+
+  const stat = (k: string, v: string, emphasis = false) => {
+    const c = el("div", `ud-stat ${emphasis ? "emphasis" : ""}`);
+    c.appendChild(el("span", "k", k));
+    c.appendChild(el("span", "v", v));
+    return c;
+  };
+
+  const slot = (label: string, active = true) => {
+    const d = el("div", `ud-slot ${active ? "active" : ""}`);
+    d.textContent = label;
+    d.title = label;
+    return d;
+  };
 
   // 여러 기 선택 → 요약
   if (selected.length > 1) {
@@ -551,33 +565,52 @@ export function renderUnitDetail(ctx: AppCtx) {
       .sort((a, b) => GRADE_ORDER.indexOf(b[0]) - GRADE_ORDER.indexOf(a[0]))
       .map(([g, n]) => `${GRADE_LABEL[g]} ${n}`).join(" · ");
 
+    root.classList.add("multi");
+
+    const portrait = el("div", "ud-portrait multi");
+    portrait.appendChild(el("span", "ud-portrait-count", String(selected.length)));
+    portrait.appendChild(el("span", "ud-portrait-label", "선택"));
+    root.appendChild(portrait);
+
+    const main = el("div", "ud-main");
     const head = el("div", "ud-head");
     head.appendChild(el("span", "ud-name", `${selected.length}기 선택`));
     head.appendChild(el("span", "badge", gradeText));
-    root.appendChild(head);
+    main.appendChild(head);
+
+    const power = el("div", "ud-power");
+    power.appendChild(el("span", "label", "합계 공격력"));
+    power.appendChild(el("span", "value", String(totalAtk)));
+    main.appendChild(power);
 
     const stats = el("div", "ud-stats");
-    const stat = (k: string, v: string) => {
-      const d = el("div", "ud-stat");
-      d.appendChild(el("span", "k", k));
-      d.appendChild(el("span", "v", v));
-      stats.appendChild(d);
-    };
-    stat("합계 공격력", String(totalAtk));
-    stat("합계 누적피해", Math.round(totalDmg).toLocaleString());
+    stats.appendChild(stat("누적피해", Math.round(totalDmg).toLocaleString(), true));
     const merge3 = selUids.length === 3 ? "3합성 가능" : "—";
-    stat("3합성", merge3);
-    root.appendChild(stats);
+    stats.appendChild(stat("3합성", merge3));
+    stats.appendChild(stat("선택 수", `${selected.length}기`));
+    main.appendChild(stats);
+    root.appendChild(main);
+
+    const slots = el("div", "ud-slots");
+    for (const [g, n] of [...byGrade.entries()].sort((a, b) => GRADE_ORDER.indexOf(b[0]) - GRADE_ORDER.indexOf(a[0])).slice(0, 4)) {
+      slots.appendChild(slot(`${GRADE_LABEL[g]} ${n}`));
+    }
+    while (slots.childElementCount < 4) slots.appendChild(slot("빈 슬롯", false));
+    root.appendChild(slots);
     return;
   }
 
   // 단일 선택 → 상세
   const u = selected[0];
   const d = UNIT_BY_ID[u.defId];
+  root.style.setProperty("--unit-color", FAMILY_COLOR[d.family]);
+  root.style.setProperty("--grade-color", GRADE_COLOR[d.grade]);
 
   const shape = el("div", "ud-portrait");
-  shape.style.cssText = `background:${FAMILY_COLOR[d.family]};border:3px solid ${GRADE_COLOR[d.grade]};border-radius:${d.grade === "common" ? "50%" : "8px"}`;
-  if (u.locked) shape.appendChild(el("span", "ud-lock", "🔒"));
+  shape.style.borderRadius = d.grade === "common" ? "50%" : "12px";
+  shape.appendChild(el("span", "ud-portrait-mark", d.name.slice(0, 1)));
+  shape.appendChild(el("span", "ud-portrait-family", FAMILY_LABEL[d.family]));
+  if (u.locked) shape.appendChild(el("span", "ud-lock", "잠금"));
   root.appendChild(shape);
 
   const main = el("div", "ud-main");
@@ -588,18 +621,17 @@ export function renderUnitDetail(ctx: AppCtx) {
   head.appendChild(el("span", "ud-sub", `${FAMILY_LABEL[d.family]} · ${d.roles.map((r) => ROLE_LABEL[r]).join("/")}`));
   main.appendChild(head);
 
+  const power = el("div", "ud-power");
+  power.appendChild(el("span", "label", "공격력"));
+  power.appendChild(el("span", "value", String(d.attack)));
+  power.appendChild(el("span", "type", ATTACK_TYPE_LABEL[d.attackType]));
+  main.appendChild(power);
+
   const stats = el("div", "ud-stats");
-  const stat = (k: string, v: string) => {
-    const c = el("div", "ud-stat");
-    c.appendChild(el("span", "k", k));
-    c.appendChild(el("span", "v", v));
-    stats.appendChild(c);
-  };
-  stat("공격력", `${d.attack} (${ATTACK_TYPE_LABEL[d.attackType]})`);
-  stat("공격속도", `${d.attackSpeed.toFixed(2)}/s`);
-  stat("사거리", String(d.range));
-  stat("타겟", TARGETING_LABEL[d.targeting]);
-  stat("누적피해", Math.round(u.totalDamage).toLocaleString());
+  stats.appendChild(stat("공격속도", `${d.attackSpeed.toFixed(2)}/s`));
+  stats.appendChild(stat("사거리", String(d.range)));
+  stats.appendChild(stat("타겟", TARGETING_LABEL[d.targeting]));
+  stats.appendChild(stat("누적딜", Math.round(u.totalDamage).toLocaleString(), true));
   main.appendChild(stats);
 
   const chips = passiveChips(d);
@@ -612,6 +644,12 @@ export function renderUnitDetail(ctx: AppCtx) {
   }
 
   root.appendChild(main);
+
+  const slots = el("div", "ud-slots");
+  const slotLabels = [...chips, ...d.roles.map((r) => ROLE_LABEL[r])].slice(0, 4);
+  for (const label of slotLabels) slots.appendChild(slot(label));
+  while (slots.childElementCount < 4) slots.appendChild(slot("빈 슬롯", false));
+  root.appendChild(slots);
 }
 
 // ---------- 하단 액션바 ----------
