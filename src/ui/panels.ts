@@ -22,22 +22,23 @@ export function renderTopbar(ctx: AppCtx) {
   const s = ctx.game.state;
   const diff = DIFFICULTY_BY_ID[s.difficulty];
 
-  const stat = (label: string, value: string, cls = "") => {
+  const stat = (label: string, value: string, cls = "", icon = "") => {
     const d = el("div", "stat");
+    if (icon) d.dataset.icon = icon;
     d.appendChild(el("span", "label", label));
     d.appendChild(el("span", `value ${cls}`, value));
     return d;
   };
 
-  root.appendChild(stat("라운드", `${Math.min(s.round, FINAL_ROUND)}/${FINAL_ROUND}`));
-  root.appendChild(stat("적 누적", `${s.enemies.length}/${LOSE_THRESHOLD}`, "life"));
-  root.appendChild(stat("골드", String(s.gold), "gold"));
-  root.appendChild(stat("난이도", diff.name));
-  root.appendChild(stat("시드", s.seed));
+  root.appendChild(stat("라운드", `${Math.min(s.round, FINAL_ROUND)}/${FINAL_ROUND}`, "", "target"));
+  root.appendChild(stat("적 누적", `${s.enemies.length}/${LOSE_THRESHOLD}`, "life", "damage"));
+  root.appendChild(stat("골드", String(s.gold), "gold", "gold"));
+  root.appendChild(stat("난이도", diff.name, "", "passive"));
+  root.appendChild(stat("시드", s.seed, "", "skill"));
 
   const nextBoss = [10, 20, 30, 40].find((r) => r >= s.round);
   if (nextBoss !== undefined) {
-    root.appendChild(stat("다음 보스", `${nextBoss}R (${nextBoss - s.round}라운드 후)`, "boss"));
+    root.appendChild(stat("다음 보스", `${nextBoss}R (${nextBoss - s.round}라운드 후)`, "boss", "target"));
   }
 
   if (s.pendingSelectors.length > 0) {
@@ -538,16 +539,18 @@ export function renderUnitDetail(ctx: AppCtx) {
   }
   root.classList.remove("hidden", "empty", "multi");
 
-  const stat = (k: string, v: string, emphasis = false) => {
+  const stat = (k: string, v: string, emphasis = false, icon = "") => {
     const c = el("div", `ud-stat ${emphasis ? "emphasis" : ""}`);
+    if (icon) c.appendChild(el("span", `ui-icon icon-${icon}`, ""));
     c.appendChild(el("span", "k", k));
     c.appendChild(el("span", "v", v));
     return c;
   };
 
-  const slot = (label: string, active = true) => {
+  const slot = (label: string, active = true, icon = active ? "passive" : "") => {
     const d = el("div", `ud-slot ${active ? "active" : ""}`);
-    d.textContent = label;
+    if (icon) d.appendChild(el("span", `ui-icon icon-${icon}`, ""));
+    d.appendChild(el("span", "ud-slot-label", label));
     d.title = label;
     return d;
   };
@@ -579,21 +582,22 @@ export function renderUnitDetail(ctx: AppCtx) {
     main.appendChild(head);
 
     const power = el("div", "ud-power");
+    power.appendChild(el("span", "ui-icon icon-attack", ""));
     power.appendChild(el("span", "label", "합계 공격력"));
     power.appendChild(el("span", "value", String(totalAtk)));
     main.appendChild(power);
 
     const stats = el("div", "ud-stats");
-    stats.appendChild(stat("누적피해", Math.round(totalDmg).toLocaleString(), true));
+    stats.appendChild(stat("누적피해", Math.round(totalDmg).toLocaleString(), true, "damage"));
     const merge3 = selUids.length === 3 ? "3합성 가능" : "—";
-    stats.appendChild(stat("3합성", merge3));
-    stats.appendChild(stat("선택 수", `${selected.length}기`));
+    stats.appendChild(stat("3합성", merge3, false, "merge"));
+    stats.appendChild(stat("선택 수", `${selected.length}기`, false, "target"));
     main.appendChild(stats);
     root.appendChild(main);
 
     const slots = el("div", "ud-slots");
     for (const [g, n] of [...byGrade.entries()].sort((a, b) => GRADE_ORDER.indexOf(b[0]) - GRADE_ORDER.indexOf(a[0])).slice(0, 4)) {
-      slots.appendChild(slot(`${GRADE_LABEL[g]} ${n}`));
+      slots.appendChild(slot(`${GRADE_LABEL[g]} ${n}`, true, "skill"));
     }
     while (slots.childElementCount < 4) slots.appendChild(slot("빈 슬롯", false));
     root.appendChild(slots);
@@ -622,16 +626,17 @@ export function renderUnitDetail(ctx: AppCtx) {
   main.appendChild(head);
 
   const power = el("div", "ud-power");
+  power.appendChild(el("span", "ui-icon icon-attack", ""));
   power.appendChild(el("span", "label", "공격력"));
   power.appendChild(el("span", "value", String(d.attack)));
   power.appendChild(el("span", "type", ATTACK_TYPE_LABEL[d.attackType]));
   main.appendChild(power);
 
   const stats = el("div", "ud-stats");
-  stats.appendChild(stat("공격속도", `${d.attackSpeed.toFixed(2)}/s`));
-  stats.appendChild(stat("사거리", String(d.range)));
-  stats.appendChild(stat("타겟", TARGETING_LABEL[d.targeting]));
-  stats.appendChild(stat("누적딜", Math.round(u.totalDamage).toLocaleString(), true));
+  stats.appendChild(stat("공격속도", `${d.attackSpeed.toFixed(2)}/s`, false, "speed"));
+  stats.appendChild(stat("사거리", String(d.range), false, "range"));
+  stats.appendChild(stat("타겟", TARGETING_LABEL[d.targeting], false, "target"));
+  stats.appendChild(stat("누적딜", Math.round(u.totalDamage).toLocaleString(), true, "damage"));
   main.appendChild(stats);
 
   const chips = passiveChips(d);
@@ -647,7 +652,7 @@ export function renderUnitDetail(ctx: AppCtx) {
 
   const slots = el("div", "ud-slots");
   const slotLabels = [...chips, ...d.roles.map((r) => ROLE_LABEL[r])].slice(0, 4);
-  for (const label of slotLabels) slots.appendChild(slot(label));
+  for (const label of slotLabels) slots.appendChild(slot(label, true, chips.includes(label) ? "passive" : "skill"));
   while (slots.childElementCount < 4) slots.appendChild(slot("빈 슬롯", false));
   root.appendChild(slots);
 }
@@ -663,10 +668,11 @@ export function renderActionbar(ctx: AppCtx) {
   const ended = s.phase === "ended";
 
   const btn = (label: string, sub: string, opts: {
-    disabled?: boolean; primary?: boolean; danger?: boolean; title?: string;
+    disabled?: boolean; primary?: boolean; danger?: boolean; title?: string; icon?: string;
     onClick: () => void;
   }) => {
     const b = el("button", `action-btn ${opts.primary ? "primary" : ""} ${opts.danger ? "danger" : ""}`);
+    if (opts.icon) b.appendChild(el("span", `ui-icon icon-${opts.icon}`, ""));
     b.appendChild(el("span", "", label));
     b.appendChild(el("span", "sub", sub));
     b.disabled = !!opts.disabled;
@@ -679,6 +685,7 @@ export function renderActionbar(ctx: AppCtx) {
   root.appendChild(btn("소환 [Z]", `${SUMMON_COST}골드`, {
     disabled: ended || s.gold < SUMMON_COST || s.units.length >= ctx.game.diff.unitCap,
     title: s.units.length >= ctx.game.diff.unitCap ? "보유칸이 가득 차 소환할 수 없습니다." : "",
+    icon: "summon",
     onClick: () => ctx.act("summon"),
   }));
 
@@ -687,6 +694,7 @@ export function renderActionbar(ctx: AppCtx) {
   root.appendChild(btn("3합성 [X]", canMergeCount ? "선택 3기 합성" : `${sel.length}/3 선택`, {
     disabled: ended || !canMergeCount,
     title: "같은 등급 3기를 선택하세요",
+    icon: "merge",
     onClick: () => {
       ctx.act("merge3", { unitIds: sel });
       ctx.renderer.selectedUids.clear();
@@ -701,6 +709,7 @@ export function renderActionbar(ctx: AppCtx) {
   }
   root.appendChild(btn("판매 [Del]", sel.length > 0 ? `${sel.length}기 +${refund}G` : "유닛 선택", {
     disabled: ended || sel.length === 0,
+    icon: "sell",
     onClick: () => {
       confirmModal("판매 확인", `선택한 ${sel.length}기를 판매하고 ${refund}골드를 받습니다.`, "판매", () => {
         ctx.act("sell", { unitIds: sel });
@@ -712,6 +721,7 @@ export function renderActionbar(ctx: AppCtx) {
   // 업그레이드
   root.appendChild(btn("업그레이드", "계열 강화", {
     disabled: ended,
+    icon: "upgrade",
     onClick: () => openUpgradeModal(ctx),
   }));
 
@@ -734,6 +744,7 @@ export function renderActionbar(ctx: AppCtx) {
       : wave.type === "boss" ? "⚠ 보스 라운드" : `${wave.enemyName} x${wave.count}`;
     root.appendChild(btn(`${s.round}라운드 시작 [Space]`, sub, {
       primary: true,
+      icon: "skill",
       onClick: () => {
         if (s.pendingSelectors.length > 0) openSelectorModal(ctx);
         else ctx.advanceWave();
