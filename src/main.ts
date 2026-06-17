@@ -5,7 +5,10 @@ import { randomSeed } from "./core/rng";
 import { stateChecksum } from "./core/checksum";
 import { BoardRenderer } from "./ui/board";
 import type { AppCtx } from "./ui/ctx";
-import { renderTopbar, renderLeftPanel, renderRightPanel, renderActionbar, renderUnitDetail } from "./ui/panels";
+import {
+  renderTopbar, renderRightPanel, renderActionbar,
+  renderUnitDetail, renderRecipeSuggestions,
+} from "./ui/panels";
 import { renderMenubar } from "./ui/menu";
 import { toast, anyModalOpen, closeTopModal, confirmModal } from "./ui/widgets";
 import { maybeShowResult, openSelectorModal, resetResultShown } from "./ui/modals";
@@ -68,7 +71,7 @@ const ctx: AppCtx = {
   settings,
   scene: "title",
   paused: false,
-  activeTab: "recipe",
+  activeTab: "mission",
   gradeFilter: "all",
   saveStatus: "idle",
   refresh: () => { panelsDirty = true; },
@@ -263,14 +266,15 @@ function loop(now: number) {
       panelsDirty = false;
       notifyNewlyCraftable();
       renderTopbar(ctx);
-      renderLeftPanel(ctx);
       renderRightPanel(ctx);
       renderUnitDetail(ctx);
+      renderRecipeSuggestions(ctx);
       renderActionbar(ctx);
     } else if (game.state.phase === "wave" && now - lastTopbarAt > 250) {
       lastTopbarAt = now;
       renderTopbar(ctx);
       renderUnitDetail(ctx); // 전투 중 누적피해 갱신
+      renderRecipeSuggestions(ctx);
     }
   }
   lastTime = now;

@@ -19,6 +19,7 @@ import { FAMILY_COLOR, GRADE_COLOR } from "./board";
 
 let selectorOpen = false;
 
+// COMPONENT: SelectorModal - reward chooser for pending unit selector tickets.
 export function openSelectorModal(ctx: AppCtx) {
   const s = ctx.game.state;
   if (selectorOpen || s.pendingSelectors.length === 0) return;
@@ -94,6 +95,7 @@ export function buildReportMarkdown(r: ResultSummary): string {
 
 let resultShown = false;
 
+// COMPONENT: ResultModal - opens the end-of-run summary and report/export actions.
 export function maybeShowResult(ctx: AppCtx) {
   const s = ctx.game.state;
   if (s.phase !== "ended" || resultShown) return;
@@ -172,6 +174,7 @@ export function resetResultShown() { resultShown = false; }
 
 // ---------- 새 게임 ----------
 
+// COMPONENT: NewRunModal - difficulty chooser and random seed launcher.
 export function openNewRunModal(ctx: AppCtx, dismissable = true) {
   openModal((body, close) => {
     body.appendChild(el("h2", "", "새 게임"));
@@ -215,6 +218,7 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
 
 // ---------- 저장/불러오기 슬롯 ----------
 
+// COMPONENT: SaveModal - manual save slot picker.
 export function openSaveModal(ctx: AppCtx) {
   openModal(async (body, close) => {
     body.appendChild(el("h2", "", "수동 저장"));
@@ -254,6 +258,7 @@ export function openSaveModal(ctx: AppCtx) {
   });
 }
 
+// COMPONENT: LoadModal - autosave/manual slot loader and delete controls.
 export function openLoadModal(ctx: AppCtx) {
   openModal(async (body, close) => {
     body.appendChild(el("h2", "", "불러오기"));
@@ -322,6 +327,7 @@ export function openLoadModal(ctx: AppCtx) {
 
 // ---------- 시뮬레이션 ----------
 
+// COMPONENT: SimulationModal - runs and exports the 100-seed simulation report.
 export function openSimModal(ctx: AppCtx) {
   openModal((body, close) => {
     body.appendChild(el("h2", "", "자동 시뮬레이션 (100시드)"));
@@ -364,6 +370,7 @@ export function openSimModal(ctx: AppCtx) {
 
 // ---------- 도움말 ----------
 
+// COMPONENT: HelpModal - keyboard shortcuts and rules reference.
 export function openHelpModal() {
   openModal((body, close) => {
     body.appendChild(el("h2", "", "단축키"));
@@ -399,6 +406,7 @@ export function openHelpModal() {
   });
 }
 
+// COMPONENT: AboutModal - app version/runtime information.
 export function openAboutModal() {
   openModal((body, close) => {
     body.appendChild(el("h2", "", "차원 균열 랜덤 디펜스"));

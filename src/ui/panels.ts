@@ -15,6 +15,7 @@ import { LOSE_THRESHOLD } from "../core/engine";
 
 // ---------- 상단 상태바 ----------
 
+// COMPONENT: Topbar - updates round, enemy count, gold, difficulty, speed, pause, and save status.
 export function renderTopbar(ctx: AppCtx) {
   const root = document.getElementById("topbar")!;
   root.innerHTML = "";
@@ -75,6 +76,7 @@ export function renderTopbar(ctx: AppCtx) {
 
 // ---------- 좌측: 보유 유닛 ----------
 
+// COMPONENT: LeftPanel - shows owned units grouped by unit type with grade filtering and lock controls.
 export function renderLeftPanel(ctx: AppCtx) {
   const root = document.getElementById("left-panel")!;
   root.innerHTML = "";
@@ -180,6 +182,7 @@ export function renderLeftPanel(ctx: AppCtx) {
 
 // ---------- 우측: 조합/미션/보스/로그 탭 ----------
 
+// COMPONENT: RightPanel - owns the right-side tab shell and delegates to mission/boss/log tabs.
 export function renderRightPanel(ctx: AppCtx) {
   const root = document.getElementById("right-panel")!;
   root.innerHTML = "";
@@ -187,7 +190,6 @@ export function renderRightPanel(ctx: AppCtx) {
 
   const tabs = el("div", "tabs");
   const defs: Array<{ id: RightTab; label: string; badge: boolean }> = [
-    { id: "recipe", label: "조합", badge: analyzeRecipes(s).some((r) => r.tier === "ok" && r.goldShort === 0) },
     {
       id: "mission", label: "미션",
       badge: s.missions.some((m) => {
@@ -208,13 +210,13 @@ export function renderRightPanel(ctx: AppCtx) {
   root.appendChild(tabs);
 
   switch (ctx.activeTab) {
-    case "recipe": renderRecipeTab(ctx, root); break;
     case "mission": renderMissionTab(ctx, root); break;
     case "boss": renderBossTab(ctx, root); break;
     case "log": renderLogTab(ctx, root); break;
   }
 }
 
+// COMPONENT: RecipeTab - lists craftable and near-craftable recipes plus craft buttons.
 function renderRecipeTab(ctx: AppCtx, root: HTMLElement) {
   const s = ctx.game.state;
   const statuses = analyzeRecipes(s);
@@ -269,6 +271,153 @@ function renderRecipeTab(ctx: AppCtx, root: HTMLElement) {
   }
 }
 
+void renderRecipeTab;
+
+function recipeUsesUnit(recipe: ReturnType<typeof analyzeRecipes>[number]["recipe"], defId: string): boolean {
+  const def = UNIT_BY_ID[defId];
+  return recipe.ingredients.some((ing) => {
+    if (ing.unitId) return ing.unitId === defId;
+    if (ing.grade && ing.grade !== def.grade) return false;
+    if (ing.family && ing.family !== def.family) return false;
+    return !!ing.grade || !!ing.family;
+  });
+}
+
+// COMPONENT: RecipeSuggestions - shows only immediately craftable recipes related to selected units.
+export function renderRecipeSuggestions(ctx: AppCtx) {
+  const root = document.getElementById("recipe-suggestions");
+  if (!root) return;
+  root.innerHTML = "";
+
+  const s = ctx.game.state;
+  const selectedUnits = s.units.filter((u) => ctx.renderer.selectedUids.has(u.uid));
+  const selectedDefIds = new Set(selectedUnits.map((u) => u.defId));
+  if (selectedDefIds.size === 0) {
+    root.classList.add("hidden");
+    return;
+  }
+
+  const related = analyzeRecipes(s).filter((st) => {
+    return [...selectedDefIds].some((defId) => recipeUsesUnit(st.recipe, defId));
+  });
+
+  const mergeDefs = selectedUnits.map((u) => UNIT_BY_ID[u.defId]);
+  const mergeGrade = mergeDefs[0]?.grade;
+  const canShowMerge = selectedUnits.length === 3;
+  const canMerge = canShowMerge &&
+    mergeGrade !== undefined &&
+    mergeGrade !== "legend" &&
+    mergeGrade !== "hidden" &&
+    !selectedUnits.some((u) => u.locked) &&
+    mergeDefs.every((d) => d.grade === mergeGrade);
+
+  if (related.length === 0 && !canShowMerge) {
+    root.classList.add("hidden");
+    return;
+  }
+
+  root.classList.remove("hidden");
+  const craftableCount = related.filter((st) =>
+    st.tier === "ok" &&
+    st.goldShort === 0 &&
+    (st.recipe.minRound === undefined || s.round >= st.recipe.minRound),
+  ).length + (canMerge ? 1 : 0);
+  root.appendChild(el("div", "rs-title", craftableCount > 0 ? "조합 가능" : "조합 후보"));
+
+  const iconList = el("div", "rs-icon-list");
+
+  if (canShowMerge && mergeGrade) {
+    const wrap = el("div", "rs-icon-wrap");
+    const icon = el("button", `rs-unit-icon ${canMerge ? "" : "disabled"}`) as HTMLButtonElement;
+    icon.type = "button";
+    icon.title = "3합성";
+    const portrait = el("span", "rs-unit-portrait merge-portrait", "3");
+    const sameFamily = mergeDefs.every((d) => d.family === mergeDefs[0].family);
+    portrait.style.cssText = `background:${sameFamily ? FAMILY_COLOR[mergeDefs[0].family] : "#2b3348"};border-color:${GRADE_COLOR[mergeGrade]};border-radius:8px`;
+    icon.appendChild(portrait);
+    icon.appendChild(el("span", "rs-unit-name", "3합성"));
+    wrap.appendChild(icon);
+
+    const popup = el("div", "rs-popover");
+    const head = el("div", "head");
+    const nextGrade = GRADE_ORDER[GRADE_ORDER.indexOf(mergeGrade) + 1];
+    head.appendChild(el("span", `badge grade-${mergeGrade}`, GRADE_LABEL[mergeGrade]));
+    head.appendChild(el("span", "rname", "3합성"));
+    if (nextGrade) head.appendChild(el("span", `badge grade-${nextGrade}`, `${GRADE_LABEL[nextGrade]} 획득`));
+    popup.appendChild(head);
+    popup.appendChild(el("div", "mats", mergeDefs.map((d) => d.name).join(" + ")));
+    popup.appendChild(el("div", "why", sameFamily ? "같은 계열 다음 등급 유닛으로 합성" : "다음 등급 무작위 유닛으로 합성"));
+    if (selectedUnits.some((u) => u.locked)) popup.appendChild(el("div", "why warn", "잠금 유닛 포함"));
+    if (!mergeDefs.every((d) => d.grade === mergeGrade)) popup.appendChild(el("div", "why warn", "같은 등급 3기가 필요"));
+    if (mergeGrade === "legend" || mergeGrade === "hidden") popup.appendChild(el("div", "why warn", "이 등급은 3합성 불가"));
+    const btn = el("button", "craft-btn", canMerge ? "합성" : "불가") as HTMLButtonElement;
+    btn.disabled = !canMerge;
+    btn.onclick = () => {
+      if (ctx.act("merge3", { unitIds: selectedUnits.map((u) => u.uid) })) {
+        ctx.renderer.selectedUids.clear();
+        ctx.refresh();
+      }
+    };
+    popup.appendChild(btn);
+    wrap.appendChild(popup);
+    iconList.appendChild(wrap);
+  }
+
+  for (const st of related.slice(0, 8)) {
+    const d = UNIT_BY_ID[st.recipe.resultUnitId];
+    const roundLocked = st.recipe.minRound !== undefined && s.round < st.recipe.minRound;
+    const canCraft = st.tier === "ok" && st.goldShort === 0 && !roundLocked;
+    const wrap = el("div", "rs-icon-wrap");
+
+    const icon = el("button", `rs-unit-icon ${canCraft ? "" : "disabled"}`) as HTMLButtonElement;
+    icon.type = "button";
+    icon.title = d.name;
+    const portrait = el("span", "rs-unit-portrait");
+    portrait.style.cssText = `background:${FAMILY_COLOR[d.family]};border-color:${GRADE_COLOR[d.grade]};border-radius:${d.grade === "common" ? "50%" : "7px"}`;
+    icon.appendChild(portrait);
+    icon.appendChild(el("span", "rs-unit-name", d.name));
+    wrap.appendChild(icon);
+
+    const popup = el("div", "rs-popover");
+    const head = el("div", "head");
+    head.appendChild(el("span", `badge grade-${d.grade}`, GRADE_LABEL[d.grade]));
+    head.appendChild(el("span", "rname", st.resultName));
+    head.appendChild(el("span", "badge", `${st.recipe.cost.gold}G`));
+    popup.appendChild(head);
+
+    const mats = el("div", "mats");
+    const parts: string[] = [];
+    for (const ing of st.recipe.ingredients) {
+      const label = ing.unitId ? UNIT_BY_ID[ing.unitId].name : `${ing.grade ?? ""}${ing.family ?? ""}`;
+      parts.push(`${label} x${ing.count}`);
+    }
+    mats.textContent = parts.join(" + ");
+    popup.appendChild(mats);
+    if (d.desc) popup.appendChild(el("div", "why", d.desc));
+    if (roundLocked) {
+      popup.appendChild(el("div", "why warn", `${st.recipe.minRound}R부터 제작 가능`));
+    }
+    if (st.goldShort > 0) {
+      popup.appendChild(el("div", "why warn", `골드 ${st.goldShort} 부족`));
+    }
+    if (st.missing.length > 0) {
+      popup.appendChild(el("div", "why warn", `부족: ${st.missing.map((m) => `${m.label} x${m.count}`).join(", ")}`));
+    }
+    if (st.needsLocked) {
+      popup.appendChild(el("div", "why warn", "잠금 유닛을 해제해야 제작 가능"));
+    }
+
+    const btn = el("button", "craft-btn", canCraft ? "제작" : "불가") as HTMLButtonElement;
+    btn.disabled = !canCraft;
+    btn.onclick = () => ctx.act("craft", { recipeId: st.recipe.id });
+    popup.appendChild(btn);
+    wrap.appendChild(popup);
+    iconList.appendChild(wrap);
+  }
+  root.appendChild(iconList);
+}
+
+// COMPONENT: MissionTab - lists active, completed, and expired mission progress.
 function renderMissionTab(ctx: AppCtx, root: HTMLElement) {
   const s = ctx.game.state;
   const order = { active: 0, done: 1, expired: 2 } as const;
@@ -303,6 +452,7 @@ function renderMissionTab(ctx: AppCtx, root: HTMLElement) {
   }
 }
 
+// COMPONENT: BossTab - shows the next boss forecast, risk, weakness, and kill history.
 function renderBossTab(ctx: AppCtx, root: HTMLElement) {
   const s = ctx.game.state;
   const outlook = bossOutlook(s);
@@ -335,6 +485,7 @@ function renderBossTab(ctx: AppCtx, root: HTMLElement) {
   root.appendChild(box);
 }
 
+// COMPONENT: LogTab - renders recent game log events in reverse chronological order.
 function renderLogTab(ctx: AppCtx, root: HTMLElement) {
   const list = el("div", "log-list");
   const log = ctx.game.state.log.slice(-60);
@@ -371,6 +522,7 @@ function passiveChips(d: typeof UNIT_BY_ID[string]): string[] {
   return chips;
 }
 
+// COMPONENT: UnitDetail - renders the bottom-left selected unit or multi-selection detail panel.
 export function renderUnitDetail(ctx: AppCtx) {
   const root = document.getElementById("unit-detail");
   if (!root) return;
@@ -464,6 +616,7 @@ export function renderUnitDetail(ctx: AppCtx) {
 
 // ---------- 하단 액션바 ----------
 
+// COMPONENT: Actionbar - builds summon, merge, sell, upgrade, phase, and next-wave controls.
 export function renderActionbar(ctx: AppCtx) {
   const root = document.getElementById("action-controls")!;
   root.innerHTML = "";
@@ -551,6 +704,7 @@ export function renderActionbar(ctx: AppCtx) {
   }
 }
 
+// COMPONENT: UpgradeModal - renders family upgrade purchase controls inside a modal.
 function openUpgradeModal(ctx: AppCtx) {
   import("./widgets").then(({ openModal }) => {
     openModal((body, close) => {

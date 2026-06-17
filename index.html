@@ -8,24 +8,41 @@
   </head>
   <body>
     <div id="app">
+      <!-- COMPONENT: TitleScene - start menu screen, background canvas, and title menu root. -->
       <div id="title-scene" class="scene">
+        <!-- COMPONENT: TitleBackground - animated title canvas from src/ui/scenes.ts. -->
         <canvas id="title-bg"></canvas>
+        <!-- COMPONENT: TitleContent - title logo and menu buttons are injected here. -->
         <div id="title-content"></div>
       </div>
+      <!-- COMPONENT: GameScene - main in-game layout container. -->
       <div id="game-scene" class="scene hidden">
+        <!-- COMPONENT: MenuBar - desktop/web command menus from src/ui/menu.ts. -->
         <div id="menubar"></div>
+        <!-- COMPONENT: Topbar - round, gold, difficulty, speed, pause, and save status. -->
         <div id="topbar"></div>
+        <!-- COMPONENT: MiddleLayout - board canvas and right panel. -->
         <div id="middle">
-          <div id="left-panel"></div>
-          <div id="board-wrap"><canvas id="board"></canvas></div>
+          <!-- COMPONENT: Board - canvas renderer and RTS pointer interactions. -->
+          <div id="board-wrap">
+            <canvas id="board"></canvas>
+            <!-- COMPONENT: RecipeSuggestions - craftable recipes related to selected units. -->
+            <div id="recipe-suggestions" class="hidden"></div>
+          </div>
+          <!-- COMPONENT: RightPanel - mission, boss, and log tabs. -->
           <div id="right-panel"></div>
         </div>
+        <!-- COMPONENT: Actionbar - selected unit detail plus action controls. -->
         <div id="actionbar">
+          <!-- COMPONENT: UnitDetail - selected unit summary/detail panel. -->
           <div id="unit-detail"></div>
+          <!-- COMPONENT: ActionControls - summon, merge, sell, upgrade, and wave buttons. -->
           <div id="action-controls"></div>
         </div>
       </div>
+      <!-- COMPONENT: ToastRoot - transient notifications from src/ui/widgets.ts. -->
       <div id="toast-root"></div>
+      <!-- COMPONENT: ModalRoot - all modal overlays are mounted here. -->
       <div id="modal-root"></div>
     </div>
     <script type="module" src="/src/main.ts"></script>

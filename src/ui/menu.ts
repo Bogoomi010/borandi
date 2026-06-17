@@ -17,6 +17,7 @@ interface MenuItem {
   onClick: () => void;
 }
 
+// COMPONENT: MenuBar - builds the Game/View/Tools/Help dropdowns in #menubar.
 export function renderMenubar(ctx: AppCtx) {
   const root = document.getElementById("menubar")!;
   root.innerHTML = "";
@@ -52,10 +53,6 @@ export function renderMenubar(ctx: AppCtx) {
     {
       title: "View",
       items: [
-        {
-          label: "좌측 패널 접기/펴기",
-          onClick: () => document.getElementById("left-panel")!.classList.toggle("collapsed"),
-        },
         {
           label: "우측 패널 접기/펴기",
           onClick: () => document.getElementById("right-panel")!.classList.toggle("collapsed"),

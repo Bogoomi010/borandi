@@ -3,7 +3,7 @@ import type { BoardRenderer } from "./board";
 import type { GameAudio } from "./audio";
 import type { Settings } from "./settings";
 
-export type RightTab = "recipe" | "mission" | "boss" | "log";
+export type RightTab = "mission" | "boss" | "log";
 export type Scene = "title" | "game";
 
 export interface AppCtx {
@@ -14,7 +14,7 @@ export interface AppCtx {
   scene: Scene;
   paused: boolean;
   activeTab: RightTab;
-  gradeFilter: string; // "all" | grade
+  gradeFilter: string; // legacy left-panel state, no longer rendered
   saveStatus: "idle" | "saving" | "saved" | "failed";
   /** 패널 다시 그리기 요청 */
   refresh: () => void;

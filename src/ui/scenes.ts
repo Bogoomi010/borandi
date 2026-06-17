@@ -18,6 +18,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 
 let titleFxStop: (() => void) | null = null;
 
+// COMPONENT: GameScene - switches visible DOM from title screen to the in-game screen.
 export function showGame(ctx: AppCtx) {
   ctx.scene = "game";
   document.getElementById("title-scene")!.classList.add("hidden");
@@ -26,6 +27,7 @@ export function showGame(ctx: AppCtx) {
   titleFxStop = null;
 }
 
+// COMPONENT: TitleScene - switches visible DOM to the title screen and rebuilds its menu.
 export function showTitle(ctx: AppCtx) {
   ctx.scene = "title";
   document.getElementById("game-scene")!.classList.add("hidden");
@@ -38,6 +40,7 @@ export function showTitle(ctx: AppCtx) {
 
 // ---------- 타이틀 화면 ----------
 
+// COMPONENT: TitleMenu - creates the title logo, main menu buttons, continue state, and footer.
 function buildTitle(ctx: AppCtx) {
   const root = document.getElementById("title-content")!;
   root.innerHTML = "";
@@ -92,6 +95,7 @@ function buildTitle(ctx: AppCtx) {
 }
 
 /** 타이틀 배경 파티클 (계열 색 균열 조각이 떠오른다) */
+// COMPONENT: TitleBackgroundFx - draws the animated title background canvas.
 function startTitleFx(): () => void {
   const canvas = document.getElementById("title-bg") as HTMLCanvasElement;
   const ctx2d = canvas.getContext("2d");
@@ -171,6 +175,7 @@ function startTitleFx(): () => void {
 
 let pauseOpen = false;
 
+// COMPONENT: PauseMenu - modal command menu shown from Esc during gameplay.
 export function openPauseMenu(ctx: AppCtx) {
   if (pauseOpen || ctx.scene !== "game") return;
   pauseOpen = true;
@@ -213,6 +218,7 @@ export function openPauseMenu(ctx: AppCtx) {
 
 // ---------- 옵션 ----------
 
+// COMPONENT: OptionsOverlay - settings modal for audio, visuals, fullscreen, and gameplay defaults.
 export function openOptionsOverlay(ctx: AppCtx) {
   openModal((body, close) => {
     body.appendChild(el("h2", "", "옵션"));
@@ -311,6 +317,7 @@ export function openOptionsOverlay(ctx: AppCtx) {
 
 // ---------- 도감 ----------
 
+// COMPONENT: CollectionOverlay - profile/dex modal for discovered units and hidden recipes.
 export function openCollection(ctx: AppCtx) {
   openModal((body, close) => {
     body.classList.add("collection");
