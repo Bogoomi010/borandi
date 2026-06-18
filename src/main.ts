@@ -1,6 +1,7 @@
 // 앱 진입점: 씬 전환, 게임 루프, 패널 렌더, 단축키, 자동 저장, 오디오 오케스트레이션
 
 import { Game, DT, replay } from "./core/engine";
+import { posAtDist } from "./core/path";
 import { randomSeed } from "./core/rng";
 import { stateChecksum } from "./core/checksum";
 import { BoardRenderer } from "./ui/board";
@@ -16,6 +17,8 @@ import { showGame, showTitle, openPauseMenu } from "./ui/scenes";
 import { openDevSpawnModal } from "./ui/devTools"; // ⚠ DEV전용 (출시 전 제거)
 import { UNIT_BY_ID } from "./data/units";
 import { analyzeRecipes } from "./core/advisor";
+import { stageForRound } from "./data/stages";
+import { waveForRound } from "./data/waves";
 
 const settings = loadSettings();
 const audio = new GameAudio(settings);
@@ -159,7 +162,7 @@ function playActionSfx(type: string) {
     case "upgrade": audio.sfx("upgrade"); break;
     case "pickSelector": audio.sfx("summonRare"); break;
     case "startWave": {
-      const isBoss = [10, 20, 30, 40].includes(game.state.round);
+      const isBoss = [5, 10, 15].includes(game.state.round);
       audio.sfx(isBoss ? "bossWarn" : "waveStart");
       break;
     }
@@ -473,3 +476,64 @@ window.addEventListener("blur", () => {
 renderMenubar(ctx);
 showTitle(ctx);
 requestAnimationFrame(loop);
+
+function renderGameToText(): string {
+  const s = game.state;
+  const stage = stageForRound(s.round);
+  const wave = waveForRound(Math.min(s.round, 15));
+  return JSON.stringify({
+    coordinateSystem: "board origin top-left, x right, y down, logical size 960x560",
+    scene: ctx.scene,
+    paused: ctx.paused,
+    mode: s.phase,
+    stage: {
+      current: s.round,
+      name: stage.name,
+      ground: stage.ground,
+      waypointCount: stage.waypoints.length,
+      decorationCount: stage.decorations.length,
+    },
+    wave: { type: wave.type, enemyName: wave.enemyName, count: wave.count, spawned: s.waveSpawned, killed: s.waveKilled },
+    resources: { life: s.life, gold: s.gold, enemyPressure: s.enemies.length, breakTicks: s.breakTicks },
+    units: s.units.slice(0, 12).map((u) => {
+      const def = UNIT_BY_ID[u.defId];
+      return { uid: u.uid, name: def.name, grade: def.grade, family: def.family, x: Math.round(u.x), y: Math.round(u.y), state: u.state };
+    }),
+    enemies: s.enemies.slice(0, 16).map((e) => {
+      const p = posAtDist(e.dist, s.round);
+      return { eid: e.eid, hp: Math.round(e.hp), maxHp: Math.round(e.maxHp), x: Math.round(p.x), y: Math.round(p.y), boss: e.isBoss };
+    }),
+    selected: [...renderer.selectedUids].sort((a, b) => a - b),
+    cleared: s.cleared,
+    logTail: s.log.slice(-5).map((l) => `[${l.round}] ${l.text}`),
+  });
+}
+
+function advanceTimeForTest(ms: number) {
+  const steps = Math.max(1, Math.round((ms / 1000) / DT));
+  for (let i = 0; i < steps; i++) {
+    if (ctx.scene === "game" && game.state.phase === "wave") game.advanceTick();
+  }
+  renderer.autoStartIn = game.state.breakTicks > 0 ? game.state.breakTicks * DT : null;
+  renderer.draw(game.state);
+  renderTopbar(ctx);
+  renderLeftPanel(ctx);
+  renderRightPanel(ctx);
+  renderUnitDetail(ctx);
+  renderActionbar(ctx);
+}
+
+Object.assign(window, {
+  render_game_to_text: renderGameToText,
+  advanceTime: advanceTimeForTest,
+});
+
+if (import.meta.env.DEV) {
+  Object.assign(window, {
+    __randi_dev: {
+      newRun: (seed = "PLAYTEST") => ctx.newRun(seed, "novice"),
+      act: (type: string, payload?: Record<string, unknown>) => ctx.act(type, payload),
+      state: () => game.state,
+    },
+  });
+}

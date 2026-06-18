@@ -48,7 +48,7 @@ function buildTitle(ctx: AppCtx) {
   const h1 = el("h1");
   h1.innerHTML = "차원 균열<br>랜덤 디펜스";
   logo.appendChild(h1);
-  logo.appendChild(el("div", "title-sub", "랜덤 소환 · 조합 · 미션 · 보스 — 40라운드를 버텨라"));
+  logo.appendChild(el("div", "title-sub", "랜덤 소환 · 조합 · 미션 · 보스 — 15개 저주 마을 스테이지를 버텨라"));
   inner.appendChild(logo);
 
   const menu = el("div", "title-menu");

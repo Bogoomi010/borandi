@@ -75,7 +75,7 @@ function doMerges(game: Game, maxMerges: number) {
 
 function doUpgrades(game: Game, strategy: Strategy) {
   const s = game.state;
-  const threshold = strategy === "conservative" ? 12 : 18;
+  const threshold = strategy === "conservative" ? 8 : 10;
   if (s.round < threshold) return;
   // 가장 많이 보유한 계열 강화
   const famCount = new Map<string, number>();

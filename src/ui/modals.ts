@@ -67,7 +67,7 @@ export function buildReportMarkdown(r: ResultSummary): string {
     `# 차원 균열 랜덤 디펜스 결과`,
     ``,
     `- 결과: ${r.cleared ? "클리어 🎉" : "패배"}`,
-    `- 도달 라운드: ${r.reachedRound}`,
+    `- 도달 스테이지: ${r.reachedRound}`,
     `- 시드: \`${r.seed}\` / 난이도: ${r.difficulty} / 데이터 버전: ${r.dataVersion}`,
     `- 남은 라이프: ${r.life}`,
     `- 최고 등급: ${GRADE_LABEL[r.maxGrade]}`,
@@ -105,7 +105,7 @@ export function maybeShowResult(ctx: AppCtx) {
   void recordResult(summary).catch(() => toast("결과 저장 실패", "danger"));
 
   openModal((body, close) => {
-    body.appendChild(el("h2", "", summary.cleared ? "🎉 40라운드 클리어!" : `${summary.reachedRound}라운드에서 패배`));
+    body.appendChild(el("h2", "", summary.cleared ? "🎉 15스테이지 클리어!" : `${summary.reachedRound}스테이지에서 패배`));
 
     const grid = el("div", "result-stats");
     const kv = (k: string, v: string) => {
@@ -369,7 +369,7 @@ export function openHelpModal() {
     body.appendChild(el("h2", "", "단축키"));
     const table = el("table", "kv-table");
     const rows: Array<[string, string]> = [
-      ["Space", "다음 라운드 시작 / 진행 중 일시정지"],
+      ["Space", "다음 스테이지 시작 / 진행 중 일시정지"],
       ["Z", "소환"],
       ["X", "선택한 3기 합성"],
       ["Delete / Backspace", "선택 유닛 판매"],

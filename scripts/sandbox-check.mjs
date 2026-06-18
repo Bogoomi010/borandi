@@ -38,7 +38,7 @@ import { playFullRun } from "./src/sim/autoPlayer.ts";
 import { runSimulation, reportToMarkdown } from "./src/sim/runner.ts";
 import { UNITS, UNIT_BY_ID } from "./src/data/units.ts";
 import { RECIPES } from "./src/data/recipes.ts";
-import { WAVES } from "./src/data/waves.ts";
+import { BOSS_ROUND_LIST, FINAL_ROUND, WAVES } from "./src/data/waves.ts";
 import { SUMMON_TABLE, PITY_TABLE, PITY_THRESHOLD } from "./src/data/difficulty.ts";
 
 let failures = 0;
@@ -53,9 +53,9 @@ check("보정 확률 합 100", Object.values(PITY_TABLE).reduce((a, b) => a + b,
 check("조합식 유닛 ID 유효", RECIPES.every((r) =>
   UNIT_BY_ID[r.resultUnitId] && r.ingredients.every((i) => !i.unitId || UNIT_BY_ID[i.unitId])));
 check("유닛 ID 중복 없음", new Set(UNITS.map((u) => u.id)).size === UNITS.length);
-check("웨이브 40개", WAVES.length === 40);
-check("보스 라운드 10/20/30/40",
-  JSON.stringify(WAVES.filter((w) => w.type === "boss").map((w) => w.round)) === "[10,20,30,40]");
+check("웨이브 15개", WAVES.length === FINAL_ROUND);
+check("보스 스테이지 5/10/15",
+  JSON.stringify(WAVES.filter((w) => w.type === "boss").map((w) => w.round)) === JSON.stringify(BOSS_ROUND_LIST));
 
 console.log("[2] 소환/보정");
 {
@@ -76,8 +76,10 @@ console.log("[3] 조합/잠금");
   const g = new Game("CRAFT", "novice");
   const give = (defId: string, n: number) => {
     for (let i = 0; i < n; i++) g.state.units.push({
-      uid: g.state.nextUid++, defId, locked: false, slot: 50 - g.state.units.length,
+      uid: g.state.nextUid++, defId, locked: false,
+      x: 130 + g.state.units.length * 30, y: 30,
       acquiredRound: 1, totalDamage: 0, cooldown: 0,
+      state: "idle", order: { kind: "none" }, anchorX: 130 + g.state.units.length * 30, anchorY: 30,
     });
   };
   give("ember_scout", 2); give("rift_eye", 1);
@@ -89,8 +91,10 @@ console.log("[3] 조합/잠금");
   const g2 = new Game("LOCK", "novice");
   const give2 = (defId: string, n: number) => {
     for (let i = 0; i < n; i++) g2.state.units.push({
-      uid: g2.state.nextUid++, defId, locked: true, slot: 50 - g2.state.units.length,
+      uid: g2.state.nextUid++, defId, locked: true,
+      x: 130 + g2.state.units.length * 30, y: 30,
       acquiredRound: 1, totalDamage: 0, cooldown: 0,
+      state: "idle", order: { kind: "none" }, anchorX: 130 + g2.state.units.length * 30, anchorY: 30,
     });
   };
   give2("ember_scout", 2); give2("rift_eye", 1);
@@ -102,8 +106,8 @@ console.log("[4] phase 규칙");
 {
   const g = new Game("PHASE", "novice");
   g.dispatch("startWave");
-  check("전투 중 3합성 금지", !g.dispatch("merge3", { unitIds: [1, 2, 3] }).ok);
-  check("전투 중 판매 금지", !g.dispatch("sell", { unitIds: [1] }).ok);
+  check("전투 중 3합성 명령 처리", !g.dispatch("merge3", { unitIds: [1, 2, 3] }).ok);
+  check("전투 중 판매 명령 처리", !g.dispatch("sell", { unitIds: [1] }).ok);
   check("전투 중 소환 허용", g.dispatch("summon").ok);
 }
 
@@ -124,7 +128,7 @@ console.log("[6] 30시드 밸런스 스모크");
 {
   const rep = runSimulation(30, "novice", "balanced");
   console.log(reportToMarkdown(rep).split("\\n").slice(0, 12).join("\\n"));
-  check("10R 도달률 80%+", (30 - Object.entries(rep.deathRounds)
+  check("10스테이지 도달률 80%+", (30 - Object.entries(rep.deathRounds)
     .filter(([r]) => Number(r) < 10).reduce((a, [, n]) => a + n, 0)) / 30 >= 0.8);
 }
 

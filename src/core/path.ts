@@ -1,35 +1,54 @@
 // 전투판 경로와 유닛 배치 (논리 좌표계 960x560)
-// 적 경로 = 사각형 닫힌 루프(둘레). 적은 출발점에서 시계방향으로 계속 돈다(누수 없음).
-// 아군 유닛은 사각형 "내부"에서만 돌아다니며 둘레의 적을 공격한다.
+// 적 경로는 스테이지별 waypoint 루프를 따른다. 적은 끝에 닿으면 계속 순환한다.
+// 아군 유닛은 공통 활동 영역 안에서만 움직인다.
+
+import { stageForRound } from "../data/stages";
 
 export const BOARD_W = 960;
 export const BOARD_H = 560;
 
-/** 적 루프 사각형 (둘레가 경로) */
+/** 아군 활동 영역을 정하기 위한 공통 외곽 */
 export const FIELD = { left: 80, top: 70, right: 880, bottom: 490 };
 
-/** 적 경로 waypoint — 사각형 시계방향, 닫힌 루프 (마지막→처음 자동 연결). 출발점=좌상단. */
-export const WAYPOINTS: Array<[number, number]> = [
-  [FIELD.left, FIELD.top],
-  [FIELD.right, FIELD.top],
-  [FIELD.right, FIELD.bottom],
-  [FIELD.left, FIELD.bottom],
-];
+export const WAYPOINTS: Array<[number, number]> = stageForRound(1).waypoints;
 
 interface Segment { x: number; y: number; dx: number; dy: number; len: number; start: number; }
 
-const SEGMENTS: Segment[] = [];
-let acc = 0;
-for (let i = 0; i < WAYPOINTS.length; i++) {
-  const [x1, y1] = WAYPOINTS[i];
-  const [x2, y2] = WAYPOINTS[(i + 1) % WAYPOINTS.length]; // 닫힌 루프
-  const len = Math.hypot(x2 - x1, y2 - y1);
-  SEGMENTS.push({ x: x1, y: y1, dx: (x2 - x1) / len, dy: (y2 - y1) / len, len, start: acc });
-  acc += len;
+function buildSegments(waypoints: Array<[number, number]>): { segments: Segment[]; length: number } {
+  const segments: Segment[] = [];
+  let acc = 0;
+  for (let i = 0; i < waypoints.length; i++) {
+    const [x1, y1] = waypoints[i];
+    const [x2, y2] = waypoints[(i + 1) % waypoints.length];
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    if (len <= 0) continue;
+    segments.push({ x: x1, y: y1, dx: (x2 - x1) / len, dy: (y2 - y1) / len, len, start: acc });
+    acc += len;
+  }
+  return { segments, length: acc };
+}
+
+const pathCache = new Map<number, { segments: Segment[]; length: number }>();
+
+function pathForRound(round: number): { segments: Segment[]; length: number } {
+  const stage = stageForRound(round);
+  const cached = pathCache.get(stage.id);
+  if (cached) return cached;
+  const built = buildSegments(stage.waypoints);
+  pathCache.set(stage.id, built);
+  return built;
 }
 
 /** 루프 한 바퀴 길이(둘레) */
-export const PATH_LENGTH = acc;
+export const PATH_LENGTH = pathForRound(1).length;
+
+export function pathLengthForRound(round: number): number {
+  return pathForRound(round).length;
+}
+
+export function waypointsForRound(round: number): Array<[number, number]> {
+  return stageForRound(round).waypoints;
+}
 
 // ===== 배치/충돌 파라미터 =====
 /** 적 경로 stroke 폭(px) — board 렌더러와 동일 */
@@ -59,17 +78,19 @@ export function clampToField(x: number, y: number): { x: number; y: number } {
   };
 }
 
-/** 루프 거리(dist)에 해당하는 경로 좌표. dist는 둘레로 wrap된다. */
-export function posAtDist(dist: number): { x: number; y: number } {
-  let d = dist % PATH_LENGTH;
-  if (d < 0) d += PATH_LENGTH;
-  for (const s of SEGMENTS) {
+/** 루프 거리(dist)에 해당하는 경로 좌표. dist는 스테이지 경로 둘레로 wrap된다. */
+export function posAtDist(dist: number, round = 1): { x: number; y: number } {
+  const path = pathForRound(round);
+  let d = dist % path.length;
+  if (d < 0) d += path.length;
+  for (const s of path.segments) {
     if (d <= s.start + s.len) {
       const t = d - s.start;
       return { x: s.x + s.dx * t, y: s.y + s.dy * t };
     }
   }
-  return { x: WAYPOINTS[0][0], y: WAYPOINTS[0][1] };
+  const first = stageForRound(round).waypoints[0];
+  return { x: first[0], y: first[1] };
 }
 
 /** 유닛 기본 배치 앵커 (사각형 내부 격자) */

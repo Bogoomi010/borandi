@@ -6,7 +6,7 @@ import { GRADE_LABEL, FAMILY_LABEL, ROLE_LABEL, GRADE_ORDER, type Grade } from "
 import { UNIT_BY_ID } from "../data/units";
 import { analyzeRecipes, bossOutlook } from "../core/advisor";
 import { MISSION_BY_ID } from "../data/missions";
-import { waveForRound, FINAL_ROUND } from "../data/waves";
+import { waveForRound, FINAL_ROUND, BOSS_ROUND_LIST } from "../data/waves";
 import { UPGRADES, upgradeCost } from "../data/upgrades";
 import { SUMMON_COST, SELL_REFUND, DIFFICULTY_BY_ID } from "../data/difficulty";
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
@@ -28,15 +28,15 @@ export function renderTopbar(ctx: AppCtx) {
     return d;
   };
 
-  root.appendChild(stat("라운드", `${Math.min(s.round, FINAL_ROUND)}/${FINAL_ROUND}`));
+  root.appendChild(stat("스테이지", `${Math.min(s.round, FINAL_ROUND)}/${FINAL_ROUND}`));
   root.appendChild(stat("적 누적", `${s.enemies.length}/${LOSE_THRESHOLD}`, "life"));
   root.appendChild(stat("골드", String(s.gold), "gold"));
   root.appendChild(stat("난이도", diff.name));
   root.appendChild(stat("시드", s.seed));
 
-  const nextBoss = [10, 20, 30, 40].find((r) => r >= s.round);
+  const nextBoss = BOSS_ROUND_LIST.find((r) => r >= s.round);
   if (nextBoss !== undefined) {
-    root.appendChild(stat("다음 보스", `${nextBoss}R (${nextBoss - s.round}라운드 후)`, "boss"));
+    root.appendChild(stat("다음 보스", `${nextBoss}ST (${nextBoss - s.round}스테이지 후)`, "boss"));
   }
 
   if (s.pendingSelectors.length > 0) {
@@ -316,8 +316,8 @@ function renderBossTab(ctx: AppCtx, root: HTMLElement) {
       r.appendChild(el("span", cls, v));
       return r;
     };
-    box.appendChild(row("다음 보스", `${outlook.name} (${outlook.round}R)`));
-    box.appendChild(row("남은 라운드", String(outlook.roundsLeft)));
+    box.appendChild(row("다음 보스", `${outlook.name} (${outlook.round}ST)`));
+    box.appendChild(row("남은 스테이지", String(outlook.roundsLeft)));
     box.appendChild(row("약점", outlook.weakness));
     box.appendChild(row("예상 위험도", outlook.riskText,
       outlook.risk === "ok" ? "risk-ok" : outlook.risk === "warn" ? "risk-warn" : "risk-bad"));
@@ -531,17 +531,17 @@ export function renderActionbar(ctx: AppCtx) {
   const phaseText = s.phase === "ended"
     ? (s.cleared ? "클리어!" : "게임 종료")
     : inBreak
-      ? `${s.round}라운드 대기 — 적 ${alive}/${LOSE_THRESHOLD}`
-      : `${s.round}라운드 진행 중 — 적 ${alive}/${LOSE_THRESHOLD}`;
+      ? `${s.round}스테이지 대기 — 적 ${alive}/${LOSE_THRESHOLD}`
+      : `${s.round}스테이지 진행 중 — 적 ${alive}/${LOSE_THRESHOLD}`;
   root.appendChild(el("div", "", phaseText)).id = "phase-label";
 
-  // 진행 버튼 — 휴식 중에만 "다음 라운드 시작"
+  // 진행 버튼 — 휴식 중에만 "다음 스테이지 시작"
   if (inBreak && !ended) {
     const wave = waveForRound(Math.min(s.round, FINAL_ROUND));
     const sub = s.pendingSelectors.length > 0
       ? "🎁 선택권 확인!"
-      : wave.type === "boss" ? "⚠ 보스 라운드" : `${wave.enemyName} x${wave.count}`;
-    root.appendChild(btn(`${s.round}라운드 시작 [Space]`, sub, {
+      : wave.type === "boss" ? "⚠ 보스 스테이지" : `${wave.enemyName} x${wave.count}`;
+    root.appendChild(btn(`${s.round}스테이지 시작 [Space]`, sub, {
       primary: true,
       onClick: () => {
         if (s.pendingSelectors.length > 0) openSelectorModal(ctx);

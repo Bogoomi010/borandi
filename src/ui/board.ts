@@ -1,12 +1,14 @@
 // 캔버스 전투판 렌더러 — 에셋 없이 도형과 색으로만 표현한다.
 // 등급 = 테두리 색 + 도형, 계열 = 채움 색.
 
-import { BOARD_H, BOARD_W, PATH_LENGTH, WAYPOINTS, posAtDist } from "../core/path";
+import { BOARD_H, BOARD_W, pathLengthForRound, waypointsForRound, posAtDist } from "../core/path";
 import type { GameState, Grade } from "../core/types";
 import { UNIT_BY_ID } from "../data/units";
-import { waveForRound } from "../data/waves";
+import { FINAL_ROUND, waveForRound } from "../data/waves";
 import { alien1Walk } from "./sprites";
 import { UNIT_SPRITES, type Facing } from "./unitSprites";
+import { stageForRound, type StageDecorationKind } from "../data/stages";
+import tilesetUrl from "../assets/tilesets/dark-fantasy-village-tileset.png";
 
 const GRADE_COLOR: Record<Grade, string> = {
   common: "#9aa1b5", rare: "#4cc3ff", hero: "#b07bff",
@@ -20,6 +22,87 @@ const FAMILY_COLOR: Record<string, string> = {
 const FAMILY_INITIAL: Record<string, string> = {
   flame: "화", frost: "서", storm: "폭", iron: "강", void: "공", forest: "숲",
 };
+
+const GROUND_COLOR = {
+  dirt: "#352821",
+  ash: "#454241",
+  grass: "#4c5134",
+  stone: "#383a43",
+  corrupt: "#302039",
+  blood: "#3a2020",
+  rune: "#262735",
+} as const;
+
+const ATLAS: Record<StageDecorationKind, [number, number, number, number]> = {
+  cottage: [42, 80, 150, 160],
+  stoneHouse: [212, 80, 150, 160],
+  witchHut: [382, 80, 158, 160],
+  rootHouse: [552, 80, 150, 160],
+  manor: [722, 80, 160, 160],
+  forge: [942, 78, 180, 165],
+  crypt: [1210, 78, 205, 165],
+  deadTree: [812, 318, 126, 180],
+  oak: [948, 310, 150, 188],
+  rottenTree: [1084, 318, 130, 180],
+  soulTree: [1220, 306, 168, 192],
+  specialTree: [40, 584, 195, 232],
+  thornBush: [1398, 350, 90, 80],
+  poisonBush: [1498, 350, 94, 80],
+  berryBush: [1598, 350, 94, 80],
+  grave: [846, 588, 82, 116],
+  coffin: [1126, 588, 100, 116],
+  shrine: [1228, 604, 106, 96],
+  fenceWood: [1084, 1214, 112, 110],
+  fenceIron: [1204, 1214, 112, 110],
+  gate: [1444, 1214, 112, 120],
+  market: [672, 988, 110, 100],
+  well: [48, 988, 100, 100],
+  cart: [256, 988, 110, 100],
+  farmlandDead: [50, 332, 118, 82],
+  farmlandSprouts: [174, 332, 118, 82],
+  farmlandCursed: [298, 332, 118, 82],
+  rocks: [50, 1222, 74, 70],
+  runeStone: [706, 1222, 74, 78],
+  mushrooms: [378, 1222, 74, 70],
+  web: [952, 1222, 78, 78],
+};
+
+class VillageTileset {
+  private img = new Image();
+  private source: HTMLCanvasElement | null = null;
+  loaded = false;
+
+  constructor() {
+    this.img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = this.img.naturalWidth;
+      canvas.height = this.img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(this.img, 0, 0);
+      const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = image.data;
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i] > 245 && data[i + 1] > 245 && data[i + 2] > 245) data[i + 3] = 0;
+      }
+      ctx.putImageData(image, 0, 0);
+      this.source = canvas;
+      this.loaded = true;
+    };
+    this.img.src = tilesetUrl;
+  }
+
+  draw(ctx: CanvasRenderingContext2D, kind: StageDecorationKind, x: number, y: number, scale = 1) {
+    const src = ATLAS[kind];
+    if (!src || !this.loaded || !this.source) return false;
+    const [sx, sy, sw, sh] = src;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(this.source, sx, sy, sw, sh, x, y, sw * scale, sh * scale);
+    return true;
+  }
+}
+
+const villageTileset = new VillageTileset();
 
 export class BoardRenderer {
   private canvas: HTMLCanvasElement;
@@ -81,7 +164,7 @@ export class BoardRenderer {
     const { x, y } = this.toBoard(clientX, clientY);
     for (let i = state.enemies.length - 1; i >= 0; i--) {
       const e = state.enemies[i];
-      const p = posAtDist(e.dist);
+      const p = posAtDist(e.dist, state.round);
       const r = e.isBoss ? 48 : 26;
       if (Math.hypot(p.x - x, p.y - y) <= r) return e.eid;
     }
@@ -100,26 +183,35 @@ export class BoardRenderer {
   draw(state: GameState) {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, BOARD_W, BOARD_H);
+    const stage = stageForRound(state.round);
+    const waypoints = waypointsForRound(state.round);
+    const pathLength = pathLengthForRound(state.round);
 
-    // 경로 (사각형 닫힌 루프)
+    ctx.fillStyle = GROUND_COLOR[stage.ground];
+    ctx.fillRect(0, 0, BOARD_W, BOARD_H);
+
+    this.drawGroundTexture(stage.ground, state.round);
+    this.drawDecorations(stage.decorations.filter((d) => d.y < 250));
+
+    // 경로 (스테이지별 닫힌 루프)
     ctx.lineWidth = 34;
     ctx.strokeStyle = "#1d2230";
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(WAYPOINTS[0][0], WAYPOINTS[0][1]);
-    for (let i = 1; i < WAYPOINTS.length; i++) ctx.lineTo(WAYPOINTS[i][0], WAYPOINTS[i][1]);
-    ctx.closePath(); // 루프 닫기
+    ctx.moveTo(waypoints[0][0], waypoints[0][1]);
+    for (let i = 1; i < waypoints.length; i++) ctx.lineTo(waypoints[i][0], waypoints[i][1]);
+    ctx.closePath();
     ctx.stroke();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = "#2c3350";
+    ctx.strokeStyle = stage.ground === "rune" ? "#8052d9" : "#2c3350";
     ctx.stroke();
 
     // 진행 방향 화살표
     ctx.fillStyle = "#3a4263";
-    for (let d = 200; d < PATH_LENGTH; d += 300) {
-      const p = posAtDist(d);
-      const p2 = posAtDist(d + 8);
+    for (let d = 160; d < pathLength; d += 260) {
+      const p = posAtDist(d, state.round);
+      const p2 = posAtDist(d + 8, state.round);
       const ang = Math.atan2(p2.y - p.y, p2.x - p.x);
       ctx.save();
       ctx.translate(p.x, p.y);
@@ -130,6 +222,15 @@ export class BoardRenderer {
       ctx.fill();
       ctx.restore();
     }
+
+    ctx.fillStyle = "rgba(255,255,255,.82)";
+    ctx.font = "bold 13px sans-serif";
+    ctx.fillText(`${stage.id}. ${stage.name}`, 14, 22);
+    ctx.font = "11px sans-serif";
+    ctx.fillStyle = "rgba(226,223,233,.75)";
+    ctx.fillText(stage.subtitle, 14, 38);
+
+    this.drawDecorations(stage.decorations.filter((d) => d.y >= 250));
 
     // 유닛
     for (const u of state.units) {
@@ -225,7 +326,7 @@ export class BoardRenderer {
     this.enemyHp = new Map();
     let boss: GameState["enemies"][number] | null = null;
     for (const e of state.enemies) {
-      const p = posAtDist(e.dist);
+      const p = posAtDist(e.dist, state.round);
       if (e.isBoss) boss = e;
       const slowed = e.slows.length > 0;
       const stunned = e.stunUntil > state.time;
@@ -247,7 +348,7 @@ export class BoardRenderer {
       }
 
       // 진행 방향: 살짝 앞 지점과 비교해 좌우 반전 결정
-      const ahead = posAtDist(e.dist + 4);
+      const ahead = posAtDist(e.dist + 4, state.round);
       const faceLeft = ahead.x < p.x - 0.01;
 
       // 상태/속성 틴트 (우선순위: 기절 > 둔화 > 장갑 > 보스)
@@ -307,7 +408,7 @@ export class BoardRenderer {
 
     // 보스 체력바 (상단)
     if (boss) {
-      const wave = waveForRound(state.round);
+      const wave = waveForRound(Math.min(state.round, FINAL_ROUND));
       const ratio = Math.max(0, boss.hp / boss.maxHp);
       ctx.fillStyle = "#000c";
       ctx.fillRect(BOARD_W / 2 - 220, 8, 440, 22);
@@ -329,7 +430,7 @@ export class BoardRenderer {
       ctx.fillStyle = "rgba(255,209,74,.95)";
       ctx.font = "bold 14px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(`${state.round}라운드 시작까지 ${secs}초 (Space로 바로 시작)`, BOARD_W / 2, BOARD_H - 14);
+      ctx.fillText(`${state.round}스테이지 시작까지 ${secs}초 (Space로 바로 시작)`, BOARD_W / 2, BOARD_H - 14);
       ctx.textAlign = "left";
     }
 
@@ -397,6 +498,48 @@ export class BoardRenderer {
       const py = y + Math.sin(a) * rr;
       if (i === 0) ctx.moveTo(px, py);
       else ctx.lineTo(px, py);
+    }
+  }
+
+  private drawGroundTexture(ground: keyof typeof GROUND_COLOR, round: number) {
+    const ctx = this.ctx;
+    const colors = ground === "rune"
+      ? ["rgba(128,82,217,.22)", "rgba(36,31,46,.35)"]
+      : ground === "blood"
+        ? ["rgba(125,28,28,.22)", "rgba(20,16,18,.28)"]
+        : ["rgba(255,255,255,.08)", "rgba(0,0,0,.16)"];
+    for (let i = 0; i < 120; i++) {
+      const x = (i * 73 + round * 41) % BOARD_W;
+      const y = (i * 47 + round * 29) % BOARD_H;
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.fillRect(x, y, 2 + (i % 5), 1 + (i % 3));
+    }
+    if (ground === "rune" || ground === "corrupt") {
+      ctx.strokeStyle = ground === "rune" ? "rgba(161,103,255,.32)" : "rgba(120,63,172,.24)";
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 8; i++) {
+        const x = 120 + ((i * 103 + round * 17) % 700);
+        const y = 90 + ((i * 61 + round * 23) % 380);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + 18, y + 20);
+        ctx.lineTo(x + 36, y);
+        ctx.stroke();
+      }
+    }
+  }
+
+  private drawDecorations(decorations: { kind: StageDecorationKind; x: number; y: number; scale?: number }[]) {
+    const ctx = this.ctx;
+    for (const d of decorations) {
+      const ok = villageTileset.draw(ctx, d.kind, d.x, d.y, d.scale ?? 1);
+      if (!ok) {
+        ctx.fillStyle = "#2d2330";
+        ctx.strokeStyle = "#111";
+        ctx.lineWidth = 3;
+        ctx.fillRect(d.x, d.y, 28, 28);
+        ctx.strokeRect(d.x, d.y, 28, 28);
+      }
     }
   }
 }

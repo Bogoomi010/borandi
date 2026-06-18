@@ -5,7 +5,8 @@ import { Rng } from "./rng";
 import { UNITS, UNIT_BY_ID } from "../data/units";
 import { RECIPES } from "../data/recipes";
 import { MISSIONS } from "../data/missions";
-import { WAVES } from "../data/waves";
+import { BOSS_ROUND_LIST, FINAL_ROUND, WAVES } from "../data/waves";
+import { STAGES } from "../data/stages";
 import { SUMMON_TABLE, PITY_TABLE, PITY_THRESHOLD } from "../data/difficulty";
 import { playFullRun } from "../sim/autoPlayer";
 
@@ -41,15 +42,24 @@ describe("데이터 무결성 (QA 체크리스트)", () => {
     const ids = UNITS.map((u) => u.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
-  it("웨이브가 1~40 라운드 모두 존재한다", () => {
-    expect(WAVES.length).toBe(40);
-    for (let r = 1; r <= 40; r++) {
+  it("웨이브가 1~15 스테이지 모두 존재한다", () => {
+    expect(WAVES.length).toBe(FINAL_ROUND);
+    for (let r = 1; r <= FINAL_ROUND; r++) {
       expect(WAVES.find((w) => w.round === r), `round ${r}`).toBeDefined();
     }
   });
-  it("보스 라운드는 10/20/30/40이다", () => {
+  it("보스 스테이지는 5/10/15이다", () => {
     const bossRounds = WAVES.filter((w) => w.type === "boss").map((w) => w.round);
-    expect(bossRounds).toEqual([10, 20, 30, 40]);
+    expect(bossRounds).toEqual(BOSS_ROUND_LIST);
+  });
+  it("서로 다른 15개 스테이지 맵이 있다", () => {
+    expect(STAGES.length).toBe(15);
+    const shapes = new Set(STAGES.map((s) => JSON.stringify(s.waypoints)));
+    expect(shapes.size).toBe(15);
+    for (const stage of STAGES) {
+      expect(stage.waypoints.length).toBeGreaterThanOrEqual(4);
+      expect(stage.decorations.length).toBeGreaterThanOrEqual(4);
+    }
   });
   it("미션 ID가 중복되지 않는다", () => {
     const ids = MISSIONS.map((m) => m.id);
@@ -105,7 +115,7 @@ describe("조합", () => {
     expect(res.ok).toBe(true);
     expect(g.state.units.filter((u) => u.defId === "flame_mage").length).toBe(1);
     expect(g.state.units.filter((u) => u.defId === "ember_scout").length).toBe(0);
-    expect(g.state.gold).toBe(60);
+    expect(g.state.gold).toBe(140);
   });
 
   it("잠금 유닛은 조합 재료로 소비되지 않는다", () => {
