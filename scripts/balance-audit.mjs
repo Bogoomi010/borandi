@@ -59,6 +59,56 @@ function manualDifficulties(manual) {
   return new Set((manual?.sessions ?? []).map((s) => s.difficulty).filter(Boolean));
 }
 
+function manualSessions(manual, difficulty) {
+  return (manual?.sessions ?? []).filter((s) => s.difficulty === difficulty);
+}
+
+function sessionMinutes(session) {
+  if (typeof session.minutes === "number") return session.minutes;
+  if (typeof session.seconds === "number") return session.seconds / 60;
+  return 0;
+}
+
+function sessionResult(session) {
+  if (typeof session.result === "string") return session.result.toLowerCase();
+  if (typeof session.cleared === "boolean") return session.cleared ? "clear" : "loss";
+  return "";
+}
+
+function isClear(session) {
+  return ["clear", "cleared", "win", "won", "victory"].includes(sessionResult(session));
+}
+
+function isLoss(session) {
+  return ["loss", "lose", "lost", "fail", "failed", "defeat"].includes(sessionResult(session));
+}
+
+function legendCount(session) {
+  const value = Number(session.legends ?? session.legendOrBetter ?? session.legendOrBetterCount ?? 0);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function reachedFinalRound(session) {
+  return Number(session.round ?? 0) >= 40;
+}
+
+function manualEvidence(sessions) {
+  if (sessions.length === 0) return "증거 없음";
+  return sessions
+    .map((s) => {
+      const result = sessionResult(s) || "결과 없음";
+      const round = s.round !== undefined ? `${s.round}R` : "라운드 없음";
+      const legends = `${legendCount(s)}전설 이상`;
+      const minutes = `${sessionMinutes(s).toFixed(1)}분`;
+      return `${s.difficulty} ${result} ${round} ${legends} ${minutes}`;
+    })
+    .join("; ");
+}
+
+function hasManual(manual, difficulty, predicate) {
+  return manualSessions(manual, difficulty).some(predicate);
+}
+
 function buildRows(balance, browser, direct, manual) {
   const rows = [];
   const requiredDifficulties = ["novice", "normal", "intermediate", "expert", "master"];
@@ -132,6 +182,19 @@ function buildRows(balance, browser, direct, manual) {
   const manualTotalMinutes = manualMinutes(manual);
   const manualDiffs = manualDifficulties(manual);
   const manualCoversAll = requiredDifficulties.every((d) => manualDiffs.has(d));
+  const noviceManual = manualSessions(manual, "novice");
+  const normalManual = manualSessions(manual, "normal");
+  const intermediateManual = manualSessions(manual, "intermediate");
+  const expertManual = manualSessions(manual, "expert");
+  const masterManual = manualSessions(manual, "master");
+
+  const noviceManualPass = hasManual(manual, "novice", (s) => isClear(s) && reachedFinalRound(s) && legendCount(s) === 0);
+  const normalManualPass = hasManual(manual, "normal", (s) => isClear(s) && reachedFinalRound(s) && legendCount(s) >= 1 && legendCount(s) <= 2);
+  const intermediateManualPass = hasManual(manual, "intermediate", (s) => isClear(s) && reachedFinalRound(s) && legendCount(s) >= 5);
+  const expertManualWeakFail = hasManual(manual, "expert", (s) => isLoss(s) && reachedFinalRound(s) && legendCount(s) <= 5);
+  const expertManualStrongClear = hasManual(manual, "expert", (s) => isClear(s) && reachedFinalRound(s) && legendCount(s) >= 6);
+  const masterManualPass = hasManual(manual, "master", (s) => isLoss(s));
+
   rows.push({
     req: "사람이 직접 2시간 플레이",
     evidence: manual
@@ -139,6 +202,36 @@ function buildRows(balance, browser, direct, manual) {
       : "아직 실제 수동 플레이 기록 없음",
     pass: !!manual && manualTotalMinutes >= 120 && manualCoversAll,
     missing: !manual || manualTotalMinutes < 120 || !manualCoversAll,
+  });
+  rows.push({
+    req: "수동: 입문자 무전설 클리어",
+    evidence: manualEvidence(noviceManual),
+    pass: noviceManualPass,
+    missing: !manual || !noviceManualPass,
+  });
+  rows.push({
+    req: "수동: 일반 1~2전설 클리어권",
+    evidence: manualEvidence(normalManual),
+    pass: normalManualPass,
+    missing: !manual || !normalManualPass,
+  });
+  rows.push({
+    req: "수동: 중급자 5전설 이상 클리어권",
+    evidence: manualEvidence(intermediateManual),
+    pass: intermediateManualPass,
+    missing: !manual || !intermediateManualPass,
+  });
+  rows.push({
+    req: "수동: 고수는 5전설보다 높은 성장 필요",
+    evidence: manualEvidence(expertManual),
+    pass: expertManualWeakFail && expertManualStrongClear,
+    missing: !manual || !expertManualWeakFail || !expertManualStrongClear,
+  });
+  rows.push({
+    req: "수동: 초고수는 매우 어려움",
+    evidence: manualEvidence(masterManual),
+    pass: masterManualPass,
+    missing: !manual || !masterManualPass,
   });
 
   return rows;
