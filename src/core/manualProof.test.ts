@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { MANUAL_PROOF_TARGET_SECONDS, manualProofTargetFor } from "./manualProof";
+import { MANUAL_PROOF_TARGET_SECONDS, manualProofRemainingSeconds, manualProofTargetFor } from "./manualProof";
 
 describe("수동 증거 목표 표시", () => {
   it("12분 목표 시간을 고정한다", () => {
     expect(MANUAL_PROOF_TARGET_SECONDS).toBe(720);
+  });
+
+  it("12분 목표까지 남은 시간을 0 아래로 내리지 않는다", () => {
+    expect(manualProofRemainingSeconds(0)).toBe(720);
+    expect(manualProofRemainingSeconds(719.9)).toBe(1);
+    expect(manualProofRemainingSeconds(720)).toBe(0);
+    expect(manualProofRemainingSeconds(900)).toBe(0);
   });
 
   it("입문자는 전설이 없어야 목표 조건 유지로 표시한다", () => {

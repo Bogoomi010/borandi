@@ -12,7 +12,7 @@ import { UPGRADES, upgradeCost } from "../data/upgrades";
 import { SUMMON_COST, SELL_REFUND, DIFFICULTY_BY_ID } from "../data/difficulty";
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
 import { openSelectorModal } from "./modals";
-import { MANUAL_PROOF_TARGET_SECONDS, manualProofTargetFor } from "../core/manualProof";
+import { MANUAL_PROOF_TARGET_SECONDS, manualProofRemainingSeconds, manualProofTargetFor } from "../core/manualProof";
 
 // ---------- 상단 상태바 ----------
 
@@ -44,9 +44,10 @@ export function renderTopbar(ctx: AppCtx) {
   root.appendChild(stat("골드", String(s.gold), "gold"));
   root.appendChild(stat("난이도", diff.name));
   const proofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
+  const proofRemainingSeconds = manualProofRemainingSeconds(proofSeconds);
   const proofText = proofSeconds >= MANUAL_PROOF_TARGET_SECONDS
     ? "12:00+ 충족"
-    : `${clockText(proofSeconds)}/12:00`;
+    : `${clockText(proofSeconds)}/12:00 · ${clockText(proofRemainingSeconds)} 남음`;
   root.appendChild(stat("수동증거", proofText, proofSeconds >= MANUAL_PROOF_TARGET_SECONDS ? "proof-ok" : "proof-wait"));
   root.appendChild(stat("시드", s.seed));
 
@@ -549,12 +550,17 @@ export function renderActionbar(ctx: AppCtx) {
     .filter((u) => GRADE_ORDER.indexOf(UNIT_BY_ID[u.defId].grade) >= GRADE_ORDER.indexOf("legend"))
     .length;
   const proofTarget = manualProofTargetFor(s.difficulty, legendOrBetter);
+  const proofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
+  const proofRemainingSeconds = manualProofRemainingSeconds(proofSeconds);
+  const proofTimeText = proofRemainingSeconds === 0
+    ? "12분 충족"
+    : `${clockText(proofRemainingSeconds)} 남음`;
   const phaseText = s.phase === "ended"
     ? (s.cleared ? "클리어!" : "게임 종료")
     : inBreak
       ? `${s.round}라운드 대기 — 적 ${alive}/${limit}`
       : `${s.round}라운드 진행 중 — 적 ${alive}/${limit}`;
-  root.appendChild(el("div", "", `${phaseText}\n증거조건: ${proofTarget.status}`)).id = "phase-label";
+  root.appendChild(el("div", "", `${phaseText}\n증거조건: ${proofTarget.status}\n수동시간: ${proofTimeText}`)).id = "phase-label";
 
   // 진행 버튼 — 휴식 중에만 "다음 라운드 시작"
   if (inBreak && !ended) {

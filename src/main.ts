@@ -21,7 +21,7 @@ import { stageById } from "./data/stages";
 import { waveForRound } from "./data/waves";
 import { UPGRADES, upgradeCost } from "./data/upgrades";
 import { GRADE_ORDER, type DifficultyId, type Grade } from "./core/types";
-import { MANUAL_PROOF_TARGET_SECONDS, manualProofTargetFor } from "./core/manualProof";
+import { MANUAL_PROOF_TARGET_SECONDS, manualProofRemainingSeconds, manualProofTargetFor } from "./core/manualProof";
 
 const settings = loadSettings();
 const audio = new GameAudio(settings);
@@ -503,6 +503,7 @@ function renderGameToText(): string {
   const stage = stageById(s.stageId);
   const wave = waveForRound(Math.min(s.round, 40));
   const manualProofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
+  const manualProofRemaining = manualProofRemainingSeconds(manualProofSeconds);
   const gradeCounts: Record<Grade, number> = { common: 0, rare: 0, hero: 0, legend: 0, hidden: 0 };
   let maxGrade: Grade | null = null;
   for (const unit of s.units) {
@@ -531,7 +532,8 @@ function renderGameToText(): string {
     manualProof: {
       elapsedSeconds: manualProofSeconds,
       targetSeconds: MANUAL_PROOF_TARGET_SECONDS,
-      targetMet: manualProofSeconds >= MANUAL_PROOF_TARGET_SECONDS,
+      remainingSeconds: manualProofRemaining,
+      targetMet: manualProofRemaining === 0,
       targetLabel: manualProofTarget.label,
       conditionStatus: manualProofTarget.status,
       conditionState: manualProofTarget.state,

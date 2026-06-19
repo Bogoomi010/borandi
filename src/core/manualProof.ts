@@ -2,6 +2,10 @@ import type { DifficultyId } from "./types";
 
 export const MANUAL_PROOF_TARGET_SECONDS = 12 * 60;
 
+export function manualProofRemainingSeconds(elapsedSeconds: number): number {
+  return Math.max(0, MANUAL_PROOF_TARGET_SECONDS - Math.max(0, Math.floor(elapsedSeconds)));
+}
+
 export interface ManualProofTargetStatus {
   label: string;
   status: string;
