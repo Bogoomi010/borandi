@@ -124,6 +124,21 @@ function completeManual() {
   };
 }
 
+function manualWithPendingStart() {
+  const manual = completeManual();
+  manual.pendingSessions = [
+    {
+      id: "pending-run",
+      source: "human-playtest-start",
+      difficulty: "normal",
+      stage: 1,
+      seed: "PENDING",
+      startedAt: "2026-01-01T09:00:00.000Z",
+    },
+  ];
+  return manual;
+}
+
 function writeCompleteInputs({ manual = completeManual() } = {}) {
   return {
     balance: writeJson("balance.json", completeBalance()),
@@ -162,5 +177,22 @@ describe("balance-audit assert", () => {
     expect(failed.status).toBe(1);
     expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | MISSING");
     expect(failed.stderr).toContain("balance-audit assert failed");
+  });
+
+  it("수동 시작 마커가 미완료로 남아 있으면 assert가 실패한다", () => {
+    const paths = writeCompleteInputs({ manual: manualWithPendingStart() });
+
+    const failed = runAuditFailure([
+      `--balance=${paths.balance}`,
+      `--browser=${paths.browser}`,
+      `--direct=${paths.direct}`,
+      `--manual=${paths.manual}`,
+      "--assert",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stdout).toContain("수동: 시작 마커 미완료 없음 | MISSING");
+    expect(failed.stdout).toContain("pending-run normal stage=1 seed=PENDING");
+    expect(failed.stderr).toContain("수동: 시작 마커 미완료 없음");
   });
 });

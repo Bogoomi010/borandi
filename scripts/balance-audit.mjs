@@ -122,6 +122,25 @@ function countNonExampleManualSessions(manual) {
   return (manual.sessions ?? []).filter((s) => !isExampleManualSession(s)).length;
 }
 
+function pendingManualSessions(manual) {
+  if (!manual || isExampleManualLog(manual)) return [];
+  return (manual.pendingSessions ?? []).filter((s) => !isExampleManualSession(s));
+}
+
+function pendingManualEvidence(pendingSessions) {
+  if (pendingSessions.length === 0) return "pending 시작 마커 없음";
+  return pendingSessions
+    .map((s) => {
+      const id = s.id ?? "id없음";
+      const difficulty = s.difficulty ?? "난이도없음";
+      const stage = s.stage ?? "?";
+      const seed = s.seed ?? "?";
+      const startedAt = s.startedAt ?? "시작없음";
+      return `${id} ${difficulty} stage=${stage} seed=${seed} startedAt=${startedAt}`;
+    })
+    .join("; ");
+}
+
 function sessionMinutes(session) {
   if (typeof session.minutes === "number") return session.minutes;
   if (typeof session.seconds === "number") return session.seconds / 60;
@@ -376,6 +395,8 @@ function buildRows(balance, browser, direct, manual) {
   const manualCoversMinimumMinutes = requiredDifficulties.every((d) => (manualMinutesByDiff.get(d) ?? 0) >= MIN_MANUAL_MINUTES_PER_DIFFICULTY);
   const manualSessionCount = countNonExampleManualSessions(manual);
   const validManualSessionCount = realManualSessions(manual).length;
+  const pendingManual = pendingManualSessions(manual);
+  const pendingManualText = `pending ${pendingManual.length}개`;
   const noviceManual = manualSessions(manual, "novice");
   const normalManual = manualSessions(manual, "normal");
   const intermediateManual = manualSessions(manual, "intermediate");
@@ -392,10 +413,16 @@ function buildRows(balance, browser, direct, manual) {
   rows.push({
     req: "사람이 직접 2시간 플레이",
     evidence: manual
-      ? `${isExampleManualLog(manual) ? "예시 로그 제외, " : ""}증거검증 ${validManualSessionCount}/${manualSessionCount}세션, ${manualTotalMinutes.toFixed(1)}분, 난이도별 ${manualDifficultyMinutesText}`
+      ? `${isExampleManualLog(manual) ? "예시 로그 제외, " : ""}증거검증 ${validManualSessionCount}/${manualSessionCount}세션, ${manualTotalMinutes.toFixed(1)}분, 난이도별 ${manualDifficultyMinutesText}, ${pendingManualText}`
       : "아직 실제 수동 플레이 기록 없음",
     pass: !!manual && manualTotalMinutes >= 120 && manualCoversAll && manualCoversMinimumMinutes,
     missing: !manual || manualTotalMinutes < 120 || !manualCoversAll || !manualCoversMinimumMinutes,
+  });
+  rows.push({
+    req: "수동: 시작 마커 미완료 없음",
+    evidence: manual ? pendingManualEvidence(pendingManual) : "수동 로그 없음",
+    pass: pendingManual.length === 0,
+    missing: !!manual && pendingManual.length > 0,
   });
   rows.push({
     req: "수동: 입문자 무전설 클리어",
