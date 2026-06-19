@@ -34,6 +34,8 @@ Original prompt: 완성된 에셋으로 게임 스테이지를 최대 15스테�
 - Ran a short browser direct-play loop on all five difficulties using summon/startWave/advanceTime. With the same early actions, 입문자 reached 3R with pressure 0/100, 일반 41/54, 중급자 34/52, 고수 41/46, and 초고수 ended at 3R with pressure 39/32. This supports the current early-game difficulty separation but is still not a substitute for the requested 2-hour manual pass.
 - Added `unitSummary` and `boss` to `render_game_to_text`, including grade counts, legend-or-better count, max grade, boss kills, and boss failed rounds, so browser playtests can inspect whether runs match the legend-count balance targets.
 - Verified the new browser state fields with targeted DEV-spawn checks: normal with 2 legends reported `legendOrBetter: 2`, intermediate with 5 legends reported `legendOrBetter: 5`, and master with no legends reported `legendOrBetter: 0` while ending early at 40/32 pressure.
+- Added `yarn browser-balance` as a Playwright-backed browser runtime playtest harness. With a running `yarn dev` server, it starts target difficulty scenarios through DEV hooks, advances real browser game time, records JSON, and can capture screenshots.
+- Latest browser-balance smoke reached 11R after the 10R boss with 입문자/전설 없음, 일반/전설 2개, 중급자/전설 5개, and 고수/전설 5개. Boss kill times separated difficulty feel: 입문자 8.5s, 일반 131.8s, 중급자 16.2s, 고수 66.4s. 초고수/전설 없음 ended at 3R with 39/32 pressure.
 - Latest checks passed: `yarn build`, `yarn test`, `yarn check`, balance matrix simulations with `yarn sim`, and Playwright browser UI/state checks.
 
 ## TODO
