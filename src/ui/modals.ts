@@ -90,6 +90,8 @@ function manualPlaylogCommand(r: ResultSummary): string {
     `--seed=${shellArg(r.seed)}`,
     `--legends=${r.legendOrBetterCount}`,
     `--maxGrade=${r.maxGrade}`,
+    `--dataVersion=${shellArg(r.dataVersion)}`,
+    `--stateChecksum=${shellArg(r.stateChecksum)}`,
   ];
   if (r.manualStartedAt) args.push(`--startedAt=${shellArg(r.manualStartedAt)}`);
   if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
@@ -105,6 +107,7 @@ export function buildReportMarkdown(r: ResultSummary): string {
     `- 맵: ${r.stageId}. ${r.stageName}`,
     `- 도달 라운드: ${r.reachedRound}`,
     `- 시드: \`${r.seed}\` / 난이도: ${r.difficulty} / 데이터 버전: ${r.dataVersion}`,
+    `- 상태 체크섬: \`${r.stateChecksum}\``,
     `- 남은 라이프: ${r.life}`,
     `- 최고 등급: ${GRADE_LABEL[r.maxGrade]}`,
     `- 전설/히든: ${r.legendCount}/${r.hiddenCount}`,

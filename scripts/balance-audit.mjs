@@ -151,13 +151,17 @@ function hasCompleteManualMetadata(session) {
   const legends = legendCount(session);
   const maxGrade = String(session.maxGrade ?? "");
   const seed = String(session.seed ?? "");
+  const dataVersion = String(session.dataVersion ?? "");
+  const stateChecksum = String(session.stateChecksum ?? "");
   return ["novice", "normal", "intermediate", "expert", "master"].includes(difficulty) &&
     ["clear", "cleared", "win", "won", "victory", "loss", "lose", "lost", "fail", "failed", "defeat", "quit"].includes(result) &&
     Number.isFinite(stage) && stage >= 1 &&
     Number.isFinite(round) && round >= 1 &&
     Number.isFinite(legends) && legends >= 0 &&
     ["common", "rare", "hero", "legend", "hidden"].includes(maxGrade) &&
-    seed.length > 0;
+    seed.length > 0 &&
+    dataVersion.length > 0 &&
+    /^[0-9a-f]{8}$/i.test(stateChecksum);
 }
 
 function sessionResult(session) {
@@ -195,7 +199,8 @@ function manualEvidence(sessions) {
       const round = s.round !== undefined ? `${s.round}R` : "라운드 없음";
       const legends = `${legendCount(s)}전설 이상`;
       const minutes = `${sessionMinutes(s).toFixed(1)}분`;
-      return `${s.difficulty} ${result} ${round} ${legends} ${minutes}`;
+      const checksum = s.stateChecksum ? `#${s.stateChecksum}` : "체크섬 없음";
+      return `${s.difficulty} ${result} ${round} ${legends} ${minutes} ${checksum}`;
     })
     .join("; ");
 }

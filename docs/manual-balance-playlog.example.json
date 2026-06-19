@@ -14,6 +14,8 @@
       "seed": "MANUAL-NOVICE-01",
       "legends": 0,
       "maxGrade": "hero",
+      "dataVersion": "0.8.0",
+      "stateChecksum": "11111111",
       "notes": "입문자 무전설 클리어 체감 기록 예시"
     },
     {
@@ -27,6 +29,8 @@
       "seed": "MANUAL-NORMAL-01",
       "legends": 2,
       "maxGrade": "legend",
+      "dataVersion": "0.8.0",
+      "stateChecksum": "22222222",
       "notes": "일반 0전설/2전설 비교 체감 기록 예시"
     },
     {
@@ -40,6 +44,8 @@
       "seed": "MANUAL-INTERMEDIATE-01",
       "legends": 5,
       "maxGrade": "legend",
+      "dataVersion": "0.8.0",
+      "stateChecksum": "33333333",
       "notes": "중급자 2전설/5전설 비교 체감 기록 예시"
     },
     {
@@ -53,6 +59,8 @@
       "seed": "MANUAL-EXPERT-LOW-01",
       "legends": 5,
       "maxGrade": "legend",
+      "dataVersion": "0.8.0",
+      "stateChecksum": "44444444",
       "notes": "고수 5전설로는 후반 누적 압박이 남는 기록 예시"
     },
     {
@@ -66,6 +74,8 @@
       "seed": "MANUAL-EXPERT-HIGH-01",
       "legends": 9,
       "maxGrade": "legend",
+      "dataVersion": "0.8.0",
+      "stateChecksum": "55555555",
       "notes": "고수는 5전설보다 높은 성장에서 클리어권에 들어가는 기록 예시"
     },
     {
@@ -79,6 +89,8 @@
       "seed": "MANUAL-MASTER-01",
       "legends": 3,
       "maxGrade": "legend",
+      "dataVersion": "0.8.0",
+      "stateChecksum": "66666666",
       "notes": "초고수 난도 체감 기록 예시"
     }
   ]

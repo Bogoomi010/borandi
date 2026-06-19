@@ -23,6 +23,7 @@ import {
   SELL_REFUND, SUMMON_COST, SUMMON_TABLE,
 } from "../data/difficulty";
 import { DATA_VERSION } from "../data/version";
+import { stateChecksum } from "./checksum";
 
 export const TICK_RATE = 20;
 export const DT = 1 / TICK_RATE;
@@ -982,6 +983,7 @@ export class Game {
       stageId: s.stageId,
       stageName: stageById(s.stageId).name,
       dataVersion: s.dataVersion,
+      stateChecksum: stateChecksum(s),
       cleared: s.cleared,
       reachedRound: s.round,
       life: s.life,

@@ -18,7 +18,7 @@ const grades = ["common", "rare", "hero", "legend", "hidden"];
 function usage() {
   return [
     "사용법:",
-    "  yarn manual-playlog --difficulty=normal --minutes=24 --result=loss --stage=1 --round=39 --seed=RUN123 --legends=1 --maxGrade=legend --notes=\"2전설, 후반 누적 압박\"",
+    "  yarn manual-playlog --difficulty=normal --minutes=24 --result=loss --stage=1 --round=39 --seed=RUN123 --legends=1 --maxGrade=legend --dataVersion=0.8.0 --stateChecksum=1234abcd --notes=\"2전설, 후반 누적 압박\"",
     "",
     "필수:",
     "  --difficulty=novice|normal|intermediate|expert|master",
@@ -27,6 +27,8 @@ function usage() {
     "  --stage=1 --round=40 --seed=...",
     "  --legends=2        # 전설 이상 보유 수",
     "  --maxGrade=legend",
+    "  --dataVersion=...  # 결과 리포트의 데이터 버전",
+    "  --stateChecksum=... # 결과 리포트의 상태 체크섬",
     "",
     "선택:",
     "  --out=output/manual-balance-playlog.json",
@@ -105,6 +107,12 @@ const maxGrade = String(args.maxGrade ?? "");
 if (!grades.includes(maxGrade)) {
   fail(`--maxGrade 값은 ${grades.join("|")} 중 하나여야 합니다.`);
 }
+const dataVersion = String(args.dataVersion ?? "");
+if (!dataVersion) fail("--dataVersion 값이 필요합니다.");
+const stateChecksum = String(args.stateChecksum ?? "");
+if (!/^[0-9a-f]{8}$/i.test(stateChecksum)) {
+  fail("--stateChecksum 값은 결과 리포트의 8자리 16진 체크섬이어야 합니다.");
+}
 if (stage < 1 || round < 1 || legends < 0) {
   fail("--stage/--round는 1 이상, --legends는 0 이상이어야 합니다.");
 }
@@ -146,6 +154,8 @@ const session = {
   seed,
   legends,
   maxGrade,
+  dataVersion,
+  stateChecksum: stateChecksum.toLowerCase(),
   ...(args.notes ? { notes: String(args.notes) } : {}),
 };
 

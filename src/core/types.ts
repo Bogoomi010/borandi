@@ -264,6 +264,7 @@ export interface ResultSummary {
   stageId: number;
   stageName: string;
   dataVersion: string;
+  stateChecksum: string;
   cleared: boolean;
   reachedRound: number;
   life: number;
