@@ -5,6 +5,11 @@
       "minutes": 24,
       "startedAt": "2026-06-20T10:00:00+09:00",
       "endedAt": "2026-06-20T10:24:00+09:00",
+      "result": "clear",
+      "stage": 1,
+      "round": 40,
+      "legends": 0,
+      "maxGrade": "hero",
       "notes": "입문자 무전설 클리어 체감 기록 예시"
     },
     {
@@ -12,6 +17,11 @@
       "minutes": 24,
       "startedAt": "2026-06-20T10:24:00+09:00",
       "endedAt": "2026-06-20T10:48:00+09:00",
+      "result": "clear",
+      "stage": 1,
+      "round": 40,
+      "legends": 2,
+      "maxGrade": "legend",
       "notes": "일반 0전설/2전설 비교 체감 기록 예시"
     },
     {
@@ -19,6 +29,11 @@
       "minutes": 24,
       "startedAt": "2026-06-20T10:48:00+09:00",
       "endedAt": "2026-06-20T11:12:00+09:00",
+      "result": "clear",
+      "stage": 1,
+      "round": 40,
+      "legends": 5,
+      "maxGrade": "legend",
       "notes": "중급자 2전설/5전설 비교 체감 기록 예시"
     },
     {
@@ -26,6 +41,11 @@
       "minutes": 24,
       "startedAt": "2026-06-20T11:12:00+09:00",
       "endedAt": "2026-06-20T11:36:00+09:00",
+      "result": "loss",
+      "stage": 1,
+      "round": 40,
+      "legends": 5,
+      "maxGrade": "legend",
       "notes": "고수 5전설과 제한 없음 성장 비교 체감 기록 예시"
     },
     {
@@ -33,6 +53,11 @@
       "minutes": 24,
       "startedAt": "2026-06-20T11:36:00+09:00",
       "endedAt": "2026-06-20T12:00:00+09:00",
+      "result": "loss",
+      "stage": 1,
+      "round": 25,
+      "legends": 3,
+      "maxGrade": "legend",
       "notes": "초고수 난도 체감 기록 예시"
     }
   ]

@@ -13,6 +13,7 @@
     "balance": "vite-node scripts/balance-check.ts",
     "browser-balance": "node scripts/browser-balance-playtest.mjs",
     "browser-direct": "node scripts/browser-direct-playtest.mjs",
+    "manual-playlog": "node scripts/manual-playlog.mjs",
     "balance-audit": "node scripts/balance-audit.mjs",
     "check": "node scripts/sandbox-check.mjs",
     "tauri": "tauri"
