@@ -42,13 +42,13 @@ describe("데이터 무결성 (QA 체크리스트)", () => {
     const ids = UNITS.map((u) => u.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
-  it("웨이브가 1~15 스테이지 모두 존재한다", () => {
+  it("웨이브가 1~40 라운드 모두 존재한다", () => {
     expect(WAVES.length).toBe(FINAL_ROUND);
     for (let r = 1; r <= FINAL_ROUND; r++) {
       expect(WAVES.find((w) => w.round === r), `round ${r}`).toBeDefined();
     }
   });
-  it("보스 스테이지는 5/10/15이다", () => {
+  it("보스 라운드는 10/20/30/40이다", () => {
     const bossRounds = WAVES.filter((w) => w.type === "boss").map((w) => w.round);
     expect(bossRounds).toEqual(BOSS_ROUND_LIST);
   });
@@ -156,7 +156,7 @@ describe("전투/리플레이 재현성", () => {
     const game = new Game("REPLAY-1", "novice");
     playFullRun(game);
     const originalChecksum = stateChecksum(game.state);
-    const replayed = replay("REPLAY-1", "novice", game.state.inputHistory);
+    const replayed = replay("REPLAY-1", "novice", game.state.stageId, game.state.inputHistory);
     expect(stateChecksum(replayed.state)).toBe(originalChecksum);
     expect(replayed.state.round).toBe(game.state.round);
     expect(replayed.state.cleared).toBe(game.state.cleared);

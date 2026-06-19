@@ -3,7 +3,7 @@
 
 import { Rng } from "./rng";
 import {
-  SLOTS, UNIT_MIN_DIST, pathLengthForRound,
+  SLOTS, UNIT_MIN_DIST, pathLengthForStage,
   clampToField, posAtDist,
 } from "./path";
 import type {
@@ -15,6 +15,7 @@ import { UNIT_BY_ID, unitsOfGrade } from "../data/units";
 import { RECIPE_BY_ID } from "../data/recipes";
 import { MISSIONS, MISSION_BY_ID } from "../data/missions";
 import { FINAL_ROUND, bossForRound, waveForRound } from "../data/waves";
+import { stageById } from "../data/stages";
 import { UPGRADE_BY_ID, UPGRADES, upgradeCost } from "../data/upgrades";
 import {
   DIFFICULTY_BY_ID, HERO_PITY_ROUND, PITY_TABLE, PITY_THRESHOLD,
@@ -58,12 +59,13 @@ export class Game {
   /** 외부(UI) 알림 콜백 */
   onEvent: ((kind: string, text: string) => void) | null = null;
 
-  constructor(seed: string, difficulty: "novice" | "normal") {
+  constructor(seed: string, difficulty: "novice" | "normal", stageId = 1) {
     const diff = DIFFICULTY_BY_ID[difficulty];
-    this.rng = new Rng(`${DATA_VERSION}:${seed}:${difficulty}`);
+    const stage = stageById(stageId);
+    this.rng = new Rng(`${DATA_VERSION}:${seed}:${difficulty}:${stage.id}`);
     this.state = {
       dataVersion: DATA_VERSION,
-      seed, difficulty,
+      seed, difficulty, stageId: stage.id,
       tick: 0, time: 0,
       round: 1, phase: "wave", breakTicks: INITIAL_BREAK_TICKS,
       life: diff.startLife, gold: diff.startGold,
@@ -84,7 +86,7 @@ export class Game {
       waveSpawned: 0, waveKilled: 0,
       speed: 1,
     };
-    this.log("system", `시드 ${seed} · 난이도 ${diff.name}로 시작`);
+    this.log("system", `시드 ${seed} · 난이도 ${diff.name} · 맵 ${stage.name}로 시작`);
   }
 
   get diff() { return DIFFICULTY_BY_ID[this.state.difficulty]; }
@@ -501,7 +503,6 @@ export class Game {
     this.checkMissions();
     this.expireMissions();
     if (s.round >= FINAL_ROUND) {
-      s.round++;
       this.endGame(true);
       return;
     }
@@ -512,7 +513,7 @@ export class Game {
   private endGame(cleared: boolean) {
     this.state.cleared = cleared;
     this.state.phase = "ended";
-    this.log("system", cleared ? "15스테이지 클리어!" : `${this.state.round}라운드에서 패배`);
+    this.log("system", cleared ? `${stageById(this.state.stageId).name} 40라운드 클리어!` : `${this.state.round}라운드에서 패배`);
   }
 
   // ===================== 전투 tick =====================
@@ -563,14 +564,14 @@ export class Game {
     this.moveEnemies();
     this.tickUnits(boss?.slowResist ?? 0);
 
-    // 일반 스테이지는 스폰 완료 시 정산한다. 마지막 스테이지는 남은 적까지 모두 처치해야 클리어한다.
-    if (s.waveSpawned >= wave.count && (s.round < FINAL_ROUND || s.enemies.length === 0)) this.completeRound();
+    // 일반 라운드는 스폰 완료 시 정산한다. 보스 라운드는 보스를 처치해야 정산한다.
+    if (s.waveSpawned >= wave.count && (wave.type !== "boss" || s.waveKilled >= wave.count)) this.completeRound();
   }
 
   /** 적을 루프(사각형 둘레)로 이동. 누수/탈출 없음 — 끝에 닿으면 처음으로 순환. */
   private moveEnemies() {
     const s = this.state;
-    const pathLength = pathLengthForRound(s.round);
+    const pathLength = pathLengthForStage(s.stageId);
     for (const e of s.enemies) {
       if (e.stunUntil > s.time) continue;
       e.slows = e.slows.filter((sl) => sl.until > s.time);
@@ -590,7 +591,7 @@ export class Game {
   private pickTarget(u: OwnedUnit, d: UnitDef, radius: number): EnemyState | null {
     const cands: EnemyState[] = [];
     for (const e of this.state.enemies) {
-      const p = posAtDist(e.dist, this.state.round);
+      const p = posAtDist(e.dist, this.state.stageId);
       if (Math.hypot(p.x - u.x, p.y - u.y) <= radius) cands.push(e);
     }
     if (cands.length === 0) return null;
@@ -666,7 +667,7 @@ export class Game {
 
       // leash: 자동 교전/지정 공격에서 적이 앵커로부터 너무 멀면 포기·복귀
       if (target && (u.order.kind === "attack" || u.order.kind === "none")) {
-        const tp = posAtDist(target.dist, s.round);
+        const tp = posAtDist(target.dist, s.stageId);
         if (Math.hypot(tp.x - u.anchorX, tp.y - u.anchorY) > LEASH_RANGE) {
           target = null;
           if (u.order.kind === "attack") u.order = { kind: "none" };
@@ -675,7 +676,7 @@ export class Game {
 
       // 이동 목표 결정
       if (target && u.order.kind !== "hold") {
-        const tp = posAtDist(target.dist, s.round);
+        const tp = posAtDist(target.dist, s.stageId);
         moveTo = Math.hypot(tp.x - u.x, tp.y - u.y) > attackR ? { x: tp.x, y: tp.y } : null;
       } else if (!target && u.order.kind === "none") {
         if (Math.hypot(u.x - u.anchorX, u.y - u.anchorY) > ARRIVE_EPS) moveTo = { x: u.anchorX, y: u.anchorY };
@@ -699,7 +700,7 @@ export class Game {
 
       // 사격 (사거리 안 + 쿨다운)
       if (target && u.cooldown <= 0) {
-        const tp = posAtDist(target.dist, s.round);
+        const tp = posAtDist(target.dist, s.stageId);
         if (Math.hypot(tp.x - u.x, tp.y - u.y) <= attackR) this.fireAt(u, d, target, lv, bossSlowResist);
       }
     }
@@ -723,10 +724,10 @@ export class Game {
     u.totalDamage += this.applyDamage(e, atk, d.attackType, lv.void);
 
     if (d.splashRadius) {
-      const tp = posAtDist(e.dist, s.round);
+      const tp = posAtDist(e.dist, s.stageId);
       for (const c of s.enemies) {
         if (c === e) continue;
-        const cp = posAtDist(c.dist, s.round);
+        const cp = posAtDist(c.dist, s.stageId);
         if (Math.hypot(cp.x - tp.x, cp.y - tp.y) <= d.splashRadius) {
           u.totalDamage += this.applyDamage(c, atk * 0.6, d.attackType, lv.void);
         }
@@ -976,6 +977,8 @@ export class Game {
     return {
       seed: s.seed,
       difficulty: this.diff.name,
+      stageId: s.stageId,
+      stageName: stageById(s.stageId).name,
       dataVersion: s.dataVersion,
       cleared: s.cleared,
       reachedRound: s.round,
@@ -1001,11 +1004,12 @@ export class Game {
 export function replay(
   seed: string,
   difficulty: "novice" | "normal",
+  stageId: number,
   inputHistory: GameInput[],
   stopAtTick?: number,
   maxTicks = 2_000_000,
 ): Game {
-  const game = new Game(seed, difficulty);
+  const game = new Game(seed, difficulty, stageId);
   let i = 0;
   let guard = 0;
   while (guard++ < maxTicks) {

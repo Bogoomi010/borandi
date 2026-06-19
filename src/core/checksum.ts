@@ -16,6 +16,7 @@ export function stateChecksum(s: GameState): string {
     v: s.dataVersion,
     seed: s.seed,
     diff: s.difficulty,
+    stage: s.stageId,
     tick: s.tick,
     round: s.round,
     phase: s.phase,

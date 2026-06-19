@@ -5,6 +5,7 @@ import { el, openModal, toast } from "./widgets";
 import { GRADE_LABEL, FAMILY_LABEL, ROLE_LABEL, type ResultSummary } from "../core/types";
 import { UNIT_BY_ID } from "../data/units";
 import { DIFFICULTIES } from "../data/difficulty";
+import { STAGES, stageById } from "../data/stages";
 import { randomSeed } from "../core/rng";
 import { stateChecksum } from "../core/checksum";
 import {
@@ -14,6 +15,7 @@ import {
 import { replay } from "../core/engine";
 import { runSimulation, reportToMarkdown } from "../sim/runner";
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
+import { loadProfile } from "./settings";
 
 // ---------- 선택권 ----------
 
@@ -66,8 +68,9 @@ export function buildReportMarkdown(r: ResultSummary): string {
   const lines = [
     `# 차원 균열 랜덤 디펜스 결과`,
     ``,
-    `- 결과: ${r.cleared ? "클리어 🎉" : "패배"}`,
-    `- 도달 스테이지: ${r.reachedRound}`,
+    `- 결과: ${r.cleared ? "클리어" : "패배"}`,
+    `- 맵: ${r.stageId}. ${r.stageName}`,
+    `- 도달 라운드: ${r.reachedRound}`,
     `- 시드: \`${r.seed}\` / 난이도: ${r.difficulty} / 데이터 버전: ${r.dataVersion}`,
     `- 남은 라이프: ${r.life}`,
     `- 최고 등급: ${GRADE_LABEL[r.maxGrade]}`,
@@ -105,7 +108,7 @@ export function maybeShowResult(ctx: AppCtx) {
   void recordResult(summary).catch(() => toast("결과 저장 실패", "danger"));
 
   openModal((body, close) => {
-    body.appendChild(el("h2", "", summary.cleared ? "🎉 15스테이지 클리어!" : `${summary.reachedRound}스테이지에서 패배`));
+    body.appendChild(el("h2", "", summary.cleared ? `${summary.stageName} 40라운드 클리어!` : `${summary.reachedRound}라운드에서 패배`));
 
     const grid = el("div", "result-stats");
     const kv = (k: string, v: string) => {
@@ -113,6 +116,7 @@ export function maybeShowResult(ctx: AppCtx) {
       grid.appendChild(el("span", "", v));
     };
     kv("시드", summary.seed);
+    kv("맵", `${summary.stageId}. ${summary.stageName}`);
     kv("난이도", summary.difficulty);
     kv("최고 등급", GRADE_LABEL[summary.maxGrade]);
     kv("미션", `${summary.missionsDone}/${summary.missionsTotal}`);
@@ -157,7 +161,7 @@ export function maybeShowResult(ctx: AppCtx) {
     row.appendChild(titleBtn);
 
     const sameSeed = el("button", "", "같은 시드 재시작");
-    sameSeed.onclick = () => { resultShown = false; close(); ctx.newRun(summary.seed, ctx.game.state.difficulty); };
+    sameSeed.onclick = () => { resultShown = false; close(); ctx.newRun(summary.seed, ctx.game.state.difficulty, ctx.game.state.stageId); };
     row.appendChild(sameSeed);
 
     const newBtn = el("button", "primary", "새 게임");
@@ -178,6 +182,7 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
 
     body.appendChild(el("h3", "", "난이도"));
     let chosen = "novice";
+    let chosenStage = 1;
     const diffRow = el("div", "choice-grid");
     const diffBtns: HTMLButtonElement[] = [];
     for (const d of DIFFICULTIES) {
@@ -195,6 +200,28 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
     }
     body.appendChild(diffRow);
 
+    const profile = loadProfile();
+    const unlockedStage = Math.max(1, Math.min(profile.unlockedStage, STAGES.length));
+    body.appendChild(el("h3", "", "맵 선택"));
+    const stageRow = el("div", "choice-grid stage-choice-grid");
+    const stageBtns: HTMLButtonElement[] = [];
+    for (const stage of STAGES) {
+      const b = el("button", "choice-btn stage-choice") as HTMLButtonElement;
+      b.appendChild(el("span", "cname", `${stage.id}. ${stage.name}`));
+      b.appendChild(el("span", "cdesc", stage.subtitle));
+      b.disabled = stage.id > unlockedStage;
+      if (b.disabled) b.appendChild(el("span", "cdesc", "잠김: 이전 맵 40라운드 클리어 필요"));
+      if (stage.id === chosenStage) b.style.borderColor = "var(--accent)";
+      b.onclick = () => {
+        chosenStage = stage.id;
+        stageBtns.forEach((x) => (x.style.borderColor = "var(--line)"));
+        b.style.borderColor = "var(--accent)";
+      };
+      stageBtns.push(b);
+      stageRow.appendChild(b);
+    }
+    body.appendChild(stageRow);
+
     const row = el("div", "row-btns");
     if (dismissable) {
       const cancel = el("button", "", "취소");
@@ -206,7 +233,7 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
       const seed = randomSeed(); // 시드는 내부 RNG/재현성용으로 항상 무작위 생성
       close();
       resetResultShown();
-      ctx.newRun(seed, chosen as "novice" | "normal");
+      ctx.newRun(seed, chosen as "novice" | "normal", chosenStage);
     };
     row.appendChild(start);
     body.appendChild(row);
@@ -225,14 +252,14 @@ export function openSaveModal(ctx: AppCtx) {
       const left = el("div");
       left.appendChild(el("div", "", `슬롯 ${slotId.slice(-1)}`));
       left.appendChild(el("div", "meta", meta
-        ? `${meta.round}R · ${meta.difficulty} · 시드 ${meta.seed} · ${new Date(meta.savedAt).toLocaleString()}`
+        ? `${stageById(meta.stageId ?? 1).name} · ${meta.round}R · ${meta.difficulty} · 시드 ${meta.seed} · ${new Date(meta.savedAt).toLocaleString()}`
         : "비어 있음"));
       card.appendChild(left);
       card.onclick = async () => {
         try {
           const s = ctx.game.state;
           await saveSlot(slotId, makeSaveRecord({
-            seed: s.seed, difficulty: s.difficulty,
+            seed: s.seed, difficulty: s.difficulty, stageId: s.stageId,
             stateChecksum: stateChecksum(s),
             tick: s.tick, round: s.round, life: s.life,
             maxGrade: ctx.game.maxOwnedGrade(),
@@ -265,7 +292,7 @@ export function openLoadModal(ctx: AppCtx) {
       const left = el("div");
       left.appendChild(el("div", "", meta.slotId === "autosave" ? "자동 저장" : `슬롯 ${meta.slotId.slice(-1)}`));
       left.appendChild(el("div", "meta",
-        `${meta.round}R · 라이프 ${meta.life} · ${meta.difficulty} · 시드 ${meta.seed} · v${meta.dataVersion} · ${new Date(meta.savedAt).toLocaleString()}`));
+        `${stageById(meta.stageId ?? 1).name} · ${meta.round}R · 라이프 ${meta.life} · ${meta.difficulty} · 시드 ${meta.seed} · v${meta.dataVersion} · ${new Date(meta.savedAt).toLocaleString()}`));
       card.appendChild(left);
 
       const delBtn = el("button", "del", "삭제");
@@ -285,7 +312,7 @@ export function openLoadModal(ctx: AppCtx) {
             toast("현재 데이터 버전과 달라 불러올 수 없습니다.", "warn", 4000);
             return;
           }
-          const replayed = replay(rec.seed, rec.difficulty, rec.inputHistory, rec.tick);
+          const replayed = replay(rec.seed, rec.difficulty, rec.stageId ?? 1, rec.inputHistory, rec.tick);
           if (stateChecksum(replayed.state) !== rec.stateChecksum) {
             toast("체크섬 불일치: 손상된 저장입니다.", "danger", 4000);
             return;
@@ -369,7 +396,7 @@ export function openHelpModal() {
     body.appendChild(el("h2", "", "단축키"));
     const table = el("table", "kv-table");
     const rows: Array<[string, string]> = [
-      ["Space", "다음 스테이지 시작 / 진행 중 일시정지"],
+      ["Space", "다음 라운드 시작 / 진행 중 일시정지"],
       ["Z", "소환"],
       ["X", "선택한 3기 합성"],
       ["Delete / Backspace", "선택 유닛 판매"],

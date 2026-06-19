@@ -17,7 +17,7 @@ import { showGame, showTitle, openPauseMenu } from "./ui/scenes";
 import { openDevSpawnModal } from "./ui/devTools"; // ⚠ DEV전용 (출시 전 제거)
 import { UNIT_BY_ID } from "./data/units";
 import { analyzeRecipes } from "./core/advisor";
-import { stageForRound } from "./data/stages";
+import { stageById } from "./data/stages";
 import { waveForRound } from "./data/waves";
 
 const settings = loadSettings();
@@ -53,7 +53,7 @@ function notifyNewlyCraftable() {
   craftableIds = nowOk;
 }
 
-let game = new Game(randomSeed(), "novice"); // 타이틀 뒤에서 대기하는 플레이스홀더 런
+let game = new Game(randomSeed(), "novice", 1); // 타이틀 뒤에서 대기하는 플레이스홀더 런
 let panelsDirty = true;
 let lastPhase = game.state.phase;
 let lastRound = game.state.round;
@@ -72,8 +72,8 @@ const ctx: AppCtx = {
   gradeFilter: "all",
   saveStatus: "idle",
   refresh: () => { panelsDirty = true; },
-  newRun: (seed, difficulty) => {
-    game = new Game(seed || randomSeed(), difficulty);
+  newRun: (seed, difficulty, stageId = 1) => {
+    game = new Game(seed || randomSeed(), difficulty, stageId);
     ctx.game = game;
     game.onEvent = onGameEvent;
     renderer.selectedUids.clear();
@@ -132,7 +132,7 @@ const ctx: AppCtx = {
         toast("현재 데이터 버전과 달라 불러올 수 없습니다.", "warn", 4000);
         return false;
       }
-      const replayed = replay(rec.seed, rec.difficulty, rec.inputHistory, rec.tick);
+      const replayed = replay(rec.seed, rec.difficulty, rec.stageId ?? 1, rec.inputHistory, rec.tick);
       if (stateChecksum(replayed.state) !== rec.stateChecksum) {
         toast("체크섬 불일치: 손상된 자동 저장입니다.", "danger", 4000);
         return false;
@@ -162,7 +162,7 @@ function playActionSfx(type: string) {
     case "upgrade": audio.sfx("upgrade"); break;
     case "pickSelector": audio.sfx("summonRare"); break;
     case "startWave": {
-      const isBoss = [5, 10, 15].includes(game.state.round);
+      const isBoss = game.state.round % 10 === 0;
       audio.sfx(isBoss ? "bossWarn" : "waveStart");
       break;
     }
@@ -191,7 +191,7 @@ async function doAutosave() {
   panelsDirty = true;
   try {
     await saveSlot("autosave", makeSaveRecord({
-      seed: s.seed, difficulty: s.difficulty,
+      seed: s.seed, difficulty: s.difficulty, stageId: s.stageId,
       stateChecksum: stateChecksum(s),
       tick: s.tick, round: s.round, life: s.life,
       maxGrade: game.maxOwnedGrade(),
@@ -250,7 +250,8 @@ function loop(now: number) {
     if (game.state.phase === "ended" && !endedHandled) {
       endedHandled = true;
       profileMarkSeen(game.state.units.map((u) => u.defId), game.state.discoveredRecipeIds);
-      profileRecordRun(game.state.cleared, game.state.difficulty, game.state.round);
+      const unlockedNext = profileRecordRun(game.state.cleared, game.state.difficulty, game.state.round, game.state.stageId);
+      if (unlockedNext) toast("다음 맵이 해금되었습니다", "ok", 3200);
     }
 
     // 라운드 사이 휴식 카운트다운 표시 (엔진 breakTicks 기반)
@@ -479,15 +480,15 @@ requestAnimationFrame(loop);
 
 function renderGameToText(): string {
   const s = game.state;
-  const stage = stageForRound(s.round);
-  const wave = waveForRound(Math.min(s.round, 15));
+  const stage = stageById(s.stageId);
+  const wave = waveForRound(Math.min(s.round, 40));
   return JSON.stringify({
     coordinateSystem: "board origin top-left, x right, y down, logical size 960x560",
     scene: ctx.scene,
     paused: ctx.paused,
     mode: s.phase,
     stage: {
-      current: s.round,
+      current: s.stageId,
       name: stage.name,
       ground: stage.ground,
       waypointCount: stage.waypoints.length,
@@ -500,7 +501,7 @@ function renderGameToText(): string {
       return { uid: u.uid, name: def.name, grade: def.grade, family: def.family, x: Math.round(u.x), y: Math.round(u.y), state: u.state };
     }),
     enemies: s.enemies.slice(0, 16).map((e) => {
-      const p = posAtDist(e.dist, s.round);
+      const p = posAtDist(e.dist, s.stageId);
       return { eid: e.eid, hp: Math.round(e.hp), maxHp: Math.round(e.maxHp), x: Math.round(p.x), y: Math.round(p.y), boss: e.isBoss };
     }),
     selected: [...renderer.selectedUids].sort((a, b) => a - b),
@@ -531,7 +532,7 @@ Object.assign(window, {
 if (import.meta.env.DEV) {
   Object.assign(window, {
     __randi_dev: {
-      newRun: (seed = "PLAYTEST") => ctx.newRun(seed, "novice"),
+      newRun: (seed = "PLAYTEST", stageId = 1) => ctx.newRun(seed, "novice", stageId),
       act: (type: string, payload?: Record<string, unknown>) => ctx.act(type, payload),
       state: () => game.state,
     },

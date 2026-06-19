@@ -1,13 +1,13 @@
 // 캔버스 전투판 렌더러 — 에셋 없이 도형과 색으로만 표현한다.
 // 등급 = 테두리 색 + 도형, 계열 = 채움 색.
 
-import { BOARD_H, BOARD_W, pathLengthForRound, waypointsForRound, posAtDist } from "../core/path";
+import { BOARD_H, BOARD_W, pathLengthForStage, waypointsForStage, posAtDist } from "../core/path";
 import type { GameState, Grade } from "../core/types";
 import { UNIT_BY_ID } from "../data/units";
 import { FINAL_ROUND, waveForRound } from "../data/waves";
 import { alien1Walk } from "./sprites";
 import { UNIT_SPRITES, type Facing } from "./unitSprites";
-import { stageForRound, type StageDecorationKind } from "../data/stages";
+import { stageById, type StageDecorationKind } from "../data/stages";
 import tilesetUrl from "../assets/tilesets/dark-fantasy-village-tileset.png";
 
 const GRADE_COLOR: Record<Grade, string> = {
@@ -164,7 +164,7 @@ export class BoardRenderer {
     const { x, y } = this.toBoard(clientX, clientY);
     for (let i = state.enemies.length - 1; i >= 0; i--) {
       const e = state.enemies[i];
-      const p = posAtDist(e.dist, state.round);
+      const p = posAtDist(e.dist, state.stageId);
       const r = e.isBoss ? 48 : 26;
       if (Math.hypot(p.x - x, p.y - y) <= r) return e.eid;
     }
@@ -183,14 +183,14 @@ export class BoardRenderer {
   draw(state: GameState) {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, BOARD_W, BOARD_H);
-    const stage = stageForRound(state.round);
-    const waypoints = waypointsForRound(state.round);
-    const pathLength = pathLengthForRound(state.round);
+    const stage = stageById(state.stageId);
+    const waypoints = waypointsForStage(state.stageId);
+    const pathLength = pathLengthForStage(state.stageId);
 
     ctx.fillStyle = GROUND_COLOR[stage.ground];
     ctx.fillRect(0, 0, BOARD_W, BOARD_H);
 
-    this.drawGroundTexture(stage.ground, state.round);
+    this.drawGroundTexture(stage.ground, state.stageId);
     this.drawDecorations(stage.decorations.filter((d) => d.y < 250));
 
     // 경로 (스테이지별 닫힌 루프)
@@ -210,8 +210,8 @@ export class BoardRenderer {
     // 진행 방향 화살표
     ctx.fillStyle = "#3a4263";
     for (let d = 160; d < pathLength; d += 260) {
-      const p = posAtDist(d, state.round);
-      const p2 = posAtDist(d + 8, state.round);
+      const p = posAtDist(d, state.stageId);
+      const p2 = posAtDist(d + 8, state.stageId);
       const ang = Math.atan2(p2.y - p.y, p2.x - p.x);
       ctx.save();
       ctx.translate(p.x, p.y);
@@ -326,7 +326,7 @@ export class BoardRenderer {
     this.enemyHp = new Map();
     let boss: GameState["enemies"][number] | null = null;
     for (const e of state.enemies) {
-      const p = posAtDist(e.dist, state.round);
+      const p = posAtDist(e.dist, state.stageId);
       if (e.isBoss) boss = e;
       const slowed = e.slows.length > 0;
       const stunned = e.stunUntil > state.time;
@@ -348,7 +348,7 @@ export class BoardRenderer {
       }
 
       // 진행 방향: 살짝 앞 지점과 비교해 좌우 반전 결정
-      const ahead = posAtDist(e.dist + 4, state.round);
+      const ahead = posAtDist(e.dist + 4, state.stageId);
       const faceLeft = ahead.x < p.x - 0.01;
 
       // 상태/속성 틴트 (우선순위: 기절 > 둔화 > 장갑 > 보스)
@@ -430,7 +430,7 @@ export class BoardRenderer {
       ctx.fillStyle = "rgba(255,209,74,.95)";
       ctx.font = "bold 14px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(`${state.round}스테이지 시작까지 ${secs}초 (Space로 바로 시작)`, BOARD_W / 2, BOARD_H - 14);
+      ctx.fillText(`${state.round}라운드 시작까지 ${secs}초 (Space로 바로 시작)`, BOARD_W / 2, BOARD_H - 14);
       ctx.textAlign = "left";
     }
 

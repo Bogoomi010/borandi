@@ -19,7 +19,7 @@ export interface AppCtx {
   /** 패널 다시 그리기 요청 */
   refresh: () => void;
   /** 새 게임 시작 (게임 씬으로 전환) */
-  newRun: (seed: string, difficulty: "novice" | "normal") => void;
+  newRun: (seed: string, difficulty: "novice" | "normal", stageId?: number) => void;
   /** 리플레이로 복원한 게임으로 교체 (불러오기) */
   adoptGame: (game: Game) => void;
   /** 액션 실행 + 효과음 + 실패 사유 토스트 */

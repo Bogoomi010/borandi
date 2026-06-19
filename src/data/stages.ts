@@ -148,9 +148,8 @@ export const STAGES: StageDef[] = [
 ];
 
 export const FINAL_STAGE = STAGES.length;
-export const BOSS_ROUNDS = [5, 10, 15] as const;
 
-export function stageForRound(round: number): StageDef {
-  const idx = Math.max(0, Math.min(STAGES.length - 1, round - 1));
+export function stageById(stageId: number): StageDef {
+  const idx = Math.max(0, Math.min(STAGES.length - 1, stageId - 1));
   return STAGES[idx];
 }

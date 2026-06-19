@@ -53,8 +53,8 @@ check("보정 확률 합 100", Object.values(PITY_TABLE).reduce((a, b) => a + b,
 check("조합식 유닛 ID 유효", RECIPES.every((r) =>
   UNIT_BY_ID[r.resultUnitId] && r.ingredients.every((i) => !i.unitId || UNIT_BY_ID[i.unitId])));
 check("유닛 ID 중복 없음", new Set(UNITS.map((u) => u.id)).size === UNITS.length);
-check("웨이브 15개", WAVES.length === FINAL_ROUND);
-check("보스 스테이지 5/10/15",
+check("웨이브 40개", WAVES.length === FINAL_ROUND);
+check("보스 라운드 10/20/30/40",
   JSON.stringify(WAVES.filter((w) => w.type === "boss").map((w) => w.round)) === JSON.stringify(BOSS_ROUND_LIST));
 
 console.log("[2] 소환/보정");
@@ -120,7 +120,7 @@ console.log("[5] 풀런 결정론/리플레이");
   const b = new Game("FULL-1", "novice");
   playFullRun(b);
   check("같은 시드 풀런 동일 체크섬", stateChecksum(b.state) === ck);
-  const r = replay("FULL-1", "novice", a.state.inputHistory);
+  const r = replay("FULL-1", "novice", a.state.stageId, a.state.inputHistory);
   check("리플레이 동일 체크섬", stateChecksum(r.state) === ck);
 }
 
@@ -128,7 +128,7 @@ console.log("[6] 30시드 밸런스 스모크");
 {
   const rep = runSimulation(30, "novice", "balanced");
   console.log(reportToMarkdown(rep).split("\\n").slice(0, 12).join("\\n"));
-  check("10스테이지 도달률 80%+", (30 - Object.entries(rep.deathRounds)
+  check("10라운드 도달률 80%+", (30 - Object.entries(rep.deathRounds)
     .filter(([r]) => Number(r) < 10).reduce((a, [, n]) => a + n, 0)) / 30 >= 0.8);
 }
 

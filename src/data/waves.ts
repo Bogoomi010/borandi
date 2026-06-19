@@ -1,25 +1,31 @@
 import type { BossDef, WaveDef } from "../core/types";
-import { BOSS_ROUNDS, FINAL_STAGE } from "./stages";
+
+export const FINAL_ROUND = 40;
+export const BOSS_ROUNDS = [10, 20, 30, 40] as const;
+export const BOSS_ROUND_LIST = [...BOSS_ROUNDS];
 
 export const BOSSES: BossDef[] = [
   {
-    id: "crack_golem", name: "균열 골렘", round: 5, slowResist: 0.5,
+    id: "crack_golem", name: "균열 골렘", round: 10, slowResist: 0.5,
     weakness: "방깎 · 보스딜",
     hint: "단단한 외피. 공허(방깎)와 강철(보스딜)이 유효하다. 감속 저항 50%.",
   },
   {
-    id: "void_matriarch", name: "공허 모체", round: 10, slowResist: 0.3,
+    id: "void_matriarch", name: "공허 모체", round: 20, slowResist: 0.35,
     weakness: "지속 화력 · 약화",
     hint: "체력이 높다. 피해 증폭과 꾸준한 화력이 필요하다.",
   },
   {
-    id: "abyss_warden", name: "심연 감시자", round: 15, slowResist: 0.35,
+    id: "abyss_warden", name: "심연 감시자", round: 30, slowResist: 0.35,
     weakness: "총합 화력 · 약화 · 홀딩",
-    hint: "최종 보스. 모든 축이 균형 있게 필요하다.",
+    hint: "후반 보스. 모든 축이 균형 있게 필요하다.",
+  },
+  {
+    id: "ancient_rift_lord", name: "고대 균열 군주", round: 40, slowResist: 0.45,
+    weakness: "최종 화력 · 방깎 · 보스딜",
+    hint: "40라운드 최종 보스. 선택한 맵의 권한을 완전히 클리어하려면 처치해야 한다.",
   },
 ];
-
-export const BOSS_ROUND_LIST = [...BOSS_ROUNDS];
 
 export const BOSS_BY_ID: Record<string, BossDef> = Object.fromEntries(
   BOSSES.map((b) => [b.id, b]),
@@ -29,39 +35,83 @@ export function bossForRound(round: number): BossDef | undefined {
   return BOSSES.find((b) => b.round === round);
 }
 
-function buildWaves(): WaveDef[] {
-  return [
-    { round: 1, type: "normal", enemyName: "썩은 길목의 짐승", count: 12, hp: 20, speed: 1.0, armor: 0, goldReward: 35 },
-    { round: 2, type: "normal", enemyName: "잿빛 배회자", count: 14, hp: 27, speed: 1.0, armor: 0, goldReward: 40 },
-    { round: 3, type: "swarm", enemyName: "죽은 풀 날벌레", count: 24, hp: 24, speed: 1.25, armor: 0, goldReward: 48 },
-    { round: 4, type: "mixed", enemyName: "마녀불 무리", count: 20, hp: 45, speed: 1.08, armor: 4, goldReward: 58 },
-    {
-      round: 5, type: "boss", enemyName: "균열 골렘", count: 1, hp: 980, speed: 0.72, armor: 24,
-      goldReward: 100, bossId: "crack_golem",
+const normalNames = [
+  "썩은 길목의 짐승", "잿빛 배회자", "죽은 풀 날벌레", "마녀불 무리",
+  "뿌리잠식 괴수", "묘지 파수꾼", "혈시장 약탈자", "영혼과실 박쥐떼",
+  "저주받은 과수원 군단", "부서진 울타리 기사", "영묘 갈림길 망령", "룬 미궁 추적자",
+];
+
+function normalWave(round: number): WaveDef {
+  const pattern = (round - 1) % 4;
+  const type = (["normal", "swarm", "armored", "mixed"] as const)[pattern];
+  const hpBase = Math.round(19 * Math.pow(1.105, round - 1));
+  const countBase = 12 + Math.floor(round * 1.35);
+  const armorBase = Math.floor(round * 1.45);
+  const name = normalNames[(round - 1) % normalNames.length];
+
+  if (type === "swarm") {
+    return {
+      round, type, enemyName: name, count: countBase + 12,
+      hp: Math.round(hpBase * 0.75), speed: 1.28, armor: Math.floor(armorBase * 0.35),
+      goldReward: 30 + round * 9,
+    };
+  }
+  if (type === "armored") {
+    return {
+      round, type, enemyName: name, count: countBase - 3,
+      hp: Math.round(hpBase * 1.45), speed: 0.9, armor: armorBase + 10,
+      goldReward: 34 + round * 10,
+    };
+  }
+  if (type === "mixed") {
+    return {
+      round, type, enemyName: name, count: countBase + 4,
+      hp: Math.round(hpBase * 1.15), speed: 1.1, armor: Math.floor(armorBase * 0.75),
+      goldReward: 36 + round * 10,
+    };
+  }
+  return {
+    round, type, enemyName: name, count: countBase,
+    hp: hpBase, speed: 1.0, armor: Math.floor(armorBase * 0.45),
+    goldReward: 28 + round * 9,
+  };
+}
+
+function bossWave(boss: BossDef): WaveDef {
+  const spec: Record<string, Omit<WaveDef, "round" | "type" | "enemyName" | "count" | "bossId">> = {
+    crack_golem: {
+      hp: 2600, speed: 0.72, armor: 30, goldReward: 180,
       reward: { selector: { grade: "rare", count: 1 } },
     },
-    { round: 6, type: "normal", enemyName: "뿌리잠식 괴수", count: 24, hp: 70, speed: 1.05, armor: 6, goldReward: 72 },
-    { round: 7, type: "armored", enemyName: "묘지 파수꾼", count: 16, hp: 125, speed: 0.88, armor: 18, goldReward: 84 },
-    { round: 8, type: "mixed", enemyName: "혈시장 약탈자", count: 26, hp: 105, speed: 1.12, armor: 8, goldReward: 98 },
-    { round: 9, type: "swarm", enemyName: "영혼과실 박쥐떼", count: 34, hp: 78, speed: 1.32, armor: 0, goldReward: 112 },
-    {
-      round: 10, type: "boss", enemyName: "공허 모체", count: 1,
-      hp: 5200, speed: 0.66, armor: 50, goldReward: 190, bossId: "void_matriarch",
+    void_matriarch: {
+      hp: 8600, speed: 0.66, armor: 62, goldReward: 360,
       reward: { selector: { grade: "hero", count: 1 } },
     },
-    { round: 11, type: "mixed", enemyName: "저주받은 과수원 군단", count: 30, hp: 160, speed: 1.14, armor: 12, goldReward: 130 },
-    { round: 12, type: "armored", enemyName: "부서진 울타리 기사", count: 20, hp: 240, speed: 0.9, armor: 36, goldReward: 150 },
-    { round: 13, type: "swarm", enemyName: "영묘 갈림길 망령", count: 40, hp: 128, speed: 1.35, armor: 10, goldReward: 170 },
-    { round: 14, type: "mixed", enemyName: "룬 미궁 추적자", count: 32, hp: 260, speed: 1.18, armor: 22, goldReward: 210 },
-    {
-      round: 15, type: "boss", enemyName: "심연 감시자", count: 1,
-      hp: 16000, speed: 0.58, armor: 95, goldReward: 500, bossId: "abyss_warden",
+    abyss_warden: {
+      hp: 21000, speed: 0.6, armor: 92, goldReward: 620,
+      reward: { selector: { grade: "hero", count: 1 } },
     },
-  ];
+    ancient_rift_lord: {
+      hp: 44000, speed: 0.56, armor: 125, goldReward: 1200,
+    },
+  };
+  return {
+    round: boss.round, type: "boss", enemyName: boss.name, count: 1, bossId: boss.id,
+    ...spec[boss.id],
+  };
+}
+
+function buildWaves(): WaveDef[] {
+  const bosses = new Map(BOSSES.map((b) => [b.round, b]));
+  const waves: WaveDef[] = [];
+  for (let round = 1; round <= FINAL_ROUND; round++) {
+    const boss = bosses.get(round);
+    waves.push(boss ? bossWave(boss) : normalWave(round));
+  }
+  return waves;
 }
 
 export const WAVES: WaveDef[] = buildWaves();
-export const FINAL_ROUND = FINAL_STAGE;
 
 export function waveForRound(round: number): WaveDef {
   const w = WAVES.find((x) => x.round === round);

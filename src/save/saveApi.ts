@@ -11,6 +11,7 @@ export interface SaveRecord {
   savedAt: string;
   seed: string;
   difficulty: "novice" | "normal";
+  stageId: number;
   stateChecksum: string;
   tick: number;
   round: number;
@@ -24,6 +25,7 @@ export interface SlotMeta {
   savedAt: string;
   seed: string;
   difficulty: string;
+  stageId: number;
   round: number;
   life: number;
   maxGrade: string;
@@ -88,7 +90,7 @@ export async function listSlots(): Promise<SlotMeta[]> {
     if (r) {
       out.push({
         slotId, savedAt: r.savedAt, seed: r.seed, difficulty: r.difficulty,
-        round: r.round, life: r.life, maxGrade: r.maxGrade, dataVersion: r.dataVersion,
+        stageId: r.stageId ?? 1, round: r.round, life: r.life, maxGrade: r.maxGrade, dataVersion: r.dataVersion,
       });
     }
   }
@@ -140,7 +142,7 @@ export async function openAppDataDir(): Promise<void> {
 }
 
 export function makeSaveRecord(args: {
-  seed: string; difficulty: "novice" | "normal"; stateChecksum: string;
+  seed: string; difficulty: "novice" | "normal"; stageId: number; stateChecksum: string;
   tick: number; round: number; life: number; maxGrade: string;
   inputHistory: GameInput[];
 }): SaveRecord {

@@ -26,7 +26,7 @@ export const MISSIONS: MissionDef[] = [
     id: "mission_boss_ready", name: "보스 사냥 준비", visibility: "visible",
     expireRound: 10,
     condition: { type: "ownRole", role: "bossKiller", count: 2 },
-    reward: { bossKillBonusGold: { round: 5, gold: 50 } },
+    reward: { bossKillBonusGold: { round: 10, gold: 50 } },
     desc: "보스딜 역할 유닛 2기 보유",
   },
   {
@@ -76,7 +76,7 @@ export const MISSIONS: MissionDef[] = [
     id: "mission_speed_killer", name: "???", visibility: "hidden",
     condition: { type: "bossKillUnderSec", round: 10, seconds: 25 },
     reward: { selector: { grade: "legend", count: 1 } },
-    desc: "(히든) 10스테이지 보스를 25초 안에 처치",
+    desc: "(히든) 10라운드 보스를 25초 안에 처치",
   },
   {
     id: "mission_full_bloom", name: "???", visibility: "hidden",

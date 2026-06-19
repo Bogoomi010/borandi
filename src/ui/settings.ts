@@ -1,6 +1,8 @@
 // 게임 설정과 플레이어 프로필(도감/기록) 영속화.
 // Tauri 웹뷰에서도 localStorage가 동작하므로 두 환경 공통으로 사용한다.
 
+import { FINAL_STAGE } from "../data/stages";
+
 export interface Settings {
   master: number;       // 0~1
   sfx: number;          // 0~1
@@ -45,10 +47,11 @@ export interface Profile {
   runs: number;
   clears: Record<string, number>; // difficulty -> 클리어 수
   bestRound: number;
+  unlockedStage: number;
 }
 
 const DEFAULT_PROFILE: Profile = {
-  seenUnits: [], foundHiddenRecipes: [], runs: 0, clears: {}, bestRound: 0,
+  seenUnits: [], foundHiddenRecipes: [], runs: 0, clears: {}, bestRound: 0, unlockedStage: 1,
 };
 
 export function loadProfile(): Profile {
@@ -79,10 +82,19 @@ export function profileMarkSeen(unitIds: string[], hiddenRecipeIds: string[]) {
   if (changed) saveProfile(p);
 }
 
-export function profileRecordRun(cleared: boolean, difficulty: string, round: number) {
+export function profileRecordRun(cleared: boolean, difficulty: string, round: number, stageId: number): boolean {
   const p = loadProfile();
   p.runs++;
+  let unlockedNext = false;
   if (cleared) p.clears[difficulty] = (p.clears[difficulty] ?? 0) + 1;
   if (round > p.bestRound) p.bestRound = round;
+  if (cleared && stageId >= p.unlockedStage) {
+    const next = Math.min(stageId + 1, FINAL_STAGE);
+    if (next > p.unlockedStage) {
+      p.unlockedStage = next;
+      unlockedNext = true;
+    }
+  }
   saveProfile(p);
+  return unlockedNext;
 }

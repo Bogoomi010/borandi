@@ -218,6 +218,7 @@ export interface GameState {
   dataVersion: string;
   seed: string;
   difficulty: DifficultyDef["id"];
+  stageId: number;
   tick: number;
   time: number; // 게임 시간(초)
   round: number;
@@ -256,6 +257,8 @@ export interface GameState {
 export interface ResultSummary {
   seed: string;
   difficulty: string;
+  stageId: number;
+  stageName: string;
   dataVersion: string;
   cleared: boolean;
   reachedRound: number;

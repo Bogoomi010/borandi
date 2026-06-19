@@ -1,8 +1,8 @@
 // 전투판 경로와 유닛 배치 (논리 좌표계 960x560)
-// 적 경로는 스테이지별 waypoint 루프를 따른다. 적은 끝에 닿으면 계속 순환한다.
+// 적 경로는 선택한 스테이지 waypoint 루프를 따른다. 적은 끝에 닿으면 계속 순환한다.
 // 아군 유닛은 공통 활동 영역 안에서만 움직인다.
 
-import { stageForRound } from "../data/stages";
+import { stageById } from "../data/stages";
 
 export const BOARD_W = 960;
 export const BOARD_H = 560;
@@ -10,7 +10,7 @@ export const BOARD_H = 560;
 /** 아군 활동 영역을 정하기 위한 공통 외곽 */
 export const FIELD = { left: 80, top: 70, right: 880, bottom: 490 };
 
-export const WAYPOINTS: Array<[number, number]> = stageForRound(1).waypoints;
+export const WAYPOINTS: Array<[number, number]> = stageById(1).waypoints;
 
 interface Segment { x: number; y: number; dx: number; dy: number; len: number; start: number; }
 
@@ -30,8 +30,8 @@ function buildSegments(waypoints: Array<[number, number]>): { segments: Segment[
 
 const pathCache = new Map<number, { segments: Segment[]; length: number }>();
 
-function pathForRound(round: number): { segments: Segment[]; length: number } {
-  const stage = stageForRound(round);
+function pathForStage(stageId: number): { segments: Segment[]; length: number } {
+  const stage = stageById(stageId);
   const cached = pathCache.get(stage.id);
   if (cached) return cached;
   const built = buildSegments(stage.waypoints);
@@ -40,14 +40,14 @@ function pathForRound(round: number): { segments: Segment[]; length: number } {
 }
 
 /** 루프 한 바퀴 길이(둘레) */
-export const PATH_LENGTH = pathForRound(1).length;
+export const PATH_LENGTH = pathForStage(1).length;
 
-export function pathLengthForRound(round: number): number {
-  return pathForRound(round).length;
+export function pathLengthForStage(stageId: number): number {
+  return pathForStage(stageId).length;
 }
 
-export function waypointsForRound(round: number): Array<[number, number]> {
-  return stageForRound(round).waypoints;
+export function waypointsForStage(stageId: number): Array<[number, number]> {
+  return stageById(stageId).waypoints;
 }
 
 // ===== 배치/충돌 파라미터 =====
@@ -79,8 +79,8 @@ export function clampToField(x: number, y: number): { x: number; y: number } {
 }
 
 /** 루프 거리(dist)에 해당하는 경로 좌표. dist는 스테이지 경로 둘레로 wrap된다. */
-export function posAtDist(dist: number, round = 1): { x: number; y: number } {
-  const path = pathForRound(round);
+export function posAtDist(dist: number, stageId = 1): { x: number; y: number } {
+  const path = pathForStage(stageId);
   let d = dist % path.length;
   if (d < 0) d += path.length;
   for (const s of path.segments) {
@@ -89,7 +89,7 @@ export function posAtDist(dist: number, round = 1): { x: number; y: number } {
       return { x: s.x + s.dx * t, y: s.y + s.dy * t };
     }
   }
-  const first = stageForRound(round).waypoints[0];
+  const first = stageById(stageId).waypoints[0];
   return { x: first[0], y: first[1] };
 }
 

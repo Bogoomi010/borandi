@@ -26,7 +26,7 @@ export function renderMenubar(ctx: AppCtx) {
       title: "Game",
       items: [
         { label: "새 게임", hint: "New Run", onClick: () => openNewRunModal(ctx) },
-        { label: "같은 시드 재시작", onClick: () => ctx.newRun(ctx.game.state.seed, ctx.game.state.difficulty) },
+        { label: "같은 시드 재시작", onClick: () => ctx.newRun(ctx.game.state.seed, ctx.game.state.difficulty, ctx.game.state.stageId) },
         "sep",
         { label: "수동 저장…", hint: "슬롯 3개", onClick: () => openSaveModal(ctx) },
         { label: "불러오기…", onClick: () => openLoadModal(ctx) },
