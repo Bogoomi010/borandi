@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -109,6 +109,60 @@ describe("manual-playlog plan", () => {
     const text = runManualPlaylog([`--out=${out}`, "--next"]);
     expect(text).toContain("시작 마커:");
     expect(text).toContain("--seed=GAME_SEED_HERE");
+  });
+
+  it("start-next는 다음 필요 세션의 시작 마커를 바로 저장한다", () => {
+    const out = makeTempPath("start-next.json");
+    const output = runManualPlaylog([
+      `--out=${out}`,
+      "--start-next",
+      "--seed=NEXT-SEED",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+    ]);
+
+    const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+    expect(output).toContain("- 목표: 입문자 무전설 40R 클리어");
+    expect(pending.pending).toHaveLength(1);
+    expect(pending.pending[0]).toMatchObject({
+      source: "human-playtest-start",
+      difficulty: "novice",
+      stage: 1,
+      seed: "NEXT-SEED",
+      notes: "입문자 무전설 40R 클리어",
+      startedAt: "2026-06-20T02:00:00.000Z",
+    });
+  });
+
+  it("start-next는 비어 있는 out 파일도 새 로그처럼 처리한다", () => {
+    const out = makeTempPath("start-next-empty-file.json");
+    writeFileSync(out, "", "utf8");
+
+    runManualPlaylog([
+      `--out=${out}`,
+      "--start-next",
+      "--seed=EMPTY-FILE-SEED",
+      "--startedAt=2026-06-20T02:30:00.000Z",
+    ]);
+
+    const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+    expect(pending.pending).toHaveLength(1);
+    expect(pending.pending[0]).toMatchObject({
+      difficulty: "novice",
+      seed: "EMPTY-FILE-SEED",
+    });
+  });
+
+  it("start-next는 다음 필요 난이도와 다른 강제 난이도를 거부한다", () => {
+    const out = makeTempPath("start-next-wrong-difficulty.json");
+    const failed = runManualPlaylogFailure([
+      `--out=${out}`,
+      "--start-next",
+      "--difficulty=normal",
+      "--seed=NEXT-SEED",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stderr).toContain("다음 필요 세션은 novice 난이도입니다");
   });
 
   it("수동 증거 assert는 빈 로그에서 실패 코드와 다음 세션을 출력한다", () => {

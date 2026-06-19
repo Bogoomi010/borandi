@@ -34,6 +34,8 @@ function usage() {
     "  --out=output/manual-balance-playlog.json",
     "  --start --id=RUN1 --difficulty=normal --stage=1 --seed=RUN123 --startedAt=ISO",
     "                          # 수동 플레이 시작 마커를 pendingSessions에 저장",
+    "  --start-next --seed=RUN123",
+    "                          # 다음 필요 수동 세션의 난이도/목표로 시작 마커를 저장",
     "  --pending                # 아직 finish되지 않은 시작 마커 목록 출력",
     "  --finish=RUN1 --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=0.8.0 --stateChecksum=1234abcd",
     "                          # 시작 마커의 startedAt/difficulty/stage/seed를 사용해 결과 세션 저장",
@@ -62,7 +64,9 @@ function fail(message) {
 
 function readJson(path) {
   if (!existsSync(path)) return { sessions: [] };
-  const data = JSON.parse(readFileSync(path, "utf8"));
+  const raw = readFileSync(path, "utf8").trim();
+  if (!raw) return { sessions: [] };
+  const data = JSON.parse(raw);
   if (!Array.isArray(data.sessions)) data.sessions = [];
   if (!Array.isArray(data.pendingSessions)) data.pendingSessions = [];
   return data;
@@ -592,18 +596,7 @@ function makePendingId({ difficulty, stage, seed, startedAt }) {
   return `${difficulty}-${stage}-${String(seed).replace(/[^0-9A-Za-z_-]/g, "")}-${suffix}`;
 }
 
-function startManualSession() {
-  const difficulty = String(args.difficulty ?? "");
-  if (!difficulties.includes(difficulty)) {
-    fail(`지원하지 않는 난이도입니다: ${difficulty || "(없음)"}`);
-  }
-  const stage = requireNumber("stage");
-  const seed = String(args.seed ?? "");
-  if (!seed) fail("--seed 값이 필요합니다.");
-  const startedAt = parseDate("startedAt", args.startedAt) ?? new Date();
-  const id = String(args.id ?? makePendingId({ difficulty, stage, seed, startedAt: startedAt.toISOString() }));
-  if (!id.trim()) fail("--id 값이 비어 있습니다.");
-
+function savePendingSession({ difficulty, stage, seed, startedAt, id, notes }) {
   const log = readJson(outPath);
   log.schemaVersion = 1;
   log.source = "manual-playlog";
@@ -618,19 +611,79 @@ function startManualSession() {
     stage,
     seed,
     startedAt: startedAt.toISOString(),
-    ...(args.notes ? { notes: String(args.notes) } : {}),
+    ...(notes ? { notes } : {}),
   });
 
   const dir = dirname(outPath);
   if (dir && dir !== ".") mkdirSync(dir, { recursive: true });
   writeFileSync(outPath, `${JSON.stringify(log, null, 2)}\n`, "utf8");
+}
 
+function printStartSaved({ id, startedAt, nextLabel }) {
   console.log(`수동 플레이 시작 마커 저장: ${outPath}`);
+  if (nextLabel) console.log(`- 목표: ${nextLabel}`);
   console.log(`- id: ${id}`);
   console.log(`- 시작: ${startedAt.toISOString()}`);
   console.log("");
   console.log("결과가 나오면 아래 형식으로 마무리하세요:");
   console.log(`yarn manual-playlog --finish=${id} --result=loss --round=40 --legends=0 --maxGrade=hero --dataVersion=0.8.0 --stateChecksum=1234abcd`);
+}
+
+function startManualSession() {
+  const difficulty = String(args.difficulty ?? "");
+  if (!difficulties.includes(difficulty)) {
+    fail(`지원하지 않는 난이도입니다: ${difficulty || "(없음)"}`);
+  }
+  const stage = requireNumber("stage");
+  const seed = String(args.seed ?? "");
+  if (!seed) fail("--seed 값이 필요합니다.");
+  const startedAt = parseDate("startedAt", args.startedAt) ?? new Date();
+  const id = String(args.id ?? makePendingId({ difficulty, stage, seed, startedAt: startedAt.toISOString() }));
+  if (!id.trim()) fail("--id 값이 비어 있습니다.");
+
+  savePendingSession({
+    id,
+    difficulty,
+    stage,
+    seed,
+    startedAt,
+    notes: args.notes ? String(args.notes) : "",
+  });
+
+  printStartSaved({ id, startedAt });
+}
+
+function startNextManualSession() {
+  const next = buildNext().next;
+  if (!next) {
+    console.log("PASS 다음에 필요한 수동 플레이 세션이 없습니다.");
+    return;
+  }
+  const requestedDifficulty = args.difficulty === undefined ? "" : String(args.difficulty);
+  const difficulty = next.difficulty === "any"
+    ? (requestedDifficulty || "novice")
+    : (requestedDifficulty || next.difficulty);
+  if (!difficulties.includes(difficulty)) {
+    fail(`지원하지 않는 난이도입니다: ${difficulty || "(없음)"}`);
+  }
+  if (next.difficulty !== "any" && requestedDifficulty && requestedDifficulty !== next.difficulty) {
+    fail(`다음 필요 세션은 ${next.difficulty} 난이도입니다. --difficulty=${requestedDifficulty}로 시작할 수 없습니다.`);
+  }
+  const stage = optionalNumber("stage", 1);
+  const seed = String(args.seed ?? "");
+  if (!seed) fail("--seed 값이 필요합니다.");
+  const startedAt = parseDate("startedAt", args.startedAt) ?? new Date();
+  const id = String(args.id ?? makePendingId({ difficulty, stage, seed, startedAt: startedAt.toISOString() }));
+  if (!id.trim()) fail("--id 값이 비어 있습니다.");
+  savePendingSession({
+    id,
+    difficulty,
+    stage,
+    seed,
+    startedAt,
+    notes: args.notes ? String(args.notes) : String(next.label),
+  });
+  printStartSaved({ id, startedAt, nextLabel: next.label });
 }
 
 if (args.summary === "true" || args.status === "true") {
@@ -679,6 +732,11 @@ if (args["next-json"] === "true") {
 
 if (args["pending-json"] === "true") {
   printPendingJson();
+  process.exit(0);
+}
+
+if (args["start-next"] === "true") {
+  startNextManualSession();
   process.exit(0);
 }
 
