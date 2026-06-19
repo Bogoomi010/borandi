@@ -510,6 +510,8 @@ function renderGameToText(): string {
       current: s.stageId,
       name: stage.name,
       ground: stage.ground,
+      fixedForRun: true,
+      unlockRule: "clear_round_40_boss_on_current_unlocked_map",
       waypointCount: stage.waypoints.length,
       decorationCount: stage.decorations.length,
     },

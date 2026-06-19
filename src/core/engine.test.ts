@@ -8,7 +8,7 @@ import { MISSIONS } from "../data/missions";
 import { BOSS_ROUND_LIST, FINAL_ROUND, WAVES } from "../data/waves";
 import { STAGES } from "../data/stages";
 import { DIFFICULTIES, SUMMON_TABLE, PITY_TABLE, PITY_THRESHOLD } from "../data/difficulty";
-import { playFullRun } from "../sim/autoPlayer";
+import { playFullRun, playOneRound } from "../sim/autoPlayer";
 
 describe("rng", () => {
   it("같은 시드는 같은 수열을 만든다", () => {
@@ -159,12 +159,17 @@ describe("조합", () => {
 });
 
 describe("전투/리플레이 재현성", () => {
-  it("선택한 맵은 40라운드 런 동안 고정되고 리플레이에도 유지된다", () => {
+  it("선택한 맵은 라운드/보스 진행 중 바뀌지 않고 리플레이에도 유지된다", () => {
     const stageId = 4;
     const game = new Game("STAGE-STAYS", "novice", stageId);
-    playFullRun(game);
+    const observedStageIds = [game.state.stageId];
+    while (game.state.phase !== "ended") {
+      playOneRound(game);
+      observedStageIds.push(game.state.stageId);
+    }
     const replayed = replay("STAGE-STAYS", "novice", stageId, game.state.inputHistory);
 
+    expect(new Set(observedStageIds)).toEqual(new Set([stageId]));
     expect(game.state.stageId).toBe(stageId);
     expect(replayed.state.stageId).toBe(stageId);
     expect(replayed.state.round).toBe(game.state.round);
