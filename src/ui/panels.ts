@@ -560,7 +560,7 @@ export function renderActionbar(ctx: AppCtx) {
     : inBreak
       ? `${s.round}라운드 대기 — 적 ${alive}/${limit}`
       : `${s.round}라운드 진행 중 — 적 ${alive}/${limit}`;
-  root.appendChild(el("div", "", `${phaseText}\n증거조건: ${proofTarget.status}\n수동시간: ${proofTimeText}`)).id = "phase-label";
+  root.appendChild(el("div", "", `${phaseText}\n증거목표: ${proofTarget.label}\n증거조건: ${proofTarget.status}\n수동시간: ${proofTimeText}`)).id = "phase-label";
 
   // 진행 버튼 — 휴식 중에만 "다음 라운드 시작"
   if (inBreak && !ended) {
