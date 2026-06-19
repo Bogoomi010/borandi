@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "sim": "vite-node scripts/sim.ts",
+    "balance": "vite-node scripts/balance-check.ts",
     "check": "node scripts/sandbox-check.mjs",
     "tauri": "tauri"
   },
