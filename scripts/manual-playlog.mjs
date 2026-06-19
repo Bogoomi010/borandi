@@ -12,22 +12,24 @@ const args = Object.fromEntries(
 
 const outPath = String(args.out ?? "output/manual-balance-playlog.json");
 const difficulties = ["novice", "normal", "intermediate", "expert", "master"];
+const results = ["clear", "loss", "quit"];
+const grades = ["common", "rare", "hero", "legend", "hidden"];
 
 function usage() {
   return [
     "사용법:",
-    "  yarn manual-playlog --difficulty=normal --minutes=24 --result=loss --stage=1 --round=39 --notes=\"2전설, 후반 누적 압박\"",
+    "  yarn manual-playlog --difficulty=normal --minutes=24 --result=loss --stage=1 --round=39 --seed=RUN123 --legends=1 --maxGrade=legend --notes=\"2전설, 후반 누적 압박\"",
     "",
     "필수:",
     "  --difficulty=novice|normal|intermediate|expert|master",
     "  --minutes=분 또는 --seconds=초",
-    "",
-    "선택:",
-    "  --out=output/manual-balance-playlog.json",
     "  --result=clear|loss|quit",
     "  --stage=1 --round=40 --seed=...",
     "  --legends=2        # 전설 이상 보유 수",
     "  --maxGrade=legend",
+    "",
+    "선택:",
+    "  --out=output/manual-balance-playlog.json",
     "  --notes=...",
     "  --startedAt=ISO --endedAt=ISO",
   ].join("\n");
@@ -52,6 +54,11 @@ function asNumber(name) {
   const value = Number(args[name]);
   if (!Number.isFinite(value)) fail(`--${name} 값이 숫자가 아닙니다: ${args[name]}`);
   return value;
+}
+
+function requireNumber(name) {
+  if (args[name] === undefined) fail(`--${name} 값이 필요합니다.`);
+  return asNumber(name);
 }
 
 function durationSeconds() {
@@ -81,6 +88,25 @@ function coveredDifficulties(log) {
 const difficulty = args.difficulty;
 if (!difficulties.includes(difficulty)) {
   fail(`지원하지 않는 난이도입니다: ${difficulty ?? "(없음)"}`);
+}
+
+const result = String(args.result ?? "").toLowerCase();
+if (!results.includes(result)) {
+  fail(`--result 값은 ${results.join("|")} 중 하나여야 합니다.`);
+}
+
+const stage = requireNumber("stage");
+const round = requireNumber("round");
+const legends = requireNumber("legends");
+const seed = String(args.seed ?? "");
+if (!seed) fail("--seed 값이 필요합니다.");
+
+const maxGrade = String(args.maxGrade ?? "");
+if (!grades.includes(maxGrade)) {
+  fail(`--maxGrade 값은 ${grades.join("|")} 중 하나여야 합니다.`);
+}
+if (stage < 1 || round < 1 || legends < 0) {
+  fail("--stage/--round는 1 이상, --legends는 0 이상이어야 합니다.");
 }
 
 const minutes = asNumber("minutes");
@@ -114,12 +140,12 @@ const session = {
   ...(minutes !== undefined ? { minutes } : { seconds }),
   startedAt: startedAt.toISOString(),
   endedAt: endedAt.toISOString(),
-  ...(args.result ? { result: String(args.result) } : {}),
-  ...(args.stage !== undefined ? { stage: asNumber("stage") } : {}),
-  ...(args.round !== undefined ? { round: asNumber("round") } : {}),
-  ...(args.seed ? { seed: String(args.seed) } : {}),
-  ...(args.legends !== undefined ? { legends: asNumber("legends") } : {}),
-  ...(args.maxGrade ? { maxGrade: String(args.maxGrade) } : {}),
+  result,
+  stage,
+  round,
+  seed,
+  legends,
+  maxGrade,
   ...(args.notes ? { notes: String(args.notes) } : {}),
 };
 

@@ -97,7 +97,7 @@ function isExampleManualSession(session) {
 
 function realManualSessions(manual) {
   if (!manual || isExampleManualLog(manual)) return [];
-  return (manual.sessions ?? []).filter((s) => !isExampleManualSession(s) && hasValidManualTiming(s));
+  return (manual.sessions ?? []).filter((s) => !isExampleManualSession(s) && hasValidManualTiming(s) && hasCompleteManualMetadata(s));
 }
 
 function countNonExampleManualSessions(manual) {
@@ -131,6 +131,23 @@ function hasValidManualTiming(session) {
   if (reported <= 0 || actual <= 0) return false;
   const tolerance = Math.max(2, reported * 0.05);
   return Math.abs(actual - reported) <= tolerance;
+}
+
+function hasCompleteManualMetadata(session) {
+  const difficulty = String(session.difficulty ?? "");
+  const result = sessionResult(session);
+  const stage = Number(session.stage);
+  const round = Number(session.round);
+  const legends = legendCount(session);
+  const maxGrade = String(session.maxGrade ?? "");
+  const seed = String(session.seed ?? "");
+  return ["novice", "normal", "intermediate", "expert", "master"].includes(difficulty) &&
+    ["clear", "cleared", "win", "won", "victory", "loss", "lose", "lost", "fail", "failed", "defeat", "quit"].includes(result) &&
+    Number.isFinite(stage) && stage >= 1 &&
+    Number.isFinite(round) && round >= 1 &&
+    Number.isFinite(legends) && legends >= 0 &&
+    ["common", "rare", "hero", "legend", "hidden"].includes(maxGrade) &&
+    seed.length > 0;
 }
 
 function sessionResult(session) {
@@ -338,7 +355,7 @@ function buildRows(balance, browser, direct, manual) {
   rows.push({
     req: "사람이 직접 2시간 플레이",
     evidence: manual
-      ? `${isExampleManualLog(manual) ? "예시 로그 제외, " : ""}시간검증 ${validManualSessionCount}/${manualSessionCount}세션, ${manualTotalMinutes.toFixed(1)}분, 난이도 ${[...manualDiffs].join(", ") || "없음"}`
+      ? `${isExampleManualLog(manual) ? "예시 로그 제외, " : ""}증거검증 ${validManualSessionCount}/${manualSessionCount}세션, ${manualTotalMinutes.toFixed(1)}분, 난이도 ${[...manualDiffs].join(", ") || "없음"}`
       : "아직 실제 수동 플레이 기록 없음",
     pass: !!manual && manualTotalMinutes >= 120 && manualCoversAll,
     missing: !manual || manualTotalMinutes < 120 || !manualCoversAll,

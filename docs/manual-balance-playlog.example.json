@@ -11,6 +11,7 @@
       "result": "clear",
       "stage": 1,
       "round": 40,
+      "seed": "MANUAL-NOVICE-01",
       "legends": 0,
       "maxGrade": "hero",
       "notes": "입문자 무전설 클리어 체감 기록 예시"
@@ -23,6 +24,7 @@
       "result": "clear",
       "stage": 1,
       "round": 40,
+      "seed": "MANUAL-NORMAL-01",
       "legends": 2,
       "maxGrade": "legend",
       "notes": "일반 0전설/2전설 비교 체감 기록 예시"
@@ -35,6 +37,7 @@
       "result": "clear",
       "stage": 1,
       "round": 40,
+      "seed": "MANUAL-INTERMEDIATE-01",
       "legends": 5,
       "maxGrade": "legend",
       "notes": "중급자 2전설/5전설 비교 체감 기록 예시"
@@ -47,6 +50,7 @@
       "result": "loss",
       "stage": 1,
       "round": 40,
+      "seed": "MANUAL-EXPERT-LOW-01",
       "legends": 5,
       "maxGrade": "legend",
       "notes": "고수 5전설로는 후반 누적 압박이 남는 기록 예시"
@@ -59,6 +63,7 @@
       "result": "clear",
       "stage": 1,
       "round": 40,
+      "seed": "MANUAL-EXPERT-HIGH-01",
       "legends": 9,
       "maxGrade": "legend",
       "notes": "고수는 5전설보다 높은 성장에서 클리어권에 들어가는 기록 예시"
@@ -71,6 +76,7 @@
       "result": "loss",
       "stage": 1,
       "round": 25,
+      "seed": "MANUAL-MASTER-01",
       "legends": 3,
       "maxGrade": "legend",
       "notes": "초고수 난도 체감 기록 예시"
