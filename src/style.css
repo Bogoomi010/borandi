@@ -438,7 +438,7 @@ canvas#board { max-width: 100%; max-height: 100%; }
 }
 
 .modal-backdrop {
-  position: fixed; inset: 0; background: rgba(5, 6, 10, .92); z-index: 0;
+  position: fixed; inset: 0; background: rgba(5, 6, 10, .94); z-index: 1000;
   display: flex; align-items: center; justify-content: center;
   backdrop-filter: blur(4px);
   animation: fade-in .15s ease-out;
@@ -447,6 +447,7 @@ canvas#board { max-width: 100%; max-height: 100%; }
 @keyframes fade-in { from { opacity: 0; } }
 
 .modal {
+  position: relative; z-index: 1001;
   background: linear-gradient(165deg, #171b28 0%, #0f121b 100%);
   border: 1px solid var(--line-glow); border-radius: 12px;
   padding: 20px 22px; min-width: 420px; max-width: 760px; max-height: 86vh;
@@ -475,7 +476,8 @@ canvas#board { max-width: 100%; max-height: 100%; }
 .choice-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 10px !important; }
 .choice-btn:hover { border-color: var(--accent) !important; box-shadow: 0 0 14px rgba(91, 140, 255, .25); }
 .choice-btn .cname { font-weight: 600; }
-.choice-btn .cdesc { font-size: 11px; color: var(--text-dim); text-align: center; white-space: pre-line; }
+.choice-btn .cdesc { font-size: 11px; line-height: 1.35; color: var(--text-dim); text-align: center; white-space: pre-line; }
+.difficulty-choice-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .stage-choice-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); max-height: 260px; overflow-y: auto; }
 .stage-choice { min-height: 74px; }
 .stage-choice:disabled { opacity: .45; cursor: default; }

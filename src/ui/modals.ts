@@ -266,6 +266,27 @@ export function resetResultShown() { resultShown = false; }
 
 // ---------- 새 게임 ----------
 
+const MANUAL_BALANCE_TARGETS: Array<{
+  difficultyId: DifficultyId;
+  difficulty: string;
+  target: string;
+  length: string;
+}> = [
+  { difficultyId: "novice", difficulty: "입문자", target: "무전설 40R 클리어", length: "12분 이상" },
+  { difficultyId: "normal", difficulty: "일반", target: "1~2전설 40R 클리어", length: "12분 이상" },
+  { difficultyId: "intermediate", difficulty: "중급자", target: "5전설 이상 40R 클리어", length: "12분 이상" },
+  { difficultyId: "expert", difficulty: "고수", target: "5전설 이하 40R 실패", length: "12분 이상" },
+  { difficultyId: "expert", difficulty: "고수", target: "6전설 이상 40R 클리어", length: "12분 이상" },
+  { difficultyId: "master", difficulty: "초고수", target: "실패 기록", length: "12분 이상" },
+];
+
+function manualTargetHint(difficultyId: DifficultyId): string {
+  return MANUAL_BALANCE_TARGETS
+    .filter((target) => target.difficultyId === difficultyId)
+    .map((target) => target.target)
+    .join(" / ");
+}
+
 export function openNewRunModal(ctx: AppCtx, dismissable = true) {
   openModal((body, close) => {
     body.appendChild(el("h2", "", "새 게임"));
@@ -275,11 +296,12 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
     body.appendChild(el("h3", "", "난이도"));
     let chosen: DifficultyId = "novice";
     let chosenStage = unlockedStage;
-    const diffRow = el("div", "choice-grid");
+    const diffRow = el("div", "choice-grid difficulty-choice-grid");
     const diffBtns: HTMLButtonElement[] = [];
     for (const d of DIFFICULTIES) {
       const b = el("button", "choice-btn") as HTMLButtonElement;
       b.appendChild(el("span", "cname", d.name));
+      b.appendChild(el("span", "cdesc", `수동 목표: ${manualTargetHint(d.id)}`));
       b.appendChild(el("span", "cdesc", `보유 ${d.unitCap}기 · 적 체력 x${d.enemyHpMult} · 누적 ${d.enemyLimit} · 시작 ${d.startGold}골드`));
       if (d.id === chosen) b.style.borderColor = "var(--accent)";
       b.onclick = () => {
@@ -339,20 +361,14 @@ export function openManualProofGuideModal() {
     body.appendChild(el("div", "modal-note", "결과 화면의 로그 명령을 실행한 뒤, 아래 요약 명령으로 남은 증거를 확인합니다."));
 
     const summaryCommand = "yarn manual-playlog --summary";
+    const summaryJsonCommand = "yarn --silent manual-playlog --summary --json";
     body.appendChild(el("h3", "", "상태 확인"));
     body.appendChild(el("pre", "report", summaryCommand));
+    body.appendChild(el("pre", "report", summaryJsonCommand));
 
-    const targets = [
-      ["입문자", "무전설 40R 클리어", "12분 이상"],
-      ["일반", "1~2전설 40R 클리어", "12분 이상"],
-      ["중급자", "5전설 이상 40R 클리어", "12분 이상"],
-      ["고수", "5전설 이하 40R 실패", "12분 이상"],
-      ["고수", "6전설 이상 40R 클리어", "12분 이상"],
-      ["초고수", "실패 기록", "12분 이상"],
-    ];
     body.appendChild(el("h3", "", "필수 목표 세션"));
     const table = el("table", "kv-table");
-    for (const [difficulty, target, length] of targets) {
+    for (const { difficulty, target, length } of MANUAL_BALANCE_TARGETS) {
       const tr = el("tr");
       tr.appendChild(el("td", "", difficulty));
       tr.appendChild(el("td", "", target));
@@ -361,6 +377,12 @@ export function openManualProofGuideModal() {
     }
     body.appendChild(table);
     body.appendChild(el("div", "result-hint", "총 120분 이상, 각 난이도 최소 12분 이상이 함께 필요합니다."));
+    body.appendChild(el("h3", "", "권장 플레이 순서"));
+    body.appendChild(el(
+      "div",
+      "modal-note",
+      "위 6개 목표 세션을 먼저 12분 이상씩 채우면 72분입니다. 이후 부족한 48분은 요약 명령의 다음 필요 항목을 보며 난이도별 최소 12분 조건과 총 120분 조건을 채웁니다.",
+    ));
 
     const row = el("div", "row-btns");
     const copySummary = el("button", "", "요약 명령 복사");
@@ -373,6 +395,16 @@ export function openManualProofGuideModal() {
       }
     };
     row.appendChild(copySummary);
+    const copyJsonSummary = el("button", "", "JSON 명령 복사");
+    copyJsonSummary.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(summaryJsonCommand);
+        toast("수동 증거 JSON 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copyJsonSummary);
     const closeBtn = el("button", "primary", "닫기");
     closeBtn.onclick = close;
     row.appendChild(closeBtn);
