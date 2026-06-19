@@ -271,6 +271,7 @@ const targetPlans = [
 function buildSummary() {
   const log = existsSync(outPath) ? readJson(outPath) : { sessions: [] };
   const allSessions = isExampleManualLog(log) ? [] : (log.sessions ?? []).filter((session) => !isExampleManualSession(session));
+  const pending = isExampleManualLog(log) ? [] : pendingSessions(log);
   const validSessions = realManualSessions(log);
   const totalMinutes = validSessions.reduce((sum, session) => sum + sessionMinutes(session), 0);
   const minutesByDifficulty = new Map();
@@ -330,6 +331,8 @@ function buildSummary() {
     exampleExcluded: isExampleManualLog(log),
     nonExampleSessionCount: allSessions.length,
     validSessionCount: validSessions.length,
+    pendingCount: pending.length,
+    pending,
     totalMinutes,
     requiredMinutes: 120,
     minutesByDifficulty: Object.fromEntries(difficulties.map((id) => [id, minutesByDifficulty.get(id) ?? 0])),
@@ -373,6 +376,7 @@ function buildPlan() {
       requiredMinutes: summary.requiredMinutes,
       minutesByDifficulty: summary.minutesByDifficulty,
       validSessionCount: summary.validSessionCount,
+      pendingCount: summary.pendingCount,
     },
     steps: [
       ...missingTargets.map((target) => ({
@@ -410,7 +414,15 @@ function printSummary() {
   console.log("# 수동 플레이 로그 상태");
   console.log(`- 로그: ${summary.logPath}${summary.logExists ? "" : " (아직 없음)"}`);
   console.log(`- 예시 로그 제외: ${summary.exampleExcluded ? "예" : "아니오"}`);
+  console.log(`- 시작 마커 대기: ${summary.pendingCount}개`);
   console.log("");
+  if (summary.pendingCount > 0) {
+    console.log("PENDING 아직 finish되지 않은 시작 마커:");
+    for (const session of summary.pending) {
+      console.log(`  - ${session.id}: ${session.difficulty} stage=${session.stage} seed=${session.seed} startedAt=${session.startedAt}`);
+    }
+    console.log("");
+  }
   for (const row of summary.rows) {
     console.log(`${row.pass ? "PASS" : "MISSING"} ${row.label}: ${row.evidence}`);
     if (!row.pass) console.log(`  다음 필요: ${row.next}`);
@@ -428,6 +440,7 @@ function printPlan() {
   console.log("# 수동 플레이 증거 수집 계획");
   console.log(`- 로그: ${plan.logPath}`);
   console.log(`- 현재: ${plan.current.validSessionCount}세션, ${plan.current.totalMinutes.toFixed(1)}/${plan.current.requiredMinutes.toFixed(1)}분`);
+  console.log(`- 시작 마커 대기: ${plan.current.pendingCount}개`);
   console.log(`- 난이도별: ${difficulties.map((id) => `${id} ${Number(plan.current.minutesByDifficulty[id] ?? 0).toFixed(1)}분`).join(", ")}`);
   console.log("");
   if (plan.steps.length === 0) {

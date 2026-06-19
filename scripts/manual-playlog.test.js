@@ -129,12 +129,17 @@ describe("manual-playlog plan", () => {
     ]);
 
     let pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+    const summaryBeforeFinish = JSON.parse(runManualPlaylog([`--out=${out}`, "--summary-json"]));
+    const planBeforeFinish = JSON.parse(runManualPlaylog([`--out=${out}`, "--plan-json"]));
     expect(pending.pending).toHaveLength(1);
     expect(pending.pending[0]).toMatchObject({
       id: "normal-run-1",
       difficulty: "normal",
       seed: "PENDING-SEED",
     });
+    expect(summaryBeforeFinish.pendingCount).toBe(1);
+    expect(planBeforeFinish.current.pendingCount).toBe(1);
+    expect(runManualPlaylog([`--out=${out}`, "--summary"])).toContain("PENDING 아직 finish되지 않은 시작 마커");
 
     runManualPlaylog([
       `--out=${out}`,
@@ -150,7 +155,9 @@ describe("manual-playlog plan", () => {
 
     const log = readJson(out);
     pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+    const summaryAfterFinish = JSON.parse(runManualPlaylog([`--out=${out}`, "--summary-json"]));
     expect(pending.pending).toHaveLength(0);
+    expect(summaryAfterFinish.pendingCount).toBe(0);
     expect(log.sessions).toHaveLength(1);
     expect(log.sessions[0]).toMatchObject({
       pendingSessionId: "normal-run-1",
