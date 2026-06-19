@@ -25,7 +25,7 @@ const args = Object.fromEntries(
   }),
 );
 
-const seeds = Number(args.seeds ?? 20);
+const seeds = Number(args.seeds ?? 30);
 
 const scenarios: Scenario[] = [
   { id: "noviceHero", label: "입문자 / 전설 없음", difficulty: "novice", options: { strategy: "balanced", maxGrade: "hero" as Grade } },
