@@ -458,6 +458,7 @@ canvas#board { max-width: 100%; max-height: 100%; }
 
 .modal h2 { font-size: 17px; letter-spacing: .06em; }
 .modal h3 { font-size: 12px; color: var(--text-dim); margin-top: 4px; letter-spacing: .1em; text-transform: uppercase; }
+.modal-note { margin-top: -2px; color: var(--text-dim); font-size: 12px; line-height: 1.45; }
 .modal .row-btns { display: flex; gap: 8px; justify-content: flex-end; }
 .modal .row-btns button, .modal .choice-btn {
   background: var(--btn-grad); border: 1px solid var(--line); color: var(--text);

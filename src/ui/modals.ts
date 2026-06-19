@@ -263,15 +263,16 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
     }
     body.appendChild(diffRow);
 
-    body.appendChild(el("h3", "", "맵 선택 (이번 런 40R 고정)"));
+    body.appendChild(el("h3", "", "맵 선택 권한"));
+    body.appendChild(el("div", "modal-note", "새 게임을 시작할 때 고른 맵 하나로 1~40R 최종 보스까지 진행합니다."));
     const stageRow = el("div", "choice-grid stage-choice-grid");
     const stageBtns: HTMLButtonElement[] = [];
     for (const stage of STAGES) {
       const b = el("button", "choice-btn stage-choice") as HTMLButtonElement;
       b.appendChild(el("span", "cname", `${stage.id}. ${stage.name}`));
-      b.appendChild(el("span", "cdesc", `${stage.subtitle} · 1~40R 같은 맵 진행`));
+      b.appendChild(el("span", "cdesc", `${stage.subtitle} · 라운드/보스마다 맵 변경 없음`));
       b.disabled = stage.id > unlockedStage;
-      if (b.disabled) b.appendChild(el("span", "cdesc", `잠김: ${stage.id - 1}번 맵 40R 최종 보스 클리어 필요`));
+      if (b.disabled) b.appendChild(el("span", "cdesc", `잠김: ${stage.id - 1}번 맵 40R 최종 보스 클리어 후 선택 가능`));
       if (stage.id === chosenStage) b.style.borderColor = "var(--accent)";
       b.onclick = () => {
         chosenStage = stage.id;

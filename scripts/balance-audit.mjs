@@ -174,7 +174,7 @@ function hasCompleteManualMetadata(session) {
 
 function isLegendMetadataConsistent(maxGrade, legends) {
   const maxGradeIsLegendOrHidden = maxGrade === "legend" || maxGrade === "hidden";
-  return legends > 0 ? maxGradeIsLegendOrHidden : true;
+  return maxGradeIsLegendOrHidden ? legends > 0 : legends === 0;
 }
 
 function sessionResult(session) {

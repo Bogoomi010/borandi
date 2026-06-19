@@ -262,7 +262,7 @@ function loop(now: number) {
       endedHandled = true;
       profileMarkSeen(game.state.units.map((u) => u.defId), game.state.discoveredRecipeIds);
       const unlockedNext = profileRecordRun(game.state.cleared, game.state.difficulty, game.state.round, game.state.stageId);
-      if (unlockedNext) toast(`${stageById(game.state.stageId + 1).name} 선택 권한이 열렸습니다`, "ok", 3200);
+      if (unlockedNext) toast(`다음 맵 선택 권한 획득: ${stageById(game.state.stageId + 1).name}`, "ok", 3200);
     }
 
     // 라운드 사이 휴식 카운트다운 표시 (엔진 breakTicks 기반)

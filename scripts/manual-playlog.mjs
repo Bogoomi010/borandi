@@ -89,7 +89,7 @@ function coveredDifficulties(log) {
 
 function isLegendMetadataConsistent(maxGrade, legends) {
   const maxGradeIsLegendOrHidden = maxGrade === "legend" || maxGrade === "hidden";
-  return legends > 0 ? maxGradeIsLegendOrHidden : true;
+  return maxGradeIsLegendOrHidden ? legends > 0 : legends === 0;
 }
 
 const difficulty = args.difficulty;
@@ -122,7 +122,7 @@ if (stage < 1 || round < 1 || legends < 0) {
   fail("--stage/--round는 1 이상, --legends는 0 이상이어야 합니다.");
 }
 if (!isLegendMetadataConsistent(maxGrade, legends)) {
-  fail("--legends가 1 이상이면 --maxGrade는 legend 또는 hidden이어야 합니다.");
+  fail("--legends와 --maxGrade가 모순됩니다. 전설 이상 보유 수와 최고 등급을 결과 리포트 그대로 입력하세요.");
 }
 
 const minutes = asNumber("minutes");
