@@ -21,6 +21,7 @@ import { stageById } from "./data/stages";
 import { waveForRound } from "./data/waves";
 import { UPGRADES, upgradeCost } from "./data/upgrades";
 import { GRADE_ORDER, type DifficultyId, type Grade } from "./core/types";
+import { MANUAL_PROOF_TARGET_SECONDS, manualProofTargetFor } from "./core/manualProof";
 
 const settings = loadSettings();
 const audio = new GameAudio(settings);
@@ -505,6 +506,8 @@ function renderGameToText(): string {
     gradeCounts[grade]++;
     if (!maxGrade || GRADE_ORDER.indexOf(grade) > GRADE_ORDER.indexOf(maxGrade)) maxGrade = grade;
   }
+  const legendOrBetter = gradeCounts.legend + gradeCounts.hidden;
+  const manualProofTarget = manualProofTargetFor(s.difficulty, legendOrBetter);
   return JSON.stringify({
     coordinateSystem: "board origin top-left, x right, y down, logical size 960x560",
     scene: ctx.scene,
@@ -523,8 +526,11 @@ function renderGameToText(): string {
     },
     manualProof: {
       elapsedSeconds: manualProofSeconds,
-      targetSeconds: 12 * 60,
-      targetMet: manualProofSeconds >= 12 * 60,
+      targetSeconds: MANUAL_PROOF_TARGET_SECONDS,
+      targetMet: manualProofSeconds >= MANUAL_PROOF_TARGET_SECONDS,
+      targetLabel: manualProofTarget.label,
+      conditionStatus: manualProofTarget.status,
+      conditionState: manualProofTarget.state,
     },
     round: s.round,
     wave: { type: wave.type, enemyName: wave.enemyName, count: wave.count, spawned: s.waveSpawned, killed: s.waveKilled },
@@ -537,7 +543,7 @@ function renderGameToText(): string {
     unitSummary: {
       total: s.units.length,
       gradeCounts,
-      legendOrBetter: gradeCounts.legend + gradeCounts.hidden,
+      legendOrBetter,
       maxGrade,
     },
     boss: {

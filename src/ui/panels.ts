@@ -12,10 +12,9 @@ import { UPGRADES, upgradeCost } from "../data/upgrades";
 import { SUMMON_COST, SELL_REFUND, DIFFICULTY_BY_ID } from "../data/difficulty";
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
 import { openSelectorModal } from "./modals";
+import { MANUAL_PROOF_TARGET_SECONDS, manualProofTargetFor } from "../core/manualProof";
 
 // ---------- 상단 상태바 ----------
-
-const MANUAL_PROOF_TARGET_SECONDS = 12 * 60;
 
 function clockText(seconds: number): string {
   const safe = Math.max(0, Math.floor(seconds));
@@ -546,12 +545,16 @@ export function renderActionbar(ctx: AppCtx) {
   const inBreak = s.breakTicks > 0;
   const alive = s.enemies.length;
   const limit = DIFFICULTY_BY_ID[s.difficulty].enemyLimit;
+  const legendOrBetter = s.units
+    .filter((u) => GRADE_ORDER.indexOf(UNIT_BY_ID[u.defId].grade) >= GRADE_ORDER.indexOf("legend"))
+    .length;
+  const proofTarget = manualProofTargetFor(s.difficulty, legendOrBetter);
   const phaseText = s.phase === "ended"
     ? (s.cleared ? "클리어!" : "게임 종료")
     : inBreak
       ? `${s.round}라운드 대기 — 적 ${alive}/${limit}`
       : `${s.round}라운드 진행 중 — 적 ${alive}/${limit}`;
-  root.appendChild(el("div", "", phaseText)).id = "phase-label";
+  root.appendChild(el("div", "", `${phaseText}\n증거조건: ${proofTarget.status}`)).id = "phase-label";
 
   // 진행 버튼 — 휴식 중에만 "다음 라운드 시작"
   if (inBreak && !ended) {

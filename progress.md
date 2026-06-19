@@ -94,6 +94,7 @@ Original prompt: 완성된 에셋으로 게임 스테이지를 최대 15스테�
 - `yarn test` now includes a `scripts/manual-playlog.test.js` CLI integration test that locks the manual proof plan behavior for empty logs, example logs, and completed 120-minute logs.
 - Re-applied the user's corrected stage semantics in UI language: a selected map is a fixed 1~40R run target, and a clear grants next-map selection permission rather than changing maps after each stage/round. Result modals, reports, topbar, render_game_to_text, and new-game map labels now use this framing.
 - Added a live `수동증거` topbar timer and matching `render_game_to_text.manualProof` state so real human balance sessions can see when a run has reached the 12-minute minimum required for target evidence rows.
+- Added per-difficulty manual proof condition status to the bottom phase label and `render_game_to_text.manualProof`, so human playtesters can see whether the current legend count is still aligned with the needed novice/normal/intermediate/expert/master evidence row.
 
 ## TODO
 
