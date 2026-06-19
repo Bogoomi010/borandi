@@ -116,6 +116,7 @@ Original prompt: 완성된 에셋으로 게임 스테이지를 최대 15스테�
 - Result modals and exported reports now also include a `finish-latest && yarn manual-playlog --next` command, so a human tester can close the latest marked session and immediately see the next required balance target.
 - The live manual-proof timer now shows the remaining time until the 12-minute target in both the top bar and bottom phase label, and `render_game_to_text.manualProof` exposes `remainingSeconds` so browser checks can verify the direct-play evidence timer.
 - The bottom phase label now includes the current manual proof target name as well as the condition and remaining time, so a tester can see in-run whether the session is intended for novice no-legend, normal 1~2 legend, intermediate 5+ legend, expert, or master evidence.
+- The bottom action bar now has a direct `수동증거` button that opens the current-run manual proof guide, making the exact start-marker command and remaining target commands reachable without digging through the Tools menu during a human playtest.
 
 ## TODO
 

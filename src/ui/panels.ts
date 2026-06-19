@@ -11,7 +11,7 @@ import { stageById } from "../data/stages";
 import { UPGRADES, upgradeCost } from "../data/upgrades";
 import { SUMMON_COST, SELL_REFUND, DIFFICULTY_BY_ID } from "../data/difficulty";
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
-import { openSelectorModal } from "./modals";
+import { openManualProofGuideModal, openSelectorModal } from "./modals";
 import { MANUAL_PROOF_TARGET_SECONDS, manualProofRemainingSeconds, manualProofTargetFor } from "../core/manualProof";
 
 // ---------- 상단 상태바 ----------
@@ -539,6 +539,11 @@ export function renderActionbar(ctx: AppCtx) {
   root.appendChild(btn("업그레이드", "계열 강화", {
     disabled: ended,
     onClick: () => openUpgradeModal(ctx),
+  }));
+
+  root.appendChild(btn("수동증거", "시작마커/목표", {
+    disabled: ended,
+    onClick: () => openManualProofGuideModal(ctx),
   }));
 
   root.appendChild(el("div", "gap"));
