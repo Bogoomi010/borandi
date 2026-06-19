@@ -284,4 +284,5 @@ export interface ResultSummary {
   playedAt: string;
   manualStartedAt?: string;
   wallSeconds?: number;
+  unlockedNextStage?: boolean;
 }

@@ -80,6 +80,7 @@ const ctx: AppCtx = {
   saveStatus: "idle",
   runStartedAt: new Date().toISOString(),
   runStartedAtMs: performance.now(),
+  lastRunUnlockedNext: false,
   refresh: () => { panelsDirty = true; },
   newRun: (seed, difficulty, stageId = 1) => {
     game = new Game(seed || randomSeed(), difficulty, stageId);
@@ -90,6 +91,7 @@ const ctx: AppCtx = {
     renderer.resetFx();
     craftableIds = craftableSet();
     ctx.paused = false;
+    ctx.lastRunUnlockedNext = false;
     resetResultShown();
     endedHandled = false;
     lastPhase = game.state.phase;
@@ -110,6 +112,7 @@ const ctx: AppCtx = {
     renderer.resetFx();
     craftableIds = craftableSet();
     ctx.paused = true;
+    ctx.lastRunUnlockedNext = false;
     resetResultShown();
     endedHandled = game.state.phase === "ended";
     lastPhase = game.state.phase;
@@ -262,6 +265,7 @@ function loop(now: number) {
       endedHandled = true;
       profileMarkSeen(game.state.units.map((u) => u.defId), game.state.discoveredRecipeIds);
       const unlockedNext = profileRecordRun(game.state.cleared, game.state.difficulty, game.state.round, game.state.stageId);
+      ctx.lastRunUnlockedNext = unlockedNext;
       if (unlockedNext) toast(`다음 맵 선택 권한 획득: ${stageById(game.state.stageId + 1).name}`, "ok", 3200);
     }
 
@@ -511,6 +515,7 @@ function renderGameToText(): string {
       name: stage.name,
       ground: stage.ground,
       fixedForRun: true,
+      runGoal: "selected_map_round_1_to_40_final_boss",
       unlockRule: "clear_round_40_boss_on_current_unlocked_map",
       waypointCount: stage.waypoints.length,
       decorationCount: stage.decorations.length,

@@ -186,6 +186,7 @@ button { font-family: inherit; }
 .stat .value.gold { color: var(--gold); text-shadow: 0 0 10px rgba(240, 195, 60, .3); }
 .stat .value.life { color: var(--danger); text-shadow: 0 0 10px rgba(229, 83, 75, .3); }
 .stat .value.boss { color: var(--warn); }
+.stat .value.mapgoal { color: var(--ok); }
 #topbar .spacer { flex: 1; }
 #save-status { font-size: 11px; color: var(--text-dim); }
 #save-status.failed { color: var(--danger); cursor: pointer; }
@@ -460,6 +461,13 @@ canvas#board { max-width: 100%; max-height: 100%; }
 .modal h2 { font-size: 17px; letter-spacing: .06em; }
 .modal h3 { font-size: 12px; color: var(--text-dim); margin-top: 4px; letter-spacing: .1em; text-transform: uppercase; }
 .modal-note { margin-top: -2px; color: var(--text-dim); font-size: 12px; line-height: 1.45; }
+.map-rule-note {
+  border: 1px solid rgba(110, 220, 160, .25);
+  background: rgba(110, 220, 160, .08);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 9px 11px;
+}
 .modal .row-btns { display: flex; gap: 8px; justify-content: flex-end; }
 .modal .row-btns button, .modal .choice-btn {
   background: var(--btn-grad); border: 1px solid var(--line); color: var(--text);
