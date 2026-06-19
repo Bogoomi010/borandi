@@ -489,6 +489,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const summaryCommand = "yarn manual-playlog --summary";
     const planCommand = "yarn manual-playlog --plan";
     const nextCommand = "yarn manual-playlog --next";
+    const startNextCommand = "yarn manual-playlog --start-next --seed=GAME_SEED_HERE";
     const pendingCommand = "yarn manual-playlog --pending";
     const summaryJsonCommand = "yarn --silent manual-playlog --summary --json";
     if (currentStartCommand) {
@@ -499,6 +500,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     body.appendChild(el("h3", "", "상태 확인"));
     body.appendChild(el("pre", "report", pendingCommand));
     body.appendChild(el("pre", "report", nextCommand));
+    body.appendChild(el("pre", "report", startNextCommand));
     body.appendChild(el("pre", "report", summaryCommand));
     body.appendChild(el("pre", "report", planCommand));
     body.appendChild(el("pre", "report", summaryJsonCommand));
@@ -554,6 +556,16 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       }
     };
     row.appendChild(copyNext);
+    const copyStartNext = el("button", "", "다음 시작마커 복사");
+    copyStartNext.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(startNextCommand);
+        toast("다음 필요 세션 시작 마커 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copyStartNext);
     const copySummary = el("button", "", "요약 명령 복사");
     copySummary.onclick = async () => {
       try {
