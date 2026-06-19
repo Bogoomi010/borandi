@@ -16,6 +16,7 @@ const browserPath = String(args.browser ?? "output/browser-balance.json");
 const directPath = String(args.direct ?? "output/browser-direct.json");
 const manualPath = String(args.manual ?? "output/manual-balance-playlog.json");
 const outPath = typeof args.out === "string" && args.out !== "true" ? args.out : "";
+const MIN_MANUAL_MINUTES_PER_DIFFICULTY = 12;
 
 function readJson(path) {
   if (!existsSync(path)) return null;
@@ -81,6 +82,14 @@ function manualMinutes(manual) {
 
 function manualDifficulties(manual) {
   return new Set(realManualSessions(manual).map((s) => s.difficulty).filter(Boolean));
+}
+
+function manualMinutesByDifficulty(manual) {
+  const result = new Map();
+  for (const session of realManualSessions(manual)) {
+    result.set(session.difficulty, (result.get(session.difficulty) ?? 0) + sessionMinutes(session));
+  }
+  return result;
 }
 
 function manualSessions(manual, difficulty) {
@@ -336,7 +345,12 @@ function buildRows(balance, browser, direct, manual) {
 
   const manualTotalMinutes = manualMinutes(manual);
   const manualDiffs = manualDifficulties(manual);
+  const manualMinutesByDiff = manualMinutesByDifficulty(manual);
+  const manualDifficultyMinutesText = requiredDifficulties
+    .map((d) => `${d} ${(manualMinutesByDiff.get(d) ?? 0).toFixed(1)}분`)
+    .join(", ");
   const manualCoversAll = requiredDifficulties.every((d) => manualDiffs.has(d));
+  const manualCoversMinimumMinutes = requiredDifficulties.every((d) => (manualMinutesByDiff.get(d) ?? 0) >= MIN_MANUAL_MINUTES_PER_DIFFICULTY);
   const manualSessionCount = countNonExampleManualSessions(manual);
   const validManualSessionCount = realManualSessions(manual).length;
   const noviceManual = manualSessions(manual, "novice");
@@ -355,10 +369,10 @@ function buildRows(balance, browser, direct, manual) {
   rows.push({
     req: "사람이 직접 2시간 플레이",
     evidence: manual
-      ? `${isExampleManualLog(manual) ? "예시 로그 제외, " : ""}증거검증 ${validManualSessionCount}/${manualSessionCount}세션, ${manualTotalMinutes.toFixed(1)}분, 난이도 ${[...manualDiffs].join(", ") || "없음"}`
+      ? `${isExampleManualLog(manual) ? "예시 로그 제외, " : ""}증거검증 ${validManualSessionCount}/${manualSessionCount}세션, ${manualTotalMinutes.toFixed(1)}분, 난이도별 ${manualDifficultyMinutesText}`
       : "아직 실제 수동 플레이 기록 없음",
-    pass: !!manual && manualTotalMinutes >= 120 && manualCoversAll,
-    missing: !manual || manualTotalMinutes < 120 || !manualCoversAll,
+    pass: !!manual && manualTotalMinutes >= 120 && manualCoversAll && manualCoversMinimumMinutes,
+    missing: !manual || manualTotalMinutes < 120 || !manualCoversAll || !manualCoversMinimumMinutes,
   });
   rows.push({
     req: "수동: 입문자 무전설 클리어",
