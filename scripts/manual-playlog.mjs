@@ -37,6 +37,9 @@ function usage() {
     "  --pending                # 아직 finish되지 않은 시작 마커 목록 출력",
     "  --finish=RUN1 --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=0.8.0 --stateChecksum=1234abcd",
     "                          # 시작 마커의 startedAt/difficulty/stage/seed를 사용해 결과 세션 저장",
+    "  --finish-latest --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=0.8.0 --stateChecksum=1234abcd",
+    "                          # 가장 최근 시작 마커를 자동 선택해 결과 세션 저장",
+    "  --finish                 # --finish-latest와 동일",
     "  --summary             # 현재 수동 로그 충족/미충족 항목만 출력",
     "  --summary --json      # 현재 수동 로그 상태를 JSON으로 출력",
     "  --plan                # 남은 120분 수동 플레이 증거 수집 순서 출력",
@@ -496,6 +499,17 @@ function pendingSessions(log) {
   return (log.pendingSessions ?? []).filter((session) => !isExampleManualSession(session));
 }
 
+function latestPendingSession(log) {
+  const pending = pendingSessions(log);
+  return pending
+    .slice()
+    .sort((a, b) => {
+      const aTime = new Date(String(a.startedAt ?? "")).getTime();
+      const bTime = new Date(String(b.startedAt ?? "")).getTime();
+      return (Number.isFinite(bTime) ? bTime : 0) - (Number.isFinite(aTime) ? aTime : 0);
+    })[0] ?? null;
+}
+
 function buildPending() {
   const log = readJson(outPath);
   const pending = pendingSessions(log);
@@ -642,11 +656,17 @@ if (args.start === "true") {
   process.exit(0);
 }
 
-const finishId = typeof args.finish === "string" && args.finish !== "true" ? args.finish : "";
-const finishLog = finishId ? readJson(outPath) : null;
+const explicitFinishId = typeof args.finish === "string" && args.finish !== "true" ? args.finish : "";
+const finishLatest = args["finish-latest"] === "true" || args.finish === "true";
+const finishLog = explicitFinishId || finishLatest ? readJson(outPath) : null;
+const latestPending = finishLatest ? latestPendingSession(finishLog) : null;
+const finishId = explicitFinishId || (latestPending ? String(latestPending.id) : "");
 const pendingFinish = finishId
   ? pendingSessions(finishLog).find((session) => String(session.id) === finishId)
   : null;
+if (finishLatest && !latestPending) {
+  fail("--finish-latest에 사용할 시작 마커가 없습니다.");
+}
 if (finishId && !pendingFinish) {
   fail(`--finish 시작 마커를 찾을 수 없습니다: ${finishId}`);
 }

@@ -168,6 +168,52 @@ describe("manual-playlog plan", () => {
     });
   });
 
+  it("finish-latest는 가장 최근 시작 마커만 마무리한다", () => {
+    const out = makeTempPath("finish-latest.json");
+    runManualPlaylog([
+      `--out=${out}`,
+      "--start",
+      "--id=old-run",
+      "--difficulty=novice",
+      "--stage=1",
+      "--seed=OLD-SEED",
+      "--startedAt=2026-06-20T00:00:00.000Z",
+    ]);
+    runManualPlaylog([
+      `--out=${out}`,
+      "--start",
+      "--id=new-run",
+      "--difficulty=intermediate",
+      "--stage=1",
+      "--seed=NEW-SEED",
+      "--startedAt=2026-06-20T01:00:00.000Z",
+    ]);
+
+    runManualPlaylog([
+      `--out=${out}`,
+      "--finish-latest",
+      "--result=clear",
+      "--round=40",
+      "--legends=5",
+      "--maxGrade=legend",
+      "--dataVersion=0.8.0",
+      "--stateChecksum=20000011",
+      "--endedAt=2026-06-20T01:13:00.000Z",
+    ]);
+
+    const log = readJson(out);
+    const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+    expect(log.sessions).toHaveLength(1);
+    expect(log.sessions[0]).toMatchObject({
+      pendingSessionId: "new-run",
+      difficulty: "intermediate",
+      seed: "NEW-SEED",
+      seconds: 780,
+    });
+    expect(pending.pending).toHaveLength(1);
+    expect(pending.pending[0]).toMatchObject({ id: "old-run" });
+  });
+
   it("필수 목표와 120분을 채운 로그는 남은 계획이 없다", () => {
     const out = makeTempPath("complete.json");
     const sessions = [

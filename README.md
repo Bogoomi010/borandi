@@ -35,6 +35,8 @@ yarn manual-playlog --start --id=RUN123 --difficulty=normal --stage=1 --seed=RUN
                           # 수동 플레이 시작 마커를 저장해 결과 화면을 놓쳐도 시작 시각 재사용
 yarn manual-playlog --finish=RUN123 --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=0.8.0 --stateChecksum=1234abcd
                           # 시작 마커의 난이도/맵/시드/시작 시각으로 결과 세션 마무리
+yarn manual-playlog --finish-latest --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=0.8.0 --stateChecksum=1234abcd
+                          # 가장 최근 시작 마커를 자동 선택해 결과 세션 마무리 (--finish도 동일)
 yarn manual-playlog --pending
                           # 아직 finish되지 않은 수동 플레이 시작 마커 확인
 yarn manual-playlog --summary
@@ -65,7 +67,7 @@ yarn check                # npm 의존성 없이 Node만으로 코어 스모크 
 수동 플레이 로그는 `docs/manual-balance-playlog.example.json` 형식을 따른다. 예시 파일은 `example: true`로 표시되어 감사 증거에서 제외된다. `yarn balance-audit`는 시작/종료 시각, 결과, 맵, 라운드, 시드, 전설 수, 최고 등급, 데이터 버전, 상태 체크섬이 완전한 세션만 세며, 전설 수와 최고 등급이 서로 일치해야 한다. 중복 상태 체크섬은 한 번만 카운트한다. 총 120분 이상, 각 난이도 최소 12분 이상을 요구한다. 또한 입문자 40R 무전설 클리어, 일반 40R 1~2전설 클리어, 중급자 40R 5전설 이상 클리어, 고수 40R 5전설 이하 실패 + 40R 6전설 이상 클리어, 초고수 실패 기록은 각각 12분 이상 진행된 목표 결과 세션이어야 한다.
 게임 결과 화면과 결과 리포트에는 현재 세션의 실제 경과 시간을 넣은 `yarn manual-playlog` 명령이 함께 표시된다.
 결과 화면의 `기록+다음 복사` 버튼은 이번 결과를 기록한 뒤 바로 `yarn manual-playlog --next`까지 실행하는 명령을 복사한다.
-`Tools > 수동 밸런스 증거`는 현재 판의 `yarn manual-playlog --start` 명령도 보여준다. 시작 마커를 저장해두면 결과 화면을 놓친 경우에도 `--finish=<id>` 명령으로 같은 시작 시각을 재사용해 세션을 기록할 수 있다. `yarn manual-playlog --summary`는 finish되지 않은 시작 마커도 함께 보여준다.
+`Tools > 수동 밸런스 증거`는 현재 판의 `yarn manual-playlog --start` 명령도 보여준다. 시작 마커를 저장해두면 결과 화면을 놓친 경우에도 `--finish=<id>` 또는 `--finish-latest` 명령으로 같은 시작 시각을 재사용해 세션을 기록할 수 있다. `yarn manual-playlog --summary`는 finish되지 않은 시작 마커도 함께 보여준다.
 
 ## 데스크탑 게임 구성
 
