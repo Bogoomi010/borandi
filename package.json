@@ -12,6 +12,7 @@
     "sim": "vite-node scripts/sim.ts",
     "balance": "vite-node scripts/balance-check.ts",
     "browser-balance": "node scripts/browser-balance-playtest.mjs",
+    "browser-direct": "node scripts/browser-direct-playtest.mjs",
     "check": "node scripts/sandbox-check.mjs",
     "tauri": "tauri"
   },

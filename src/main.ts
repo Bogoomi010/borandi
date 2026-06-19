@@ -19,6 +19,7 @@ import { UNIT_BY_ID } from "./data/units";
 import { analyzeRecipes } from "./core/advisor";
 import { stageById } from "./data/stages";
 import { waveForRound } from "./data/waves";
+import { UPGRADES, upgradeCost } from "./data/upgrades";
 import { GRADE_ORDER, type DifficultyId, type Grade } from "./core/types";
 
 const settings = loadSettings();
@@ -564,6 +565,50 @@ if (import.meta.env.DEV) {
       },
       act: (type: string, payload?: Record<string, unknown>) => ctx.act(type, payload),
       state: () => game.state,
+      balanceSnapshot: () => {
+        const familyCounts = new Map<string, number>();
+        for (const u of game.state.units) {
+          const def = UNIT_BY_ID[u.defId];
+          familyCounts.set(def.family, (familyCounts.get(def.family) ?? 0) + 1);
+        }
+        const unitInfo = (defId: string) => {
+          const def = UNIT_BY_ID[defId];
+          return {
+            id: def.id,
+            name: def.name,
+            grade: def.grade,
+            family: def.family,
+            score: def.attack * def.attackSpeed * (1 + (def.bossDamageBonus ?? 0)) * (1 + (def.splashRadius ? 0.25 : 0)),
+          };
+        };
+        return {
+          round: game.state.round,
+          phase: game.state.phase,
+          cleared: game.state.cleared,
+          breakTicks: game.state.breakTicks,
+          gold: game.state.gold,
+          unitCap: game.diff.unitCap,
+          enemyPressure: game.state.enemies.length,
+          enemyLimit: game.diff.enemyLimit,
+          units: game.state.units.map((u) => ({ uid: u.uid, locked: u.locked, ...unitInfo(u.defId) })),
+          selectors: game.state.pendingSelectors.map((s) => ({
+            id: s.id,
+            grade: s.grade,
+            candidates: s.candidateIds.map(unitInfo),
+          })),
+          craftable: analyzeRecipes(game.state)
+            .filter((s) => s.tier === "ok" && s.goldShort === 0)
+            .map((s) => ({ id: s.recipe.id, result: unitInfo(s.recipe.resultUnitId), reasonTag: s.reasonTag ?? "" })),
+          upgrades: UPGRADES.map((u) => ({
+            id: u.id,
+            family: u.family,
+            level: game.state.upgrades[u.id] ?? 0,
+            maxLevel: u.maxLevel,
+            cost: upgradeCost(u, game.state.upgrades[u.id] ?? 0),
+            ownedFamily: familyCounts.get(u.family) ?? 0,
+          })),
+        };
+      },
     },
   });
 }
