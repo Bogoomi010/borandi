@@ -206,9 +206,18 @@ function buildRows(balance, browser, direct, manual) {
   const directCoversTargets = directScenarioIds.every((id) => !!directScenario(direct, id));
   rows.push({
     req: "브라우저 직접 플레이형 자동 표본 범위",
-    evidence: direct ? `${direct.scenarios?.length ?? 0}/${directScenarioIds.length} target scenarios, ${(directSeconds / 3600).toFixed(2)} simulated hours` : "missing browser-direct JSON",
-    pass: !!direct && directSeconds > 0 && directCoversTargets,
+    evidence: direct ? `${direct.scenarios?.length ?? 0}/${directScenarioIds.length} target scenarios, ${direct.seeds ?? "?"} seeds, ${(directSeconds / 3600).toFixed(2)} simulated hours` : "missing browser-direct JSON",
+    pass: !!direct && Number(direct.seeds ?? 0) >= 2 && directSeconds > 0 && directCoversTargets,
     missing: !direct || !directCoversTargets,
+  });
+  const directObservations = direct?.observations ?? [];
+  rows.push({
+    req: "브라우저 직접 플레이형 관찰 게이트",
+    evidence: direct
+      ? `${directObservations.filter((g) => g.pass).length}/${directObservations.length} observations, passed=${direct.passed === true}`
+      : "missing browser-direct JSON",
+    pass: !!direct && direct.passed === true && directObservations.length >= 5 && directObservations.every((g) => g.pass),
+    missing: !direct,
   });
 
   const directNovice = directScenario(direct, "noviceHero");
@@ -227,7 +236,8 @@ function buildRows(balance, browser, direct, manual) {
   const directIntermediatePass = directObservation(direct, "중급자 직접 플레이 표본")?.pass ??
     (!!directIntermediateTwo && !!directIntermediateFive &&
       (Number(directIntermediateFive.clearRate ?? 0) > Number(directIntermediateTwo.clearRate ?? 0) ||
-        Number(directIntermediateFive.avgRound ?? 0) >= Number(directIntermediateTwo.avgRound ?? 0) + 1));
+        Number(directIntermediateFive.avgRound ?? 0) >= Number(directIntermediateTwo.avgRound ?? 0) + 1 ||
+        Number(directIntermediateFive.avgPressureRatio ?? 1) < Number(directIntermediateTwo.avgPressureRatio ?? 1)));
   const directExpertPass = directObservation(direct, "고수 직접 플레이 표본")?.pass ??
     directBetterThan(directExpertFive, directExpertOpen);
   const directMasterPass = directObservation(direct, "초고수 직접 플레이 표본")?.pass ??

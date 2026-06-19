@@ -62,6 +62,12 @@ Original prompt: 완성된 에셋으로 게임 스테이지를 최대 15스테�
 - Browser-direct selection now receives unit roles from the DEV balance snapshot and scores legend choices with family/role diversity bonuses, so 5-legend samples are less likely to waste the higher legend budget on redundant roles.
 - Latest browser-direct strict pass after role-diverse legend selection: 입문자/무전설 cleared 40R, 일반/0전설 failed 38R while 1전설 and 2전설 cleared 40R, 중급자/2전설 failed 40R while 5전설 cleared 40R, 고수/5전설 failed 40R while unrestricted cleared 40R with 14 legends, and 초고수/unrestricted failed at 3R.
 - Latest 30-seed `yarn balance` gate still passed after the browser-direct tooling change: 입문자 100.0%, 일반 0/1/2전설 20.0%/40.0%/56.7%, 중급자 2전설 13.3% vs 5전설 50.0%, 고수 5전설 0.0% vs unrestricted 63.3%, 초고수 0.0%.
+- `yarn balance-audit` now also requires the browser-direct payload's own `passed: true` and at least five passing observation gates, so a strict-failed direct-input report cannot be accepted by fallback row calculations.
+- Browser-direct intermediate comparison now treats lower pressure as improvement when both 2-legend and 5-legend samples fail on the same round, matching the normal/expert direct-input comparison semantics.
+- Browser-direct now performs legal hero-to-legend 3-merges when the scenario permits more legends, making direct-input samples closer to real late-game play instead of leaving many heroes unmerged.
+- Browser-direct now defaults to 2 seeds, and `yarn balance-audit` requires at least 2 direct-input seeds before accepting browser-direct as sufficient automated direct-play evidence.
+- Latest default 2-seed `yarn browser-direct --strict` passed all observation gates: novice no-legend 2/2 clears, normal 0-legend 0/2 clears while 1-legend and 2-legend each 2/2 clears, intermediate 2-legend 0/2 vs 5-legend 2/2 clears, expert 5-legend 0/2 vs unrestricted 2/2 clears, and master unrestricted 0/2 clears.
+- Latest `yarn balance-audit --browser=... --direct=...` passed browser 10R and browser-direct rows, while still reporting the real 2-hour human manual play rows as MISSING when no real `output/manual-balance-playlog.json` is present.
 
 ## TODO
 

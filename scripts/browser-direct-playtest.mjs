@@ -13,7 +13,7 @@ const args = Object.fromEntries(
 );
 
 const url = String(args.url ?? "http://127.0.0.1:1421/");
-const seeds = Math.max(1, Number(args.seeds ?? 1));
+const seeds = Math.max(1, Number(args.seeds ?? 2));
 const maxRound = Math.max(1, Number(args["max-round"] ?? 40));
 const stepMs = Math.max(250, Number(args["step-ms"] ?? 5000));
 const outPath = typeof args.json === "string" && args.json !== "true" ? args.json : "";
@@ -210,12 +210,23 @@ async function claimSelectors(page, options) {
   }
 }
 
-async function doMerges(page, maxMerges) {
+function canMergeGrade(grade, snap, options) {
+  const nextGrade = GRADE_ORDER[rank(grade) + 1];
+  if (!nextGrade || nextGrade === "hidden") return false;
+  if (options.maxGrade && rank(nextGrade) > rank(options.maxGrade)) return false;
+  if (options.maxLegendCount !== undefined && nextGrade === "legend") {
+    return countLegends(snap) < options.maxLegendCount;
+  }
+  return true;
+}
+
+async function doMerges(page, maxMerges, options) {
   for (let i = 0; i < maxMerges; i++) {
     const snap = await readSnapshot(page);
     if (snap.units.length < snap.unitCap * 0.7) return;
     let merged = false;
-    for (const grade of ["common", "rare"]) {
+    for (const grade of ["common", "rare", "hero"]) {
+      if (!canMergeGrade(grade, snap, options)) continue;
       const groups = new Map();
       for (const u of snap.units) {
         if (u.grade !== grade || u.locked) continue;
@@ -276,7 +287,7 @@ async function doPrep(page, options) {
   const strategy = options.strategy ?? "balanced";
   await enforceLimits(page, options);
   await claimSelectors(page, options);
-  await doMerges(page, 3);
+  await doMerges(page, 5, options);
   await enforceLimits(page, options);
   await doCrafts(page, 4, options);
 
@@ -291,6 +302,7 @@ async function doPrep(page, options) {
 
   await doCrafts(page, 2, options);
   await doUpgrades(page, strategy);
+  await doMerges(page, 2, options);
   await enforceLimits(page, options);
   await claimSelectors(page, options);
 }
@@ -419,8 +431,9 @@ function evaluateObservations(results) {
     gates.push({
       label: "중급자 직접 플레이 표본은 5전설 조건이 2전설보다 유리",
       pass: intermediateFiveLegend.clearRate > intermediateTwoLegend.clearRate ||
-        intermediateFiveLegend.avgRound >= intermediateTwoLegend.avgRound + 1,
-      detail: `2전설 ${pct(intermediateTwoLegend.clearRate)} ${intermediateTwoLegend.avgRound.toFixed(1)}R, 5전설 ${pct(intermediateFiveLegend.clearRate)} ${intermediateFiveLegend.avgRound.toFixed(1)}R`,
+        intermediateFiveLegend.avgRound >= intermediateTwoLegend.avgRound + 1 ||
+        intermediateFiveLegend.avgPressureRatio < intermediateTwoLegend.avgPressureRatio,
+      detail: `2전설 ${pct(intermediateTwoLegend.clearRate)} ${intermediateTwoLegend.avgRound.toFixed(1)}R 압박 ${pct(intermediateTwoLegend.avgPressureRatio)}, 5전설 ${pct(intermediateFiveLegend.clearRate)} ${intermediateFiveLegend.avgRound.toFixed(1)}R 압박 ${pct(intermediateFiveLegend.avgPressureRatio)}`,
     });
   }
   if (expertFiveLegend && expertOpen) {
