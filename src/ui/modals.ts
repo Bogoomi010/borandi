@@ -331,6 +331,55 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
   }, dismissable);
 }
 
+// ---------- 수동 밸런스 증거 ----------
+
+export function openManualProofGuideModal() {
+  openModal((body, close) => {
+    body.appendChild(el("h2", "", "수동 밸런스 증거"));
+    body.appendChild(el("div", "modal-note", "결과 화면의 로그 명령을 실행한 뒤, 아래 요약 명령으로 남은 증거를 확인합니다."));
+
+    const summaryCommand = "yarn manual-playlog --summary";
+    body.appendChild(el("h3", "", "상태 확인"));
+    body.appendChild(el("pre", "report", summaryCommand));
+
+    const targets = [
+      ["입문자", "무전설 40R 클리어", "12분 이상"],
+      ["일반", "1~2전설 40R 클리어", "12분 이상"],
+      ["중급자", "5전설 이상 40R 클리어", "12분 이상"],
+      ["고수", "5전설 이하 40R 실패", "12분 이상"],
+      ["고수", "6전설 이상 40R 클리어", "12분 이상"],
+      ["초고수", "실패 기록", "12분 이상"],
+    ];
+    body.appendChild(el("h3", "", "필수 목표 세션"));
+    const table = el("table", "kv-table");
+    for (const [difficulty, target, length] of targets) {
+      const tr = el("tr");
+      tr.appendChild(el("td", "", difficulty));
+      tr.appendChild(el("td", "", target));
+      tr.appendChild(el("td", "", length));
+      table.appendChild(tr);
+    }
+    body.appendChild(table);
+    body.appendChild(el("div", "result-hint", "총 120분 이상, 각 난이도 최소 12분 이상이 함께 필요합니다."));
+
+    const row = el("div", "row-btns");
+    const copySummary = el("button", "", "요약 명령 복사");
+    copySummary.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(summaryCommand);
+        toast("수동 증거 요약 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copySummary);
+    const closeBtn = el("button", "primary", "닫기");
+    closeBtn.onclick = close;
+    row.appendChild(closeBtn);
+    body.appendChild(row);
+  });
+}
+
 // ---------- 저장/불러오기 슬롯 ----------
 
 export function openSaveModal(ctx: AppCtx) {
