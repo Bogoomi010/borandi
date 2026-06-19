@@ -129,7 +129,7 @@ export interface UpgradeDef {
 }
 
 export interface DifficultyDef {
-  id: "novice" | "normal";
+  id: DifficultyId;
   name: string;
   unitCap: number;
   enemyHpMult: number;
@@ -137,6 +137,8 @@ export interface DifficultyDef {
   startGold: number;
   startLife: number;
 }
+
+export type DifficultyId = "novice" | "normal" | "intermediate" | "expert" | "master";
 
 // ===== 런타임 상태 =====
 

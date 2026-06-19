@@ -7,7 +7,7 @@ import { RECIPES } from "../data/recipes";
 import { MISSIONS } from "../data/missions";
 import { BOSS_ROUND_LIST, FINAL_ROUND, WAVES } from "../data/waves";
 import { STAGES } from "../data/stages";
-import { SUMMON_TABLE, PITY_TABLE, PITY_THRESHOLD } from "../data/difficulty";
+import { DIFFICULTIES, SUMMON_TABLE, PITY_TABLE, PITY_THRESHOLD } from "../data/difficulty";
 import { playFullRun } from "../sim/autoPlayer";
 
 describe("rng", () => {
@@ -29,6 +29,9 @@ describe("데이터 무결성 (QA 체크리스트)", () => {
   it("소환 확률 합이 100이다", () => {
     expect(Object.values(SUMMON_TABLE).reduce((a, b) => a + b, 0)).toBe(100);
     expect(Object.values(PITY_TABLE).reduce((a, b) => a + b, 0)).toBe(100);
+  });
+  it("요구 난이도 5종이 정의되어 있다", () => {
+    expect(DIFFICULTIES.map((d) => d.id)).toEqual(["novice", "normal", "intermediate", "expert", "master"]);
   });
   it("조합식에 존재하지 않는 유닛 ID가 없다", () => {
     for (const r of RECIPES) {

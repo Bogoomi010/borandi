@@ -11,7 +11,7 @@ import { GRADE_LABEL, FAMILY_LABEL, ROLE_LABEL, GRADE_ORDER, type Grade } from "
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
 import { listSlots, isTauri } from "../save/saveApi";
 import { APP_VERSION, DATA_VERSION } from "../data/version";
-import { DIFFICULTY_BY_ID } from "../data/difficulty";
+import { DIFFICULTIES, DIFFICULTY_BY_ID } from "../data/difficulty";
 
 // ---------- 씬 전환 ----------
 
@@ -323,8 +323,7 @@ export function openCollection(ctx: AppCtx) {
     };
     kv("플레이 횟수", String(profile.runs));
     kv("최고 도달", profile.bestRound > 0 ? `${profile.bestRound}R` : "-");
-    kv("입문 클리어", String(profile.clears["novice"] ?? 0));
-    kv("보통 클리어", String(profile.clears["normal"] ?? 0));
+    for (const d of DIFFICULTIES) kv(`${d.name} 클리어`, String(profile.clears[d.id] ?? 0));
     kv("유닛 수집", `${profile.seenUnits.length}/${UNITS.length}`);
     kv("히든 조합 발견", `${profile.foundHiddenRecipes.length}/${RECIPES.filter((r) => r.visibility === "hidden").length}`);
     body.appendChild(stats);

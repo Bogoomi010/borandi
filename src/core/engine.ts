@@ -9,6 +9,7 @@ import {
 import type {
   EnemyState, GameInput, GameState, Grade, MissionState, OwnedUnit,
   PendingSelector, Phase, ResultSummary, RewardDef, UnitDef,
+  DifficultyId,
 } from "./types";
 import { GRADE_ORDER } from "./types";
 import { UNIT_BY_ID, unitsOfGrade } from "../data/units";
@@ -59,7 +60,7 @@ export class Game {
   /** 외부(UI) 알림 콜백 */
   onEvent: ((kind: string, text: string) => void) | null = null;
 
-  constructor(seed: string, difficulty: "novice" | "normal", stageId = 1) {
+  constructor(seed: string, difficulty: DifficultyId, stageId = 1) {
     const diff = DIFFICULTY_BY_ID[difficulty];
     const stage = stageById(stageId);
     this.rng = new Rng(`${DATA_VERSION}:${seed}:${difficulty}:${stage.id}`);
@@ -1003,7 +1004,7 @@ export class Game {
 /** 리플레이: 기록된 입력으로 게임을 재실행. stopAtTick까지 진행 후 정지. */
 export function replay(
   seed: string,
-  difficulty: "novice" | "normal",
+  difficulty: DifficultyId,
   stageId: number,
   inputHistory: GameInput[],
   stopAtTick?: number,

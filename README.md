@@ -22,7 +22,7 @@ yarn tauri build
 
 ```bash
 yarn test                 # vitest: 코어 규칙 + 리플레이 재현성 테스트
-yarn sim --seeds=100      # CLI 자동 시뮬레이션 (--difficulty=novice|normal --strategy=balanced)
+yarn sim --seeds=100      # CLI 자동 시뮬레이션 (--difficulty=novice|normal|intermediate|expert|master)
 yarn check                # npm 의존성 없이 Node만으로 코어 스모크 테스트
 ```
 

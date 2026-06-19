@@ -2,7 +2,7 @@
 
 import type { AppCtx } from "./ctx";
 import { el, openModal, toast } from "./widgets";
-import { GRADE_LABEL, FAMILY_LABEL, ROLE_LABEL, type ResultSummary } from "../core/types";
+import { GRADE_LABEL, FAMILY_LABEL, ROLE_LABEL, type DifficultyId, type ResultSummary } from "../core/types";
 import { UNIT_BY_ID } from "../data/units";
 import { DIFFICULTIES } from "../data/difficulty";
 import { STAGES, stageById } from "../data/stages";
@@ -181,7 +181,7 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
     body.appendChild(el("h2", "", "새 게임"));
 
     body.appendChild(el("h3", "", "난이도"));
-    let chosen = "novice";
+    let chosen: DifficultyId = "novice";
     let chosenStage = 1;
     const diffRow = el("div", "choice-grid");
     const diffBtns: HTMLButtonElement[] = [];
@@ -233,7 +233,7 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
       const seed = randomSeed(); // 시드는 내부 RNG/재현성용으로 항상 무작위 생성
       close();
       resetResultShown();
-      ctx.newRun(seed, chosen as "novice" | "normal", chosenStage);
+      ctx.newRun(seed, chosen, chosenStage);
     };
     row.appendChild(start);
     body.appendChild(row);

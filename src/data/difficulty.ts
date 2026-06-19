@@ -2,12 +2,24 @@ import type { DifficultyDef, Grade } from "../core/types";
 
 export const DIFFICULTIES: DifficultyDef[] = [
   {
-    id: "novice", name: "입문",
-    unitCap: 48, enemyHpMult: 1.0, goldMult: 1.15, startGold: 120, startLife: 20,
+    id: "novice", name: "입문자",
+    unitCap: 50, enemyHpMult: 0.82, goldMult: 1.35, startGold: 160, startLife: 30,
   },
   {
-    id: "normal", name: "보통",
-    unitCap: 40, enemyHpMult: 1.15, goldMult: 1.0, startGold: 100, startLife: 20,
+    id: "normal", name: "일반",
+    unitCap: 38, enemyHpMult: 5.0, goldMult: 1.0, startGold: 100, startLife: 20,
+  },
+  {
+    id: "intermediate", name: "중급자",
+    unitCap: 36, enemyHpMult: 5.8, goldMult: 0.92, startGold: 90, startLife: 18,
+  },
+  {
+    id: "expert", name: "고수",
+    unitCap: 34, enemyHpMult: 8.0, goldMult: 0.84, startGold: 75, startLife: 14,
+  },
+  {
+    id: "master", name: "초고수",
+    unitCap: 28, enemyHpMult: 12.0, goldMult: 0.76, startGold: 55, startLife: 10,
   },
 ];
 

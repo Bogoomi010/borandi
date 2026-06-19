@@ -4,21 +4,71 @@
 import { Game } from "../core/engine";
 import { analyzeRecipes } from "../core/advisor";
 import { UNIT_BY_ID } from "../data/units";
-import { GRADE_ORDER } from "../core/types";
+import { GRADE_ORDER, type Grade } from "../core/types";
 import { SUMMON_COST } from "../data/difficulty";
 import { UPGRADES, upgradeCost } from "../data/upgrades";
 
 export type Strategy = "balanced" | "aggressive" | "conservative";
 
+export interface AutoPlayOptions {
+  strategy?: Strategy;
+  maxGrade?: Grade;
+  maxLegendCount?: number;
+}
+
 const MAX_TICKS_PER_WAVE = 20 * 60 * 5; // 웨이브당 최대 5분(게임 시간)
 
-function claimSelectors(game: Game) {
+function gradeRank(grade: Grade): number {
+  return GRADE_ORDER.indexOf(grade);
+}
+
+function withinGradeCap(defId: string, maxGrade?: Grade): boolean {
+  return maxGrade === undefined || gradeRank(UNIT_BY_ID[defId].grade) <= gradeRank(maxGrade);
+}
+
+function enforceGradeCap(game: Game, maxGrade?: Grade) {
+  if (!maxGrade) return;
+  const overCap = game.state.units
+    .filter((u) => !withinGradeCap(u.defId, maxGrade))
+    .map((u) => u.uid);
+  if (overCap.length > 0) game.dispatch("sell", { unitIds: overCap });
+}
+
+function unitScore(defId: string): number {
+  const d = UNIT_BY_ID[defId];
+  return d.attack * d.attackSpeed * (1 + (d.bossDamageBonus ?? 0)) * (1 + (d.splashRadius ? 0.25 : 0));
+}
+
+function enforceLegendLimit(game: Game, maxLegendCount?: number) {
+  if (maxLegendCount === undefined) return;
+  const legends = game.state.units
+    .filter((u) => UNIT_BY_ID[u.defId].grade === "legend")
+    .sort((a, b) => unitScore(b.defId) - unitScore(a.defId) || a.uid - b.uid);
+  const sell = legends.slice(maxLegendCount).map((u) => u.uid);
+  if (sell.length > 0) game.dispatch("sell", { unitIds: sell });
+}
+
+function enforceLimits(game: Game, options: AutoPlayOptions) {
+  enforceGradeCap(game, options.maxGrade);
+  enforceLegendLimit(game, options.maxLegendCount);
+}
+
+function claimSelectors(game: Game, options: AutoPlayOptions) {
   // 후보 중 기대 DPS가 가장 높은 유닛 선택
   while (game.state.pendingSelectors.length > 0) {
     const sel = game.state.pendingSelectors[0];
-    let best = sel.candidateIds[0];
+    const candidates = sel.candidateIds.filter((id) => {
+      if (!withinGradeCap(id, options.maxGrade)) return false;
+      if (options.maxLegendCount !== undefined && UNIT_BY_ID[id].grade === "legend") {
+        const owned = game.state.units.filter((u) => UNIT_BY_ID[u.defId].grade === "legend").length;
+        return owned < options.maxLegendCount;
+      }
+      return true;
+    });
+    if (candidates.length === 0) break;
+    let best = candidates[0];
     let bestScore = -1;
-    for (const id of sel.candidateIds) {
+    for (const id of candidates) {
       const d = UNIT_BY_ID[id];
       const score = d.attack * d.attackSpeed * (1 + (d.bossDamageBonus ?? 0));
       if (score > bestScore) { bestScore = score; best = id; }
@@ -28,9 +78,18 @@ function claimSelectors(game: Game) {
   }
 }
 
-function doCrafts(game: Game, maxCrafts: number) {
+function doCrafts(game: Game, maxCrafts: number, options: AutoPlayOptions) {
   for (let i = 0; i < maxCrafts; i++) {
-    const statuses = analyzeRecipes(game.state).filter((s) => s.tier === "ok" && s.goldShort === 0);
+    const statuses = analyzeRecipes(game.state)
+      .filter((s) => {
+        if (s.tier !== "ok" || s.goldShort !== 0) return false;
+        if (!withinGradeCap(s.recipe.resultUnitId, options.maxGrade)) return false;
+        if (options.maxLegendCount !== undefined && UNIT_BY_ID[s.recipe.resultUnitId].grade === "legend") {
+          const owned = game.state.units.filter((u) => UNIT_BY_ID[u.defId].grade === "legend").length;
+          return owned < options.maxLegendCount;
+        }
+        return true;
+      });
     if (statuses.length === 0) return;
     // 결과 등급이 높은 것 우선
     statuses.sort((a, b) =>
@@ -96,19 +155,24 @@ function doUpgrades(game: Game, strategy: Strategy) {
 }
 
 /** 준비 행동(소환/합성/조합/업글/선택권)을 1회 수행 */
-function doPrep(game: Game, strategy: Strategy) {
+function doPrep(game: Game, options: AutoPlayOptions) {
   const s = game.state;
-  claimSelectors(game);
+  const strategy = options.strategy ?? "balanced";
+  enforceLimits(game, options);
+  claimSelectors(game, options);
   doMerges(game, 3);
-  doCrafts(game, 4);
+  enforceLimits(game, options);
+  doCrafts(game, 4, options);
   const reserve = strategy === "aggressive" ? 0 : strategy === "conservative" ? 120 : 50;
   let guard = 0;
   while (s.gold >= SUMMON_COST + reserve && s.units.length < game.diff.unitCap - 2 && guard++ < 60) {
     if (!game.dispatch("summon").ok) break;
+    enforceLimits(game, options);
   }
-  doCrafts(game, 2);
+  doCrafts(game, 2, options);
   doUpgrades(game, strategy);
-  claimSelectors(game);
+  enforceLimits(game, options);
+  claimSelectors(game, options);
 }
 
 /**
@@ -116,7 +180,10 @@ function doPrep(game: Game, strategy: Strategy) {
  * 연속 시뮬 모델: 라운드 사이 휴식 동안 준비 행동을 하고, 라운드 번호가 바뀔 때까지(=이번 라운드
  * 스폰 완료) 틱을 진행한다. 휴식은 엔진이 틱 기반으로 자동 종료하므로 startWave를 강제하지 않는다.
  */
-export function playOneRound(game: Game, strategy: Strategy = "balanced"): boolean {
+export function playOneRound(game: Game, strategyOrOptions: Strategy | AutoPlayOptions = "balanced"): boolean {
+  const options: AutoPlayOptions = typeof strategyOrOptions === "string"
+    ? { strategy: strategyOrOptions }
+    : strategyOrOptions;
   const s = game.state;
   const isEnded = () => game.state.phase === "ended"; // 함수 호출 → TS 좁힘 회피
   if (isEnded()) return true;
@@ -125,7 +192,7 @@ export function playOneRound(game: Game, strategy: Strategy = "balanced"): boole
   let prepped = false;
   while (!isEnded() && ticks++ < MAX_TICKS_PER_WAVE) {
     if (s.breakTicks > 0) {
-      if (!prepped) { doPrep(game, strategy); prepped = true; }
+      if (!prepped) { doPrep(game, options); prepped = true; }
     } else {
       prepped = false;
     }
@@ -135,9 +202,9 @@ export function playOneRound(game: Game, strategy: Strategy = "balanced"): boole
   return isEnded();
 }
 
-export function playFullRun(game: Game, strategy: Strategy = "balanced"): void {
+export function playFullRun(game: Game, strategyOrOptions: Strategy | AutoPlayOptions = "balanced"): void {
   let guard = 0;
   while (guard++ < 300) {
-    if (playOneRound(game, strategy)) return;
+    if (playOneRound(game, strategyOrOptions)) return;
   }
 }

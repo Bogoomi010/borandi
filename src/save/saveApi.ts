@@ -1,7 +1,7 @@
 // 저장 계층: Tauri 환경이면 Rust command(SQLite), 아니면 localStorage fallback.
 // 게임 판정 로직은 절대 여기 두지 않는다.
 
-import type { GameInput, ResultSummary } from "../core/types";
+import type { DifficultyId, GameInput, ResultSummary } from "../core/types";
 import { SCHEMA_VERSION, APP_VERSION, DATA_VERSION } from "../data/version";
 
 export interface SaveRecord {
@@ -10,7 +10,7 @@ export interface SaveRecord {
   dataVersion: string;
   savedAt: string;
   seed: string;
-  difficulty: "novice" | "normal";
+  difficulty: DifficultyId;
   stageId: number;
   stateChecksum: string;
   tick: number;
@@ -142,7 +142,7 @@ export async function openAppDataDir(): Promise<void> {
 }
 
 export function makeSaveRecord(args: {
-  seed: string; difficulty: "novice" | "normal"; stageId: number; stateChecksum: string;
+  seed: string; difficulty: DifficultyId; stageId: number; stateChecksum: string;
   tick: number; round: number; life: number; maxGrade: string;
   inputHistory: GameInput[];
 }): SaveRecord {

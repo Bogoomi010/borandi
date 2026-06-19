@@ -39,7 +39,7 @@ import { runSimulation, reportToMarkdown } from "./src/sim/runner.ts";
 import { UNITS, UNIT_BY_ID } from "./src/data/units.ts";
 import { RECIPES } from "./src/data/recipes.ts";
 import { BOSS_ROUND_LIST, FINAL_ROUND, WAVES } from "./src/data/waves.ts";
-import { SUMMON_TABLE, PITY_TABLE, PITY_THRESHOLD } from "./src/data/difficulty.ts";
+import { DIFFICULTIES, SUMMON_TABLE, PITY_TABLE, PITY_THRESHOLD } from "./src/data/difficulty.ts";
 
 let failures = 0;
 function check(name: string, cond: boolean) {
@@ -50,6 +50,7 @@ function check(name: string, cond: boolean) {
 console.log("[1] 데이터 무결성");
 check("소환 확률 합 100", Object.values(SUMMON_TABLE).reduce((a, b) => a + b, 0) === 100);
 check("보정 확률 합 100", Object.values(PITY_TABLE).reduce((a, b) => a + b, 0) === 100);
+check("난이도 5종", JSON.stringify(DIFFICULTIES.map((d) => d.id)) === JSON.stringify(["novice", "normal", "intermediate", "expert", "master"]));
 check("조합식 유닛 ID 유효", RECIPES.every((r) =>
   UNIT_BY_ID[r.resultUnitId] && r.ingredients.every((i) => !i.unitId || UNIT_BY_ID[i.unitId])));
 check("유닛 ID 중복 없음", new Set(UNITS.map((u) => u.id)).size === UNITS.length);
