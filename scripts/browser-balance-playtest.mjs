@@ -122,6 +122,77 @@ async function runScenario(page, scenario) {
   };
 }
 
+function getScenario(results, id) {
+  const result = results.find((r) => r.id === id);
+  if (!result) throw new Error(`missing scenario result: ${id}`);
+  return result;
+}
+
+function boss10Seconds(result) {
+  const value = result.final.boss.kills["10"];
+  return typeof value === "number" ? value : null;
+}
+
+function pressureParts(result) {
+  const [current, limit] = result.final.pressure.split("/").map((v) => Number(v));
+  return { current, limit };
+}
+
+function evaluateGates(results) {
+  const novice = getScenario(results, "noviceHeroOnly");
+  const normal = getScenario(results, "normalTwoLegend");
+  const intermediate = getScenario(results, "intermediateFiveLegend");
+  const expert = getScenario(results, "expertFiveLegend");
+  const master = getScenario(results, "masterNoLegend");
+  const intermediateBoss10 = boss10Seconds(intermediate);
+  const expertBoss10 = boss10Seconds(expert);
+  const masterPressure = pressureParts(master);
+
+  return [
+    {
+      label: "입문자는 전설 없이도 10R 보스 이후까지 안정",
+      pass: novice.final.round >= 11 &&
+        novice.final.unitSummary.legendOrBetter === 0 &&
+        boss10Seconds(novice) !== null &&
+        novice.final.boss.failedRounds.length === 0,
+      detail: `${novice.final.round}R, 전설 ${novice.final.unitSummary.legendOrBetter}, 10R 보스 ${boss10Seconds(novice) ?? "미처치"}s`,
+    },
+    {
+      label: "일반은 전설 2개로 10R 보스 이후까지 진입",
+      pass: normal.final.round >= 11 &&
+        normal.final.unitSummary.legendOrBetter === 2 &&
+        boss10Seconds(normal) !== null &&
+        normal.final.boss.failedRounds.length === 0,
+      detail: `${normal.final.round}R, 전설 ${normal.final.unitSummary.legendOrBetter}, 10R 보스 ${boss10Seconds(normal) ?? "미처치"}s`,
+    },
+    {
+      label: "중급자는 전설 5개로 10R 보스 이후까지 진입",
+      pass: intermediate.final.round >= 11 &&
+        intermediate.final.unitSummary.legendOrBetter >= 5 &&
+        intermediateBoss10 !== null &&
+        intermediate.final.boss.failedRounds.length === 0,
+      detail: `${intermediate.final.round}R, 전설 ${intermediate.final.unitSummary.legendOrBetter}, 10R 보스 ${intermediateBoss10 ?? "미처치"}s`,
+    },
+    {
+      label: "고수는 같은 5전설 조건에서도 중급보다 첫 보스 처치가 확연히 느림",
+      pass: expert.final.round >= 11 &&
+        expert.final.unitSummary.legendOrBetter >= 5 &&
+        expertBoss10 !== null &&
+        intermediateBoss10 !== null &&
+        expertBoss10 >= intermediateBoss10 * 2,
+      detail: `중급 ${intermediateBoss10 ?? "미처치"}s, 고수 ${expertBoss10 ?? "미처치"}s`,
+    },
+    {
+      label: "초고수는 무전설 초반 플레이가 빠르게 붕괴",
+      pass: master.final.mode === "ended" &&
+        master.final.round <= master.targetRound &&
+        master.final.unitSummary.legendOrBetter === 0 &&
+        masterPressure.current >= masterPressure.limit,
+      detail: `${master.final.round}R ${master.final.pressure}, 전설 ${master.final.unitSummary.legendOrBetter}`,
+    },
+  ];
+}
+
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -145,11 +216,20 @@ try {
     results.push(result);
     console.log(`${result.label}: ${result.final.mode} ${result.final.round}R, pressure ${result.final.pressure}, legends ${result.final.unitSummary.legendOrBetter}`);
   }
+  const gates = evaluateGates(results);
+
+  console.log("");
+  console.log("## 브라우저 게이트");
+  for (const gate of gates) {
+    console.log(`${gate.pass ? "PASS" : "FAIL"} ${gate.label} (${gate.detail})`);
+  }
 
   const payload = {
     url,
     generatedAt: new Date().toISOString(),
     scenarios: results,
+    gates,
+    passed: gates.every((g) => g.pass),
   };
   if (outPath) {
     const dir = dirname(outPath);
@@ -157,6 +237,7 @@ try {
     writeFileSync(outPath, JSON.stringify(payload, null, 2), "utf8");
     console.log(`JSON 리포트 저장: ${outPath}`);
   }
+  if (!payload.passed) process.exitCode = 1;
 } finally {
   await browser.close();
 }
