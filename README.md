@@ -31,6 +31,8 @@ yarn browser-direct --json=output/browser-direct.json --screenshots=output/brows
                           # 실행 중인 yarn dev 서버에서 실제 소환/합성/조합/업그레이드 입력 흐름으로 2시드 이상 긴 밸런스 표본 수집
 yarn manual-playlog --difficulty=normal --minutes=24 --result=loss --stage=1 --round=39 --seed=RUN123 --legends=1 --maxGrade=legend --dataVersion=0.8.0 --stateChecksum=1234abcd --notes="후반 누적 압박"
                           # 사람이 직접 플레이한 수동 밸런스 세션을 output/manual-balance-playlog.json에 누적
+yarn manual-playlog --summary
+                          # 현재 수동 로그의 120분/난이도별/목표 결과 충족 상태와 다음 필요 세션 확인
 yarn balance-audit --manual=output/manual-balance-playlog.json --out=output/balance-audit.md
                           # balance/browser-balance/browser-direct/manual JSON을 모아 요구사항별 근거 감사표 생성
 yarn check                # npm 의존성 없이 Node만으로 코어 스모크 테스트

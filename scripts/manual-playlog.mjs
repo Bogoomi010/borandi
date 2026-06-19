@@ -32,6 +32,7 @@ function usage() {
     "",
     "선택:",
     "  --out=output/manual-balance-playlog.json",
+    "  --summary             # 현재 수동 로그 충족/미충족 항목만 출력",
     "  --notes=...",
     "  --startedAt=ISO --endedAt=ISO",
   ].join("\n");
@@ -90,6 +91,188 @@ function coveredDifficulties(log) {
 function isLegendMetadataConsistent(maxGrade, legends) {
   const maxGradeIsLegendOrHidden = maxGrade === "legend" || maxGrade === "hidden";
   return maxGradeIsLegendOrHidden ? legends > 0 : legends === 0;
+}
+
+function isExampleManualLog(log) {
+  return log?.example === true || log?.fixture === true;
+}
+
+function isExampleManualSession(session) {
+  return session?.example === true || session?.fixture === true || session?.source === "example";
+}
+
+function sessionResult(session) {
+  if (typeof session.result === "string") return session.result.toLowerCase();
+  if (typeof session.cleared === "boolean") return session.cleared ? "clear" : "loss";
+  return "";
+}
+
+function isClear(session) {
+  return ["clear", "cleared", "win", "won", "victory"].includes(sessionResult(session));
+}
+
+function isLoss(session) {
+  return ["loss", "lose", "lost", "fail", "failed", "defeat"].includes(sessionResult(session));
+}
+
+function sessionMinutes(session) {
+  if (typeof session.minutes === "number") return session.minutes;
+  if (typeof session.seconds === "number") return session.seconds / 60;
+  return 0;
+}
+
+function reportedSessionSeconds(session) {
+  if (typeof session.seconds === "number") return session.seconds;
+  if (typeof session.minutes === "number") return session.minutes * 60;
+  return 0;
+}
+
+function sessionTimeSpanSeconds(session) {
+  if (!session.startedAt || !session.endedAt) return 0;
+  const startedAt = new Date(String(session.startedAt)).getTime();
+  const endedAt = new Date(String(session.endedAt)).getTime();
+  if (!Number.isFinite(startedAt) || !Number.isFinite(endedAt)) return 0;
+  return (endedAt - startedAt) / 1000;
+}
+
+function hasValidManualTiming(session) {
+  const reported = reportedSessionSeconds(session);
+  const actual = sessionTimeSpanSeconds(session);
+  if (reported <= 0 || actual <= 0) return false;
+  const tolerance = Math.max(2, reported * 0.05);
+  return Math.abs(actual - reported) <= tolerance;
+}
+
+function legendCount(session) {
+  const value = Number(session.legends ?? session.legendOrBetter ?? session.legendOrBetterCount ?? 0);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function hasCompleteManualMetadata(session) {
+  const difficulty = String(session.difficulty ?? "");
+  const result = sessionResult(session);
+  const stageValue = Number(session.stage);
+  const roundValue = Number(session.round);
+  const legendsValue = legendCount(session);
+  const maxGradeValue = String(session.maxGrade ?? "");
+  const seedValue = String(session.seed ?? "");
+  const dataVersionValue = String(session.dataVersion ?? "");
+  const checksumValue = String(session.stateChecksum ?? "");
+  return difficulties.includes(difficulty) &&
+    ["clear", "cleared", "win", "won", "victory", "loss", "lose", "lost", "fail", "failed", "defeat", "quit"].includes(result) &&
+    Number.isFinite(stageValue) && stageValue >= 1 &&
+    Number.isFinite(roundValue) && roundValue >= 1 &&
+    Number.isFinite(legendsValue) && legendsValue >= 0 &&
+    grades.includes(maxGradeValue) &&
+    isLegendMetadataConsistent(maxGradeValue, legendsValue) &&
+    seedValue.length > 0 &&
+    dataVersionValue.length > 0 &&
+    /^[0-9a-f]{8}$/i.test(checksumValue);
+}
+
+function realManualSessions(log) {
+  if (!log || isExampleManualLog(log)) return [];
+  const seenChecksums = new Set();
+  return (log.sessions ?? []).filter((session) => {
+    if (isExampleManualSession(session) || !hasValidManualTiming(session) || !hasCompleteManualMetadata(session)) return false;
+    const checksum = String(session.stateChecksum).toLowerCase();
+    if (seenChecksums.has(checksum)) return false;
+    seenChecksums.add(checksum);
+    return true;
+  });
+}
+
+function reachedFinalRound(session) {
+  return Number(session.round ?? 0) >= 40;
+}
+
+function isTargetLength(session) {
+  return sessionMinutes(session) >= 12;
+}
+
+function hasTargetSession(sessions, difficulty, predicate) {
+  return sessions.some((session) => session.difficulty === difficulty && predicate(session));
+}
+
+function targetEvidence(sessions, difficulty, predicate) {
+  const matched = sessions.filter((session) => session.difficulty === difficulty && predicate(session));
+  if (matched.length === 0) return "증거 없음";
+  return matched.map((session) => {
+    const checksumText = String(session.stateChecksum ?? "").slice(0, 8);
+    return `${sessionResult(session)} ${session.round}R ${legendCount(session)}전설+ ${sessionMinutes(session).toFixed(1)}분 #${checksumText}`;
+  }).join("; ");
+}
+
+function printSummary() {
+  const log = existsSync(outPath) ? readJson(outPath) : { sessions: [] };
+  const allSessions = isExampleManualLog(log) ? [] : (log.sessions ?? []).filter((session) => !isExampleManualSession(session));
+  const validSessions = realManualSessions(log);
+  const totalMinutes = validSessions.reduce((sum, session) => sum + sessionMinutes(session), 0);
+  const minutesByDifficulty = new Map();
+  for (const session of validSessions) {
+    minutesByDifficulty.set(session.difficulty, (minutesByDifficulty.get(session.difficulty) ?? 0) + sessionMinutes(session));
+  }
+
+  const rows = [
+    {
+      label: "사람이 직접 2시간 플레이",
+      pass: totalMinutes >= 120 && difficulties.every((id) => (minutesByDifficulty.get(id) ?? 0) >= 12),
+      evidence: `${validSessions.length}/${allSessions.length}세션, ${totalMinutes.toFixed(1)}/120.0분, ${difficulties.map((id) => `${id} ${(minutesByDifficulty.get(id) ?? 0).toFixed(1)}분`).join(", ")}`,
+      next: "총 120분 이상과 각 난이도 12분 이상을 채우세요.",
+    },
+    {
+      label: "입문자 무전설 40R 클리어",
+      pass: hasTargetSession(validSessions, "novice", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) === 0),
+      evidence: targetEvidence(validSessions, "novice", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) === 0),
+      next: "novice clear 40R legends=0 maxGrade=hero 이하 세션 12분 이상",
+    },
+    {
+      label: "일반 1~2전설 40R 클리어",
+      pass: hasTargetSession(validSessions, "normal", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 1 && legendCount(session) <= 2),
+      evidence: targetEvidence(validSessions, "normal", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 1 && legendCount(session) <= 2),
+      next: "normal clear 40R legends=1~2 세션 12분 이상",
+    },
+    {
+      label: "중급자 5전설 이상 40R 클리어",
+      pass: hasTargetSession(validSessions, "intermediate", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 5),
+      evidence: targetEvidence(validSessions, "intermediate", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 5),
+      next: "intermediate clear 40R legends>=5 세션 12분 이상",
+    },
+    {
+      label: "고수 5전설 이하 40R 실패",
+      pass: hasTargetSession(validSessions, "expert", (session) => isTargetLength(session) && isLoss(session) && reachedFinalRound(session) && legendCount(session) <= 5),
+      evidence: targetEvidence(validSessions, "expert", (session) => isTargetLength(session) && isLoss(session) && reachedFinalRound(session) && legendCount(session) <= 5),
+      next: "expert loss 40R legends<=5 세션 12분 이상",
+    },
+    {
+      label: "고수 6전설 이상 40R 클리어",
+      pass: hasTargetSession(validSessions, "expert", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 6),
+      evidence: targetEvidence(validSessions, "expert", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 6),
+      next: "expert clear 40R legends>=6 세션 12분 이상",
+    },
+    {
+      label: "초고수 실패 기록",
+      pass: hasTargetSession(validSessions, "master", (session) => isTargetLength(session) && isLoss(session)),
+      evidence: targetEvidence(validSessions, "master", (session) => isTargetLength(session) && isLoss(session)),
+      next: "master loss 세션 12분 이상",
+    },
+  ];
+
+  console.log("# 수동 플레이 로그 상태");
+  console.log(`- 로그: ${outPath}${existsSync(outPath) ? "" : " (아직 없음)"}`);
+  console.log(`- 예시 로그 제외: ${isExampleManualLog(log) ? "예" : "아니오"}`);
+  console.log("");
+  for (const row of rows) {
+    console.log(`${row.pass ? "PASS" : "MISSING"} ${row.label}: ${row.evidence}`);
+    if (!row.pass) console.log(`  다음 필요: ${row.next}`);
+  }
+  console.log("");
+  console.log(`판정: ${rows.every((row) => row.pass) ? "수동 증거 충족" : "수동 증거 미충족"}`);
+}
+
+if (args.summary === "true" || args.status === "true") {
+  printSummary();
+  process.exit(0);
 }
 
 const difficulty = args.difficulty;
