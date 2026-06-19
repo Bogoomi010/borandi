@@ -87,6 +87,11 @@ function coveredDifficulties(log) {
   return new Set(log.sessions.map((s) => s.difficulty).filter(Boolean));
 }
 
+function isLegendMetadataConsistent(maxGrade, legends) {
+  const maxGradeIsLegendOrHidden = maxGrade === "legend" || maxGrade === "hidden";
+  return legends > 0 ? maxGradeIsLegendOrHidden : true;
+}
+
 const difficulty = args.difficulty;
 if (!difficulties.includes(difficulty)) {
   fail(`지원하지 않는 난이도입니다: ${difficulty ?? "(없음)"}`);
@@ -115,6 +120,9 @@ if (!/^[0-9a-f]{8}$/i.test(stateChecksum)) {
 }
 if (stage < 1 || round < 1 || legends < 0) {
   fail("--stage/--round는 1 이상, --legends는 0 이상이어야 합니다.");
+}
+if (!isLegendMetadataConsistent(maxGrade, legends)) {
+  fail("--legends가 1 이상이면 --maxGrade는 legend 또는 hidden이어야 합니다.");
 }
 
 const minutes = asNumber("minutes");

@@ -165,10 +165,16 @@ function hasCompleteManualMetadata(session) {
     Number.isFinite(stage) && stage >= 1 &&
     Number.isFinite(round) && round >= 1 &&
     Number.isFinite(legends) && legends >= 0 &&
+    isLegendMetadataConsistent(maxGrade, legends) &&
     ["common", "rare", "hero", "legend", "hidden"].includes(maxGrade) &&
     seed.length > 0 &&
     dataVersion.length > 0 &&
     /^[0-9a-f]{8}$/i.test(stateChecksum);
+}
+
+function isLegendMetadataConsistent(maxGrade, legends) {
+  const maxGradeIsLegendOrHidden = maxGrade === "legend" || maxGrade === "hidden";
+  return legends > 0 ? maxGradeIsLegendOrHidden : true;
 }
 
 function sessionResult(session) {
