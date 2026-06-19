@@ -2,6 +2,7 @@
 // Tauri 웹뷰에서도 localStorage가 동작하므로 두 환경 공통으로 사용한다.
 
 import { FINAL_STAGE } from "../data/stages";
+import { FINAL_ROUND } from "../data/waves";
 
 export interface Settings {
   master: number;       // 0~1
@@ -88,7 +89,7 @@ export function profileRecordRun(cleared: boolean, difficulty: string, round: nu
   let unlockedNext = false;
   if (cleared) p.clears[difficulty] = (p.clears[difficulty] ?? 0) + 1;
   if (round > p.bestRound) p.bestRound = round;
-  if (cleared && stageId >= p.unlockedStage) {
+  if (cleared && round >= FINAL_ROUND && stageId >= p.unlockedStage) {
     const next = Math.min(stageId + 1, FINAL_STAGE);
     if (next > p.unlockedStage) {
       p.unlockedStage = next;

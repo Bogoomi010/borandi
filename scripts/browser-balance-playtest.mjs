@@ -19,6 +19,12 @@ const screenshotDir = typeof args.screenshots === "string" && args.screenshots !
 const LEGENDS = ["solar_avatar", "chrono_marshal", "titan_slayer", "ancient_world_tree"];
 const HEROES = ["phoenix_archmage", "glacier_warden", "tempest_blademaster", "fortress_breaker", "abyss_oracle", "world_tree_sage"];
 
+const PLAYTEST_SCOPE = [
+  "브라우저 런타임에서 DEV 훅으로 목표 난이도/보유 등급 조건을 만든다.",
+  "10R 첫 보스 전후의 실제 렌더/전투 상태를 수집한다.",
+  "40R 전체 클리어율 판정은 yarn balance가 담당하고, 이 스크립트는 조작 가능한 브라우저 체감 게이트를 담당한다.",
+];
+
 const scenarios = [
   {
     id: "noviceHeroOnly",
@@ -26,6 +32,7 @@ const scenarios = [
     difficulty: "novice",
     units: HEROES,
     targetRound: 11,
+    expectation: "전설 없이도 10R 보스를 넘겨야 한다.",
   },
   {
     id: "normalTwoLegend",
@@ -33,6 +40,7 @@ const scenarios = [
     difficulty: "normal",
     units: LEGENDS.slice(0, 2),
     targetRound: 11,
+    expectation: "전설 2개 조건에서 10R 보스를 넘겨야 한다.",
   },
   {
     id: "normalTwoHero",
@@ -40,6 +48,7 @@ const scenarios = [
     difficulty: "normal",
     units: HEROES.slice(0, 2),
     targetRound: 11,
+    expectation: "전설이 없는 낮은 조건은 2전설보다 명확히 약해야 한다.",
   },
   {
     id: "intermediateTwoLegend",
@@ -47,6 +56,7 @@ const scenarios = [
     difficulty: "intermediate",
     units: LEGENDS.slice(0, 2),
     targetRound: 11,
+    expectation: "2전설 조건은 5전설보다 명확히 약해야 한다.",
   },
   {
     id: "intermediateFiveLegend",
@@ -54,6 +64,7 @@ const scenarios = [
     difficulty: "intermediate",
     units: [...LEGENDS, LEGENDS[0]],
     targetRound: 11,
+    expectation: "전설 5개 조건에서 10R 보스를 안정적으로 넘겨야 한다.",
   },
   {
     id: "expertFiveLegend",
@@ -61,6 +72,7 @@ const scenarios = [
     difficulty: "expert",
     units: [...LEGENDS, LEGENDS[0]],
     targetRound: 11,
+    expectation: "같은 5전설 조건에서도 중급보다 체감 압박이 커야 한다.",
   },
   {
     id: "masterNoLegend",
@@ -68,6 +80,7 @@ const scenarios = [
     difficulty: "master",
     summonCount: 4,
     targetRound: 5,
+    expectation: "무전설 초반 플레이는 빠르게 붕괴해야 한다.",
   },
 ];
 
@@ -122,6 +135,7 @@ async function runScenario(page, scenario) {
   return {
     id: scenario.id,
     label: scenario.label,
+    expectation: scenario.expectation,
     difficulty: finalState.difficulty,
     targetRound: scenario.targetRound,
     final: {
@@ -267,6 +281,7 @@ try {
   const payload = {
     url,
     generatedAt: new Date().toISOString(),
+    scope: PLAYTEST_SCOPE,
     scenarios: results,
     gates,
     passed: gates.every((g) => g.pass),
