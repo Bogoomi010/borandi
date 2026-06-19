@@ -29,7 +29,7 @@ const SUMMON_COST = 20;
 const PLAYTEST_SCOPE = [
   "DEV 스폰 고정 조건이 아니라 실제 소환/선택권/합성/조합/업그레이드 입력을 반복한다.",
   "브라우저 런타임의 실제 Game, render_game_to_text, advanceTime, ctx.act 경로를 사용한다.",
-  "짧은 자동 표본이므로 2시간 직접 플레이를 대체하지 않고, 긴 수동 밸런스 패스 전의 재현 가능한 보조 증거로 기록한다.",
+  "자동으로 누적한 시뮬레이션 플레이 시간을 기록하되, 요청된 2시간 수동 플레이를 대체하지 않는 보조 증거로 취급한다.",
 ];
 
 const SCENARIOS = [
@@ -292,6 +292,7 @@ async function playScenarioSeed(page, scenario, seedIndex) {
   return {
     seed,
     steps,
+    simulatedSeconds: steps * (stepMs / 1000),
     final: {
       round: finalState.round,
       mode: finalState.mode,
@@ -309,6 +310,7 @@ function summarizeScenario(scenario, runs) {
   const clearCount = runs.filter((r) => r.final.cleared).length;
   const avgRound = runs.reduce((sum, r) => sum + r.final.round, 0) / runs.length;
   const avgLegend = runs.reduce((sum, r) => sum + r.final.unitSummary.legendOrBetter, 0) / runs.length;
+  const totalSimulatedSeconds = runs.reduce((sum, r) => sum + r.simulatedSeconds, 0);
   const avgPressureRatio = runs.reduce((sum, r) => {
     const [current, limit] = r.final.pressure.split("/").map((v) => Number(v));
     return sum + current / Math.max(1, limit);
@@ -322,6 +324,8 @@ function summarizeScenario(scenario, runs) {
     clearRate: clearCount / runs.length,
     avgRound,
     avgLegendOrBetter: avgLegend,
+    totalSimulatedSeconds,
+    avgSimulatedSeconds: totalSimulatedSeconds / runs.length,
     avgPressureRatio,
     runs,
   };
@@ -414,7 +418,7 @@ try {
     for (let i = 0; i < seeds; i++) {
       const run = await playScenarioSeed(page, scenario, i);
       runs.push(run);
-      console.log(`${scenario.label} #${i + 1}: ${run.final.mode} ${run.final.round}R, cleared ${run.final.cleared}, legends ${run.final.unitSummary.legendOrBetter}, pressure ${run.final.pressure}`);
+      console.log(`${scenario.label} #${i + 1}: ${run.final.mode} ${run.final.round}R, cleared ${run.final.cleared}, legends ${run.final.unitSummary.legendOrBetter}, pressure ${run.final.pressure}, simulated ${(run.simulatedSeconds / 60).toFixed(1)}m`);
     }
     const summary = summarizeScenario(scenario, runs);
     results.push(summary);
@@ -438,6 +442,7 @@ try {
     seeds,
     maxRound,
     stepMs,
+    totalSimulatedSeconds: results.reduce((sum, r) => sum + r.totalSimulatedSeconds, 0),
     scope: PLAYTEST_SCOPE,
     scenarios: results,
     observations,
