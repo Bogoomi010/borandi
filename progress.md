@@ -79,6 +79,10 @@ Original prompt: 완성된 에셋으로 게임 스테이지를 최대 15스테�
 - Manual play result checksums are now unique evidence keys: `yarn manual-playlog` rejects duplicate `stateChecksum` entries, and `yarn balance-audit` counts duplicate checksums only once so copied result rows cannot inflate the 2-hour proof.
 - Manual play legend metadata is now consistency-checked both ways: `yarn manual-playlog` and `yarn balance-audit` reject sessions where `legends` and `maxGrade` disagree about whether the run had legend-or-better units.
 - Map progression UI now says the selected map is fixed for the whole 1~40R run, and that a 40R final-boss clear grants the next map selection permission rather than changing maps between rounds.
+- Latest 30-seed `yarn balance --json=/tmp/borandi-balance-current.json` still passes all target bands: 입문자/무전설 100.0%, 일반 0/1/2전설 20.0%/40.0%/56.7%, 중급자 2전설 13.3% vs 5전설 50.0% and unrestricted 100.0%, 고수 5전설 0.0% vs unrestricted 63.3%, 초고수 unrestricted 0.0%.
+- Latest default-style 2-seed browser-direct strict sweep passed all observation gates and accumulated 9.95 simulated hours: novice no-legend 2/2 clears, normal 0-legend 0/2 while 1-legend and 2-legend 2/2 clear, intermediate 2-legend 0/2 vs 5-legend 1/2, expert 5-legend 0/2 vs unrestricted 2/2, and master unrestricted 0/2.
+- Fixed `yarn browser-balance --screenshots=...` artifact capture by clearing stale result modals between scenarios and before screenshots; rerun passed 7/7 browser 10R gates and verified `intermediateFiveLegend.png` now shows the actual 11R 중급자 5전설 gameplay state.
+- Latest combined `yarn balance-audit --balance=/tmp/borandi-balance-current.json --browser=/tmp/borandi-browser-balance-current.json --direct=/tmp/borandi-browser-direct-current.json --manual=docs/manual-balance-playlog.example.json` reports automatic/browser evidence PASS and only the real 2-hour human manual rows as MISSING.
 
 ## TODO
 

@@ -92,7 +92,15 @@ async function readState(page) {
   return JSON.parse(await page.evaluate(() => window.render_game_to_text()));
 }
 
+async function clearModals(page) {
+  await page.evaluate(() => {
+    const root = document.getElementById("modal-root");
+    if (root) root.innerHTML = "";
+  });
+}
+
 async function runScenario(page, scenario) {
+  await clearModals(page);
   await page.evaluate(({ difficulty, id }) => {
     window.__randi_dev.newRun(`BROWSER-${id}`, difficulty, 1);
   }, scenario);
@@ -130,6 +138,7 @@ async function runScenario(page, scenario) {
   const finalState = await readState(page);
   if (screenshotDir) {
     mkdirSync(screenshotDir, { recursive: true });
+    await clearModals(page);
     await page.screenshot({ path: `${screenshotDir}/${scenario.id}.png`, fullPage: true });
   }
   return {
