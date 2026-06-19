@@ -1,4 +1,6 @@
 // Difficulty balance gate: verifies the five requested difficulty bands with deterministic autoplay.
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { runSimulation, type SimReport } from "../src/sim/runner";
 import type { AutoPlayOptions } from "../src/sim/autoPlayer";
 import type { DifficultyId, Grade } from "../src/core/types";
@@ -26,6 +28,7 @@ const args = Object.fromEntries(
 );
 
 const seeds = Number(args.seeds ?? 30);
+const jsonPath = typeof args.json === "string" && args.json !== "true" ? args.json : undefined;
 
 const scenarios: Scenario[] = [
   { id: "noviceHero", label: "입문자 / 전설 없음", difficulty: "novice", options: { strategy: "balanced", maxGrade: "hero" as Grade } },
@@ -114,6 +117,26 @@ console.log("");
 console.log("## 게이트");
 for (const gate of gates) {
   console.log(`${gate.pass ? "PASS" : "FAIL"} ${gate.label} (${gate.detail})`);
+}
+
+if (jsonPath) {
+  const dir = dirname(jsonPath);
+  if (dir && dir !== ".") mkdirSync(dir, { recursive: true });
+  writeFileSync(jsonPath, JSON.stringify({
+    seeds,
+    strategy: "balanced",
+    scenarios: scenarios.map((scenario) => ({
+      id: scenario.id,
+      label: scenario.label,
+      difficulty: scenario.difficulty,
+      options: scenario.options,
+      report: results[scenario.id],
+    })),
+    gates,
+    passed: gates.every((g) => g.pass),
+  }, null, 2), "utf8");
+  console.log("");
+  console.log(`JSON 리포트 저장: ${jsonPath}`);
 }
 
 if (gates.some((g) => !g.pass)) process.exitCode = 1;
