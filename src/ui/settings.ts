@@ -87,6 +87,12 @@ export function canUnlockNextStage(cleared: boolean, round: number, stageId: num
   return cleared && round >= FINAL_ROUND && stageId === unlockedStage && unlockedStage < FINAL_STAGE;
 }
 
+export function playableStageId(requestedStageId: number, unlockedStage: number): number {
+  const maxPlayable = Math.max(1, Math.min(unlockedStage, FINAL_STAGE));
+  const requested = Math.max(1, Math.min(Math.floor(requestedStageId || 1), FINAL_STAGE));
+  return Math.min(requested, maxPlayable);
+}
+
 export function profileRecordRun(cleared: boolean, difficulty: string, round: number, stageId: number): boolean {
   const p = loadProfile();
   p.runs++;

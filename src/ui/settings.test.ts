@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { FINAL_STAGE } from "../data/stages";
 import { FINAL_ROUND } from "../data/waves";
-import { canUnlockNextStage, loadProfile, profileRecordRun } from "./settings";
+import { canUnlockNextStage, loadProfile, playableStageId, profileRecordRun } from "./settings";
 
 class MemoryStorage implements Storage {
   private data = new Map<string, string>();
@@ -45,6 +45,14 @@ describe("프로필 맵 해금", () => {
     expect(canUnlockNextStage(false, FINAL_ROUND, 1, 1)).toBe(false);
     expect(canUnlockNextStage(true, FINAL_ROUND, 2, 1)).toBe(false);
     expect(canUnlockNextStage(true, FINAL_ROUND, FINAL_STAGE, FINAL_STAGE)).toBe(false);
+  });
+
+  it("게임 시작 맵은 현재 선택 권한 안에서만 확정된다", () => {
+    expect(playableStageId(1, 3)).toBe(1);
+    expect(playableStageId(3, 3)).toBe(3);
+    expect(playableStageId(4, 3)).toBe(3);
+    expect(playableStageId(999, FINAL_STAGE)).toBe(FINAL_STAGE);
+    expect(playableStageId(0, 1)).toBe(1);
   });
 
   it("클리어 플래그가 있어도 40라운드 전이면 다음 맵을 해금하지 않는다", () => {

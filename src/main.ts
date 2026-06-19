@@ -11,7 +11,7 @@ import { renderMenubar } from "./ui/menu";
 import { toast, anyModalOpen, closeTopModal, confirmModal } from "./ui/widgets";
 import { maybeShowResult, openSelectorModal, resetResultShown } from "./ui/modals";
 import { loadSlot, makeSaveRecord, saveSlot } from "./save/saveApi";
-import { loadSettings, profileMarkSeen, profileRecordRun } from "./ui/settings";
+import { loadProfile, loadSettings, playableStageId, profileMarkSeen, profileRecordRun } from "./ui/settings";
 import { GameAudio } from "./ui/audio";
 import { showGame, showTitle, openPauseMenu } from "./ui/scenes";
 import { openDevSpawnModal } from "./ui/devTools"; // ⚠ DEV전용 (출시 전 제거)
@@ -84,7 +84,9 @@ const ctx: AppCtx = {
   lastRunUnlockedNext: false,
   refresh: () => { panelsDirty = true; },
   newRun: (seed, difficulty, stageId = 1) => {
-    game = new Game(seed || randomSeed(), difficulty, stageId);
+    const requestedStage = stageId;
+    const allowedStage = playableStageId(requestedStage, loadProfile().unlockedStage);
+    game = new Game(seed || randomSeed(), difficulty, allowedStage);
     ctx.game = game;
     markRunStarted();
     game.onEvent = onGameEvent;
@@ -102,7 +104,9 @@ const ctx: AppCtx = {
     panelsDirty = true;
     showGame(ctx);
     audio.sfx("waveStart");
-    toast(`새 게임: 시드 ${game.state.seed}`, "ok");
+    const stage = stageById(game.state.stageId);
+    const lockNote = allowedStage !== requestedStage ? " · 잠긴 맵 요청은 현재 권한으로 조정됨" : "";
+    toast(`새 게임: ${stage.id}. ${stage.name} · 시드 ${game.state.seed}${lockNote}`, "ok");
   },
   adoptGame: (g) => {
     game = g;
