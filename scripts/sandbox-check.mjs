@@ -51,6 +51,8 @@ console.log("[1] 데이터 무결성");
 check("소환 확률 합 100", Object.values(SUMMON_TABLE).reduce((a, b) => a + b, 0) === 100);
 check("보정 확률 합 100", Object.values(PITY_TABLE).reduce((a, b) => a + b, 0) === 100);
 check("난이도 5종", JSON.stringify(DIFFICULTIES.map((d) => d.id)) === JSON.stringify(["novice", "normal", "intermediate", "expert", "master"]));
+check("상위 난이도 적 누적 허용치 감소",
+  JSON.stringify(DIFFICULTIES.map((d) => d.enemyLimit)) === JSON.stringify([...DIFFICULTIES].map((d) => d.enemyLimit).sort((a, b) => b - a)));
 check("조합식 유닛 ID 유효", RECIPES.every((r) =>
   UNIT_BY_ID[r.resultUnitId] && r.ingredients.every((i) => !i.unitId || UNIT_BY_ID[i.unitId])));
 check("유닛 ID 중복 없음", new Set(UNITS.map((u) => u.id)).size === UNITS.length);

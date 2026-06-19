@@ -33,6 +33,10 @@ describe("데이터 무결성 (QA 체크리스트)", () => {
   it("요구 난이도 5종이 정의되어 있다", () => {
     expect(DIFFICULTIES.map((d) => d.id)).toEqual(["novice", "normal", "intermediate", "expert", "master"]);
   });
+  it("상위 난이도일수록 적 누적 허용치가 줄어든다", () => {
+    const limits = DIFFICULTIES.map((d) => d.enemyLimit);
+    expect(limits).toEqual([...limits].sort((a, b) => b - a));
+  });
   it("조합식에 존재하지 않는 유닛 ID가 없다", () => {
     for (const r of RECIPES) {
       expect(UNIT_BY_ID[r.resultUnitId], `result ${r.resultUnitId}`).toBeDefined();

@@ -495,7 +495,12 @@ function renderGameToText(): string {
       decorationCount: stage.decorations.length,
     },
     wave: { type: wave.type, enemyName: wave.enemyName, count: wave.count, spawned: s.waveSpawned, killed: s.waveKilled },
-    resources: { life: s.life, gold: s.gold, enemyPressure: s.enemies.length, breakTicks: s.breakTicks },
+    resources: {
+      life: s.life, gold: s.gold,
+      enemyPressure: s.enemies.length,
+      enemyLimit: game.diff.enemyLimit,
+      breakTicks: s.breakTicks,
+    },
     units: s.units.slice(0, 12).map((u) => {
       const def = UNIT_BY_ID[u.defId];
       return { uid: u.uid, name: def.name, grade: def.grade, family: def.family, x: Math.round(u.x), y: Math.round(u.y), state: u.state };

@@ -12,7 +12,6 @@ import { UPGRADES, upgradeCost } from "../data/upgrades";
 import { SUMMON_COST, SELL_REFUND, DIFFICULTY_BY_ID } from "../data/difficulty";
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
 import { openSelectorModal } from "./modals";
-import { LOSE_THRESHOLD } from "../core/engine";
 
 // ---------- 상단 상태바 ----------
 
@@ -32,7 +31,7 @@ export function renderTopbar(ctx: AppCtx) {
   const stage = stageById(s.stageId);
   root.appendChild(stat("맵", `${stage.id}. ${stage.name}`));
   root.appendChild(stat("라운드", `${Math.min(s.round, FINAL_ROUND)}/${FINAL_ROUND}`));
-  root.appendChild(stat("적 누적", `${s.enemies.length}/${LOSE_THRESHOLD}`, "life"));
+  root.appendChild(stat("적 누적", `${s.enemies.length}/${diff.enemyLimit}`, "life"));
   root.appendChild(stat("골드", String(s.gold), "gold"));
   root.appendChild(stat("난이도", diff.name));
   root.appendChild(stat("시드", s.seed));
@@ -531,11 +530,12 @@ export function renderActionbar(ctx: AppCtx) {
 
   const inBreak = s.breakTicks > 0;
   const alive = s.enemies.length;
+  const limit = DIFFICULTY_BY_ID[s.difficulty].enemyLimit;
   const phaseText = s.phase === "ended"
     ? (s.cleared ? "클리어!" : "게임 종료")
     : inBreak
-      ? `${s.round}라운드 대기 — 적 ${alive}/${LOSE_THRESHOLD}`
-      : `${s.round}라운드 진행 중 — 적 ${alive}/${LOSE_THRESHOLD}`;
+      ? `${s.round}라운드 대기 — 적 ${alive}/${limit}`
+      : `${s.round}라운드 진행 중 — 적 ${alive}/${limit}`;
   root.appendChild(el("div", "", phaseText)).id = "phase-label";
 
   // 진행 버튼 — 휴식 중에만 "다음 라운드 시작"

@@ -188,7 +188,7 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
     for (const d of DIFFICULTIES) {
       const b = el("button", "choice-btn") as HTMLButtonElement;
       b.appendChild(el("span", "cname", d.name));
-      b.appendChild(el("span", "cdesc", `보유 ${d.unitCap}기 · 적 체력 x${d.enemyHpMult} · 시작 ${d.startGold}골드`));
+      b.appendChild(el("span", "cdesc", `보유 ${d.unitCap}기 · 적 체력 x${d.enemyHpMult} · 누적 ${d.enemyLimit} · 시작 ${d.startGold}골드`));
       if (d.id === chosen) b.style.borderColor = "var(--accent)";
       b.onclick = () => {
         chosen = d.id;

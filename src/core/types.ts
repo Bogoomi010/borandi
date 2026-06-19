@@ -133,6 +133,7 @@ export interface DifficultyDef {
   name: string;
   unitCap: number;
   enemyHpMult: number;
+  enemyLimit: number;
   goldMult: number;
   startGold: number;
   startLife: number;
