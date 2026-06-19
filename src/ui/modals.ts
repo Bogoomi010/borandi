@@ -381,8 +381,10 @@ export function openManualProofGuideModal() {
 
     const summaryCommand = "yarn manual-playlog --summary";
     const planCommand = "yarn manual-playlog --plan";
+    const nextCommand = "yarn manual-playlog --next";
     const summaryJsonCommand = "yarn --silent manual-playlog --summary --json";
     body.appendChild(el("h3", "", "상태 확인"));
+    body.appendChild(el("pre", "report", nextCommand));
     body.appendChild(el("pre", "report", summaryCommand));
     body.appendChild(el("pre", "report", planCommand));
     body.appendChild(el("pre", "report", summaryJsonCommand));
@@ -406,6 +408,16 @@ export function openManualProofGuideModal() {
     ));
 
     const row = el("div", "row-btns");
+    const copyNext = el("button", "", "다음 세션 복사");
+    copyNext.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(nextCommand);
+        toast("다음 수동 세션 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copyNext);
     const copySummary = el("button", "", "요약 명령 복사");
     copySummary.onclick = async () => {
       try {

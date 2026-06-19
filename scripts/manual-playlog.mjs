@@ -36,6 +36,8 @@ function usage() {
     "  --summary --json      # 현재 수동 로그 상태를 JSON으로 출력",
     "  --plan                # 남은 120분 수동 플레이 증거 수집 순서 출력",
     "  --plan --json         # 남은 수동 플레이 계획을 JSON으로 출력",
+    "  --next                # 바로 다음에 필요한 수동 플레이 세션 1개만 출력",
+    "  --next --json         # 다음 필요 세션을 JSON으로 출력",
     "  --notes=...",
     "  --startedAt=ISO --endedAt=ISO",
   ].join("\n");
@@ -430,6 +432,38 @@ function printPlanJson() {
   console.log(`${JSON.stringify(buildPlan(), null, 2)}`);
 }
 
+function buildNext() {
+  const plan = buildPlan();
+  return {
+    schemaVersion: 1,
+    logPath: plan.logPath,
+    passed: plan.passed,
+    current: plan.current,
+    next: plan.steps[0] ?? null,
+  };
+}
+
+function printNext() {
+  const next = buildNext();
+  console.log("# 다음 수동 플레이 세션");
+  console.log(`- 로그: ${next.logPath}`);
+  console.log(`- 현재: ${next.current.validSessionCount}세션, ${next.current.totalMinutes.toFixed(1)}/${next.current.requiredMinutes.toFixed(1)}분`);
+  console.log("");
+  if (!next.next) {
+    console.log("PASS 다음에 필요한 수동 플레이 세션이 없습니다.");
+  } else {
+    console.log(`${next.next.label} (${next.next.minutes.toFixed(1)}분 이상)`);
+    console.log(`목표: ${next.next.goal}`);
+    console.log(`기록 힌트: ${next.next.logHint}`);
+  }
+  console.log("");
+  console.log(`판정: ${next.passed ? "수동 증거 충족" : "수동 증거 미충족"}`);
+}
+
+function printNextJson() {
+  console.log(`${JSON.stringify(buildNext(), null, 2)}`);
+}
+
 if (args.summary === "true" || args.status === "true") {
   if (args.json === "true" || args["summary-json"] === "true") printSummaryJson();
   else printSummary();
@@ -442,6 +476,12 @@ if (args.plan === "true") {
   process.exit(0);
 }
 
+if (args.next === "true") {
+  if (args.json === "true" || args["next-json"] === "true") printNextJson();
+  else printNext();
+  process.exit(0);
+}
+
 if (args["summary-json"] === "true") {
   printSummaryJson();
   process.exit(0);
@@ -449,6 +489,11 @@ if (args["summary-json"] === "true") {
 
 if (args["plan-json"] === "true") {
   printPlanJson();
+  process.exit(0);
+}
+
+if (args["next-json"] === "true") {
+  printNextJson();
   process.exit(0);
 }
 

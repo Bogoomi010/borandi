@@ -85,6 +85,19 @@ describe("manual-playlog plan", () => {
     expect(plan.steps).toHaveLength(7);
   });
 
+  it("다음 필요 세션만 출력할 수 있다", () => {
+    const out = makeTempPath("next.json");
+    const next = JSON.parse(runManualPlaylog([`--out=${out}`, "--next-json"]));
+
+    expect(next.passed).toBe(false);
+    expect(next.next).toMatchObject({
+      kind: "target-session",
+      difficulty: "novice",
+      label: "입문자 무전설 40R 클리어",
+      minutes: 12,
+    });
+  });
+
   it("필수 목표와 120분을 채운 로그는 남은 계획이 없다", () => {
     const out = makeTempPath("complete.json");
     const sessions = [
@@ -118,5 +131,6 @@ describe("manual-playlog plan", () => {
     expect(plan.passed).toBe(true);
     expect(plan.current.totalMinutes).toBe(120);
     expect(plan.steps).toEqual([]);
+    expect(JSON.parse(runManualPlaylog([`--out=${out}`, "--next-json"])).next).toBeNull();
   });
 });
