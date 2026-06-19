@@ -65,4 +65,20 @@ describe("프로필 맵 해금", () => {
     expect(unlocked).toBe(false);
     expect(loadProfile().unlockedStage).toBe(1);
   });
+
+  it("이미 클리어한 이전 맵을 다시 깨도 다음 다음 맵을 해금하지 않는다", () => {
+    expect(profileRecordRun(true, "novice", FINAL_ROUND, 1)).toBe(true);
+
+    const unlocked = profileRecordRun(true, "novice", FINAL_ROUND, 1);
+
+    expect(unlocked).toBe(false);
+    expect(loadProfile().unlockedStage).toBe(2);
+  });
+
+  it("현재 열린 맵을 40라운드까지 깨야 순서대로 다음 맵을 해금한다", () => {
+    expect(profileRecordRun(true, "novice", FINAL_ROUND, 1)).toBe(true);
+    expect(profileRecordRun(true, "novice", FINAL_ROUND, 2)).toBe(true);
+
+    expect(loadProfile().unlockedStage).toBe(3);
+  });
 });

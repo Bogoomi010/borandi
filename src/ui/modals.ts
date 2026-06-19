@@ -238,9 +238,11 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
   openModal((body, close) => {
     body.appendChild(el("h2", "", "새 게임"));
 
+    const profile = loadProfile();
+    const unlockedStage = Math.max(1, Math.min(profile.unlockedStage, STAGES.length));
     body.appendChild(el("h3", "", "난이도"));
     let chosen: DifficultyId = "novice";
-    let chosenStage = 1;
+    let chosenStage = unlockedStage;
     const diffRow = el("div", "choice-grid");
     const diffBtns: HTMLButtonElement[] = [];
     for (const d of DIFFICULTIES) {
@@ -258,17 +260,15 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
     }
     body.appendChild(diffRow);
 
-    const profile = loadProfile();
-    const unlockedStage = Math.max(1, Math.min(profile.unlockedStage, STAGES.length));
     body.appendChild(el("h3", "", "맵 선택"));
     const stageRow = el("div", "choice-grid stage-choice-grid");
     const stageBtns: HTMLButtonElement[] = [];
     for (const stage of STAGES) {
       const b = el("button", "choice-btn stage-choice") as HTMLButtonElement;
       b.appendChild(el("span", "cname", `${stage.id}. ${stage.name}`));
-      b.appendChild(el("span", "cdesc", stage.subtitle));
+      b.appendChild(el("span", "cdesc", `${stage.subtitle} · 40R 최종 보스 클리어`));
       b.disabled = stage.id > unlockedStage;
-      if (b.disabled) b.appendChild(el("span", "cdesc", "잠김: 이전 맵 40라운드 클리어 필요"));
+      if (b.disabled) b.appendChild(el("span", "cdesc", "잠김: 바로 이전 맵 40R 클리어 필요"));
       if (stage.id === chosenStage) b.style.borderColor = "var(--accent)";
       b.onclick = () => {
         chosenStage = stage.id;
