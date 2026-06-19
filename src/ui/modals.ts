@@ -176,9 +176,14 @@ function mapPermissionMessage(r: ResultSummary): string {
     return "최종 맵 40R 보스를 클리어했습니다. 더 열릴 맵은 없습니다.";
   }
   if (finalBossCleared) {
-    return "이미 선택 권한이 열린 맵입니다. 다음 권한은 현재 잠긴 첫 맵 직전 맵의 40R 보스를 클리어해야 열립니다.";
+    return "이미 선택 권한이 열린 맵입니다. 다음 권한은 현재 해금 진행 맵의 40R 최종 보스를 클리어해야 열립니다.";
   }
   return `다음 맵 선택 권한은 이 맵의 ${FINAL_ROUND}R 최종 보스를 클리어해야 열립니다.`;
+}
+
+function newlyUnlockedNextStage(r: ResultSummary) {
+  if (!r.unlockedNextStage || r.stageId >= STAGES.length) return null;
+  return stageById(r.stageId + 1);
 }
 
 export function buildReportMarkdown(r: ResultSummary): string {
@@ -363,7 +368,18 @@ export function maybeShowResult(ctx: AppCtx) {
     sameSeed.onclick = () => { resultShown = false; close(); ctx.newRun(summary.seed, ctx.game.state.difficulty, ctx.game.state.stageId); };
     row.appendChild(sameSeed);
 
-    const newBtn = el("button", "primary", "새 게임");
+    const nextStage = newlyUnlockedNextStage(summary);
+    if (nextStage) {
+      const nextMapBtn = el("button", "primary", `다음 맵 시작: ${nextStage.id}. ${nextStage.name}`);
+      nextMapBtn.onclick = () => {
+        resultShown = false;
+        close();
+        ctx.newRun(randomSeed(), ctx.game.state.difficulty, nextStage.id);
+      };
+      row.appendChild(nextMapBtn);
+    }
+
+    const newBtn = el("button", nextStage ? "" : "primary", "새 게임");
     newBtn.onclick = () => { resultShown = false; close(); openNewRunModal(ctx); };
     row.appendChild(newBtn);
 
@@ -424,7 +440,7 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
     body.appendChild(diffRow);
 
     body.appendChild(el("h3", "", "맵 선택 권한"));
-    body.appendChild(el("div", "modal-note map-rule-note", "새 게임에서 고른 맵은 1~40R 최종 보스까지 고정됩니다. 현재 열린 마지막 맵을 40R까지 클리어해야 다음 맵 선택 권한이 열립니다."));
+    body.appendChild(el("div", "modal-note map-rule-note", "게임 시작 때 맵을 하나 정하면 40R 최종 보스까지 그 맵으로만 진행합니다. 현재 해금 진행 맵의 40R 보스를 클리어하면 다음 맵을 선택할 권한이 열립니다."));
     const stageRow = el("div", "choice-grid stage-choice-grid");
     const stageBtns: HTMLButtonElement[] = [];
     for (const stage of STAGES) {
