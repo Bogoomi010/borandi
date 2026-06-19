@@ -159,6 +159,18 @@ describe("조합", () => {
 });
 
 describe("전투/리플레이 재현성", () => {
+  it("선택한 맵은 40라운드 런 동안 고정되고 리플레이에도 유지된다", () => {
+    const stageId = 4;
+    const game = new Game("STAGE-STAYS", "novice", stageId);
+    playFullRun(game);
+    const replayed = replay("STAGE-STAYS", "novice", stageId, game.state.inputHistory);
+
+    expect(game.state.stageId).toBe(stageId);
+    expect(replayed.state.stageId).toBe(stageId);
+    expect(replayed.state.round).toBe(game.state.round);
+    expect(replayed.state.cleared).toBe(game.state.cleared);
+  }, 30000);
+
   it("자동 플레이 한 판의 입력 기록을 리플레이하면 같은 체크섬이 나온다", () => {
     const game = new Game("REPLAY-1", "novice");
     playFullRun(game);
