@@ -122,6 +122,9 @@ describe("manual-playlog plan", () => {
 
     const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
     expect(output).toContain("- 목표: 입문자 무전설 40R 클리어");
+    expect(output).toContain("- 플레이 조건: 전설 없이 40R 최종 보스 클리어");
+    expect(output).toContain("- 기록 조건: result=clear round=40 legends=0 maxGrade=hero 이하");
+    expect(output).toContain("yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero");
     expect(pending.pending).toHaveLength(1);
     expect(pending.pending[0]).toMatchObject({
       source: "human-playtest-start",
@@ -163,6 +166,31 @@ describe("manual-playlog plan", () => {
 
     expect(failed.status).toBe(1);
     expect(failed.stderr).toContain("다음 필요 세션은 novice 난이도입니다");
+  });
+
+  it("start-next는 채워진 목표 다음 세션의 마무리 템플릿을 목표 조건에 맞춘다", () => {
+    const out = makeTempPath("start-next-after-novice.json");
+    appendSession(out, {
+      difficulty: "novice",
+      minutes: 12,
+      result: "clear",
+      round: 40,
+      legends: 0,
+      maxGrade: "hero",
+      checksum: "abc00001",
+      startedAt: "2026-06-20T00:00:00.000Z",
+    });
+
+    const output = runManualPlaylog([
+      `--out=${out}`,
+      "--start-next",
+      "--seed=NORMAL-SEED",
+      "--startedAt=2026-06-20T02:45:00.000Z",
+    ]);
+
+    expect(output).toContain("- 목표: 일반 1~2전설 40R 클리어");
+    expect(output).toContain("- 기록 조건: result=clear round=40 legends=1~2 maxGrade=legend");
+    expect(output).toContain("yarn manual-playlog --finish='normal-1-NORMAL-SEED-20260620T024500000Z' --result=clear --round=40 --legends=1 --maxGrade=legend");
   });
 
   it("수동 증거 assert는 빈 로그에서 실패 코드와 다음 세션을 출력한다", () => {

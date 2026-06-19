@@ -596,6 +596,45 @@ function makePendingId({ difficulty, stage, seed, startedAt }) {
   return `${difficulty}-${stage}-${String(seed).replace(/[^0-9A-Za-z_-]/g, "")}-${suffix}`;
 }
 
+function finishTemplateForNext(step) {
+  const base = {
+    result: "loss",
+    round: "ROUND_REACHED",
+    legends: "FINAL_LEGENDS",
+    maxGrade: "MAX_GRADE",
+  };
+  if (!step) return base;
+  switch (step.label) {
+    case "입문자 무전설 40R 클리어":
+      return { result: "clear", round: "40", legends: "0", maxGrade: "hero" };
+    case "일반 1~2전설 40R 클리어":
+      return { result: "clear", round: "40", legends: "1", maxGrade: "legend" };
+    case "중급자 5전설 이상 40R 클리어":
+      return { result: "clear", round: "40", legends: "5", maxGrade: "legend" };
+    case "고수 5전설 이하 40R 실패":
+      return { result: "loss", round: "40", legends: "5", maxGrade: "legend" };
+    case "고수 6전설 이상 40R 클리어":
+      return { result: "clear", round: "40", legends: "6", maxGrade: "legend" };
+    case "초고수 실패 기록":
+      return { result: "loss", round: "ROUND_REACHED", legends: "FINAL_LEGENDS", maxGrade: "MAX_GRADE" };
+    default:
+      return base;
+  }
+}
+
+function finishCommandTemplate({ id, next }) {
+  const template = finishTemplateForNext(next);
+  return [
+    `yarn manual-playlog --finish=${shellArg(id)}`,
+    `--result=${template.result}`,
+    `--round=${template.round}`,
+    `--legends=${template.legends}`,
+    `--maxGrade=${template.maxGrade}`,
+    "--dataVersion=0.8.0",
+    "--stateChecksum=1234abcd",
+  ].join(" ");
+}
+
 function savePendingSession({ difficulty, stage, seed, startedAt, id, notes }) {
   const log = readJson(outPath);
   log.schemaVersion = 1;
@@ -619,14 +658,18 @@ function savePendingSession({ difficulty, stage, seed, startedAt, id, notes }) {
   writeFileSync(outPath, `${JSON.stringify(log, null, 2)}\n`, "utf8");
 }
 
-function printStartSaved({ id, startedAt, nextLabel }) {
+function printStartSaved({ id, startedAt, next }) {
   console.log(`수동 플레이 시작 마커 저장: ${outPath}`);
-  if (nextLabel) console.log(`- 목표: ${nextLabel}`);
+  if (next?.label) {
+    console.log(`- 목표: ${next.label}`);
+    if (next.goal) console.log(`- 플레이 조건: ${next.goal}`);
+    if (next.logHint) console.log(`- 기록 조건: ${next.logHint}`);
+  }
   console.log(`- id: ${id}`);
   console.log(`- 시작: ${startedAt.toISOString()}`);
   console.log("");
   console.log("결과가 나오면 아래 형식으로 마무리하세요:");
-  console.log(`yarn manual-playlog --finish=${id} --result=loss --round=40 --legends=0 --maxGrade=hero --dataVersion=0.8.0 --stateChecksum=1234abcd`);
+  console.log(finishCommandTemplate({ id, next }));
 }
 
 function startManualSession() {
@@ -683,7 +726,7 @@ function startNextManualSession() {
     startedAt,
     notes: args.notes ? String(args.notes) : String(next.label),
   });
-  printStartSaved({ id, startedAt, nextLabel: next.label });
+  printStartSaved({ id, startedAt, next });
 }
 
 if (args.summary === "true" || args.status === "true") {
