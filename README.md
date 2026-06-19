@@ -43,7 +43,11 @@ yarn --silent manual-playlog --summary --json
                           # 같은 수동 로그 상태를 자동화 가능한 JSON으로 출력
 yarn balance-audit --manual=output/manual-balance-playlog.json --out=output/balance-audit.md
                           # balance/browser-balance/browser-direct/manual JSON을 모아 요구사항별 근거 감사표 생성
+yarn balance-audit --manual=output/manual-balance-playlog.json --assert
+                          # 자동/브라우저/수동 증거 중 하나라도 미충족이면 실패 코드로 종료
 yarn balance-proof        # 자동/브라우저 밸런스 증거 JSON을 재생성하고 감사표까지 갱신
+yarn balance-proof --require-complete
+                          # 증거 갱신 후 수동 2시간까지 모두 충족됐는지 strict 감사
 yarn check                # npm 의존성 없이 Node만으로 코어 스모크 테스트
 ```
 

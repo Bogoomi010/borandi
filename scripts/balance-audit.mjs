@@ -466,6 +466,7 @@ const balance = readJson(balancePath);
 const browser = readJson(browserPath);
 const direct = readJson(directPath);
 const manual = readJson(manualPath);
+const rows = buildRows(balance, browser, direct, manual);
 const markdown = buildMarkdown(balance, browser, direct, manual);
 
 console.log(markdown);
@@ -474,4 +475,17 @@ if (outPath) {
   const dir = dirname(outPath);
   if (dir && dir !== ".") mkdirSync(dir, { recursive: true });
   writeFileSync(outPath, markdown, "utf8");
+}
+
+if (args.assert === "true") {
+  const failedRows = rows.filter((row) => !row.pass);
+  if (failedRows.length > 0) {
+    console.error("");
+    console.error(`balance-audit assert failed: ${failedRows.length}개 항목 미충족`);
+    for (const row of failedRows) {
+      console.error(`- ${row.req}: ${status(row.pass, row.missing)} (${row.evidence})`);
+    }
+    process.exit(1);
+  }
+  console.log("balance-audit assert passed");
 }

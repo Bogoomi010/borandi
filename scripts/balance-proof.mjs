@@ -21,6 +21,7 @@ const auditPath = String(args.out ?? "output/balance-audit.md");
 const browserScreenshots = String(args.screenshots ?? "output/browser-balance-shots");
 const balanceSeeds = Number(args.seeds ?? 30);
 const directSeeds = Number(args["direct-seeds"] ?? 2);
+const requireComplete = args["require-complete"] === "true" || args.assert === "true";
 
 function run(command, commandArgs, options = {}) {
   return new Promise((resolve, reject) => {
@@ -142,9 +143,12 @@ try {
     `--direct=${directPath}`,
     `--manual=${manualPath}`,
     `--out=${auditPath}`,
+    ...(requireComplete ? ["--assert"] : []),
   ]);
 
-  console.log(`\n밸런스 증거 갱신 완료: ${auditPath}`);
+  console.log(requireComplete
+    ? `\n밸런스 완료 증거 검증 완료: ${auditPath}`
+    : `\n밸런스 증거 갱신 완료: ${auditPath}`);
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
