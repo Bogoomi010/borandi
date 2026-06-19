@@ -78,9 +78,9 @@ export function evaluateBalanceGate(seeds: number, scenarioResults: BalanceScena
     },
     {
       label: "중급자는 2전설보다 5전설 이상에서 클리어권 진입",
-      pass: intermediateTwoLegend.clearRate <= 0.25 &&
+      pass: intermediateTwoLegend.clearRate <= 0.15 &&
         intermediateFiveLegend.clearRate >= 0.4 &&
-        intermediateFiveLegend.clearRate >= intermediateTwoLegend.clearRate + 0.2 &&
+        intermediateFiveLegend.clearRate >= intermediateTwoLegend.clearRate + 0.3 &&
         intermediateOpen.clearRate >= 0.85,
       detail: `2전설 ${pct(intermediateTwoLegend.clearRate)}, 5전설 ${pct(intermediateFiveLegend.clearRate)}, 제한 없음 ${pct(intermediateOpen.clearRate)}`,
     },
