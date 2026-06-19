@@ -14,6 +14,15 @@ import {
 } from "../save/saveApi";
 import { replay } from "../core/engine";
 import { runSimulation, reportToMarkdown } from "../sim/runner";
+import {
+  BALANCE_GATE_DEFAULT_SEEDS,
+  BALANCE_SCENARIOS,
+  balanceGateToJson,
+  balanceGateToMarkdown,
+  evaluateBalanceGate,
+  type BalanceGateResult,
+  type BalanceScenarioResult,
+} from "../sim/balanceGate";
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
 import { loadProfile } from "./settings";
 
@@ -381,6 +390,73 @@ export function openSimModal(ctx: AppCtx) {
       }
     };
     row.appendChild(exportBtn);
+
+    const closeBtn = el("button", "", "닫기");
+    closeBtn.onclick = close;
+    row.appendChild(closeBtn);
+    body.appendChild(row);
+  });
+}
+
+export function openBalanceGateModal() {
+  openModal((body, close) => {
+    body.appendChild(el("h2", "", "5난이도 밸런스 게이트"));
+    body.appendChild(el("div", "", "현재 기준으로 30시드 자동 플레이 게이트를 실행합니다. 전체 난이도 조건을 확인하므로 시간이 걸릴 수 있습니다."));
+    const out = el("pre", "report", "대기 중…");
+    body.appendChild(out);
+    let lastResult: BalanceGateResult | null = null;
+
+    const row = el("div", "row-btns");
+    const run = el("button", "primary", "실행") as HTMLButtonElement;
+    run.onclick = () => {
+      run.disabled = true;
+      out.textContent = "실행 중…";
+      const progress: string[] = [];
+      const results: BalanceScenarioResult[] = [];
+      const runNext = (index: number) => {
+        if (index >= BALANCE_SCENARIOS.length) {
+          lastResult = evaluateBalanceGate(BALANCE_GATE_DEFAULT_SEEDS, results);
+          out.textContent = balanceGateToMarkdown(lastResult);
+          run.disabled = false;
+          return;
+        }
+        const scenario = BALANCE_SCENARIOS[index];
+        out.textContent = `실행 중…\n${progress.join("\n")}\n${index + 1}/${BALANCE_SCENARIOS.length} ${scenario.label} 계산 중`;
+        setTimeout(() => {
+          const report = runSimulation(BALANCE_GATE_DEFAULT_SEEDS, scenario.difficulty, scenario.options);
+          results.push({ scenario, report });
+          progress.push(`${index + 1}/${BALANCE_SCENARIOS.length} ${scenario.label}: ${(report.clearRate * 100).toFixed(1)}% · 평균 ${report.avgReachedRound.toFixed(1)}R · 전설 ${report.avgLegendCount.toFixed(1)}`);
+          out.textContent = `실행 중…\n${progress.join("\n")}`;
+          runNext(index + 1);
+        }, 20);
+      };
+      runNext(0);
+    };
+    row.appendChild(run);
+
+    const saveMd = el("button", "", "Markdown 저장");
+    saveMd.onclick = async () => {
+      if (!lastResult) return;
+      try {
+        const p = await writeReport(`randi-balance-${Date.now()}.md`, balanceGateToMarkdown(lastResult));
+        toast(`저장: ${p}`, "ok", 4000);
+      } catch {
+        toast("저장 실패", "danger");
+      }
+    };
+    row.appendChild(saveMd);
+
+    const saveJson = el("button", "", "JSON 저장");
+    saveJson.onclick = async () => {
+      if (!lastResult) return;
+      try {
+        const p = await writeReport(`randi-balance-${Date.now()}.json`, balanceGateToJson(lastResult));
+        toast(`저장: ${p}`, "ok", 4000);
+      } catch {
+        toast("저장 실패", "danger");
+      }
+    };
+    row.appendChild(saveJson);
 
     const closeBtn = el("button", "", "닫기");
     closeBtn.onclick = close;
