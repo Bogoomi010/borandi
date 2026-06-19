@@ -99,7 +99,33 @@ function manualPlaylogCommand(r: ResultSummary): string {
   return args.join(" ");
 }
 
+function manualProofTarget(r: ResultSummary): string {
+  const targetLength = (r.wallSeconds ?? 0) >= 12 * 60;
+  const finalRound = r.reachedRound >= 40;
+  if (!targetLength) return "12분 이상 진행된 판만 수동 목표 증거로 인정됩니다.";
+  if (r.difficultyId === "novice" && r.cleared && finalRound && r.legendOrBetterCount === 0) {
+    return "입문자 무전설 40R 클리어 증거";
+  }
+  if (r.difficultyId === "normal" && r.cleared && finalRound && r.legendOrBetterCount >= 1 && r.legendOrBetterCount <= 2) {
+    return "일반 1~2전설 40R 클리어 증거";
+  }
+  if (r.difficultyId === "intermediate" && r.cleared && finalRound && r.legendOrBetterCount >= 5) {
+    return "중급자 5전설 이상 40R 클리어 증거";
+  }
+  if (r.difficultyId === "expert" && !r.cleared && finalRound && r.legendOrBetterCount <= 5) {
+    return "고수 5전설 이하 40R 실패 증거";
+  }
+  if (r.difficultyId === "expert" && r.cleared && finalRound && r.legendOrBetterCount >= 6) {
+    return "고수 6전설 이상 40R 클리어 증거";
+  }
+  if (r.difficultyId === "master" && !r.cleared) {
+    return "초고수 실패 기록 증거";
+  }
+  return "수동 플레이 시간에는 포함되지만 목표 결과 증거 조건과는 다릅니다.";
+}
+
 export function buildReportMarkdown(r: ResultSummary): string {
+  const proofTarget = manualProofTarget(r);
   const lines = [
     `# 차원 균열 랜덤 디펜스 결과`,
     ``,
@@ -114,6 +140,7 @@ export function buildReportMarkdown(r: ResultSummary): string {
     `- 미션: ${r.missionsDone}/${r.missionsTotal}`,
     `- 조합 ${r.craftCount}회 · 3합성 ${r.merge3Count}회 · 보정 발동 ${r.pityTriggered}회`,
     ...(r.wallSeconds ? [`- 실제 플레이 시간: ${(r.wallSeconds / 60).toFixed(1)}분`] : []),
+    ...(r.wallSeconds ? [`- 수동 증거 판정: ${proofTarget}`] : []),
     ``,
     `## 주요 딜러`,
     ``,
@@ -130,7 +157,7 @@ export function buildReportMarkdown(r: ResultSummary): string {
     lines.push("", "## 개선 힌트", "", `- ${r.failHint}`);
   }
   if (r.wallSeconds) {
-    lines.push("", "## 수동 플레이 로그", "", "```bash", manualPlaylogCommand(r), "```");
+    lines.push("", "## 수동 플레이 로그", "", `- 판정: ${proofTarget}`, "", "```bash", manualPlaylogCommand(r), "```");
   }
   lines.push("", `played at ${r.playedAt}`);
   return lines.join("\n");
@@ -152,6 +179,7 @@ export function maybeShowResult(ctx: AppCtx) {
   void recordResult(summary).catch(() => toast("결과 저장 실패", "danger"));
 
   openModal((body, close) => {
+    const proofTarget = manualProofTarget(summary);
     body.appendChild(el("h2", "", summary.cleared ? `${summary.stageName} 40라운드 클리어!` : `${summary.reachedRound}라운드에서 패배`));
 
     const grid = el("div", "result-stats");
@@ -165,6 +193,7 @@ export function maybeShowResult(ctx: AppCtx) {
     kv("최고 등급", GRADE_LABEL[summary.maxGrade]);
     kv("전설/히든", `${summary.legendCount} / ${summary.hiddenCount}`);
     kv("실제 플레이", `${(wallSeconds / 60).toFixed(1)}분`);
+    kv("수동 증거", proofTarget);
     kv("미션", `${summary.missionsDone}/${summary.missionsTotal}`);
     kv("조합/3합성", `${summary.craftCount} / ${summary.merge3Count}`);
     kv("보정 발동", `${summary.pityTriggered}회`);
