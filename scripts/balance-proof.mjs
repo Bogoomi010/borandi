@@ -114,6 +114,10 @@ async function stopDevServer(child) {
 
 let devServer = null;
 try {
+  if (requireComplete) {
+    await run("yarn", ["manual-playlog", `--out=${manualPath}`, "--assert"]);
+  }
+
   await run("yarn", ["balance", `--seeds=${balanceSeeds}`, `--json=${balancePath}`]);
 
   if (await canReachServer()) {
