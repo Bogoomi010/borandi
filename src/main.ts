@@ -19,7 +19,7 @@ import { UNIT_BY_ID } from "./data/units";
 import { analyzeRecipes } from "./core/advisor";
 import { stageById } from "./data/stages";
 import { waveForRound } from "./data/waves";
-import type { DifficultyId } from "./core/types";
+import { GRADE_ORDER, type DifficultyId, type Grade } from "./core/types";
 
 const settings = loadSettings();
 const audio = new GameAudio(settings);
@@ -483,6 +483,13 @@ function renderGameToText(): string {
   const s = game.state;
   const stage = stageById(s.stageId);
   const wave = waveForRound(Math.min(s.round, 40));
+  const gradeCounts: Record<Grade, number> = { common: 0, rare: 0, hero: 0, legend: 0, hidden: 0 };
+  let maxGrade: Grade | null = null;
+  for (const unit of s.units) {
+    const grade = UNIT_BY_ID[unit.defId].grade;
+    gradeCounts[grade]++;
+    if (!maxGrade || GRADE_ORDER.indexOf(grade) > GRADE_ORDER.indexOf(maxGrade)) maxGrade = grade;
+  }
   return JSON.stringify({
     coordinateSystem: "board origin top-left, x right, y down, logical size 960x560",
     scene: ctx.scene,
@@ -503,6 +510,16 @@ function renderGameToText(): string {
       enemyPressure: s.enemies.length,
       enemyLimit: game.diff.enemyLimit,
       breakTicks: s.breakTicks,
+    },
+    unitSummary: {
+      total: s.units.length,
+      gradeCounts,
+      legendOrBetter: gradeCounts.legend + gradeCounts.hidden,
+      maxGrade,
+    },
+    boss: {
+      kills: s.bossKillSeconds,
+      failedRounds: s.bossFailedRounds,
     },
     units: s.units.slice(0, 12).map((u) => {
       const def = UNIT_BY_ID[u.defId];
