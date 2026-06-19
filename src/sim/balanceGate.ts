@@ -33,6 +33,7 @@ export const BALANCE_GATE_DEFAULT_SEEDS = 30;
 export const BALANCE_SCENARIOS: BalanceScenario[] = [
   { id: "noviceHero", label: "입문자 / 전설 없음", difficulty: "novice", options: { strategy: "balanced", maxGrade: "hero" as Grade } },
   { id: "normalNoLegend", label: "일반 / 전설 0개", difficulty: "normal", options: { strategy: "balanced", maxLegendCount: 0 } },
+  { id: "normalOneLegend", label: "일반 / 전설 1개", difficulty: "normal", options: { strategy: "balanced", maxLegendCount: 1 } },
   { id: "normalTwoLegend", label: "일반 / 전설 2개", difficulty: "normal", options: { strategy: "balanced", maxLegendCount: 2 } },
   { id: "intermediateTwoLegend", label: "중급자 / 전설 2개", difficulty: "intermediate", options: { strategy: "balanced", maxLegendCount: 2 } },
   { id: "intermediateFiveLegend", label: "중급자 / 전설 5개", difficulty: "intermediate", options: { strategy: "balanced", maxLegendCount: 5 } },
@@ -55,6 +56,7 @@ function resultById(results: BalanceScenarioResult[], id: string): SimReport {
 export function evaluateBalanceGate(seeds: number, scenarioResults: BalanceScenarioResult[]): BalanceGateResult {
   const noviceHero = resultById(scenarioResults, "noviceHero");
   const normalNoLegend = resultById(scenarioResults, "normalNoLegend");
+  const normalOneLegend = resultById(scenarioResults, "normalOneLegend");
   const normalTwoLegend = resultById(scenarioResults, "normalTwoLegend");
   const intermediateTwoLegend = resultById(scenarioResults, "intermediateTwoLegend");
   const intermediateFiveLegend = resultById(scenarioResults, "intermediateFiveLegend");
@@ -72,9 +74,11 @@ export function evaluateBalanceGate(seeds: number, scenarioResults: BalanceScena
     {
       label: "일반은 전설 1~2개 보유가 무전설보다 명확히 유리",
       pass: normalNoLegend.clearRate <= 0.25 &&
-        normalTwoLegend.clearRate >= 0.3 &&
-        normalTwoLegend.clearRate >= normalNoLegend.clearRate + 0.2,
-      detail: `0전설 ${pct(normalNoLegend.clearRate)}, 2전설 ${pct(normalTwoLegend.clearRate)}`,
+        normalOneLegend.clearRate >= 0.2 &&
+        normalOneLegend.clearRate >= normalNoLegend.clearRate + 0.15 &&
+        normalTwoLegend.clearRate >= 0.45 &&
+        normalTwoLegend.clearRate >= normalOneLegend.clearRate + 0.15,
+      detail: `0전설 ${pct(normalNoLegend.clearRate)}, 1전설 ${pct(normalOneLegend.clearRate)}, 2전설 ${pct(normalTwoLegend.clearRate)}`,
     },
     {
       label: "중급자는 2전설보다 5전설 이상에서 클리어권 진입",

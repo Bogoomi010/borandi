@@ -7,7 +7,7 @@ export const DIFFICULTIES: DifficultyDef[] = [
   },
   {
     id: "normal", name: "일반",
-    unitCap: 38, enemyHpMult: 5.3, enemyLimit: 54, goldMult: 1.0, startGold: 100, startLife: 20,
+    unitCap: 38, enemyHpMult: 5.0, enemyLimit: 58, goldMult: 1.05, startGold: 110, startLife: 20,
   },
   {
     id: "intermediate", name: "중급자",
@@ -15,7 +15,7 @@ export const DIFFICULTIES: DifficultyDef[] = [
   },
   {
     id: "expert", name: "고수",
-    unitCap: 34, enemyHpMult: 8.2, enemyLimit: 46, goldMult: 0.84, startGold: 75, startLife: 14,
+    unitCap: 34, enemyHpMult: 7.7, enemyLimit: 48, goldMult: 0.88, startGold: 85, startLife: 14,
   },
   {
     id: "master", name: "초고수",

@@ -77,12 +77,14 @@ function buildRows(balance, browser, direct, manual) {
   });
 
   const normalNo = clearRate(balance, "normalNoLegend");
+  const normalOne = clearRate(balance, "normalOneLegend");
   const normalTwo = clearRate(balance, "normalTwoLegend");
   rows.push({
     req: "일반: 전설 1~2개부터 클리어권",
-    evidence: `0전설 ${rateText(balance, "normalNoLegend")}, 2전설 ${rateText(balance, "normalTwoLegend")}`,
-    pass: typeof normalNo === "number" && typeof normalTwo === "number" &&
-      normalNo <= 0.25 && normalTwo >= 0.3 && normalTwo >= normalNo + 0.2,
+    evidence: `0전설 ${rateText(balance, "normalNoLegend")}, 1전설 ${rateText(balance, "normalOneLegend")}, 2전설 ${rateText(balance, "normalTwoLegend")}`,
+    pass: typeof normalNo === "number" && typeof normalOne === "number" && typeof normalTwo === "number" &&
+      normalNo <= 0.25 && normalOne >= 0.2 && normalOne >= normalNo + 0.15 &&
+      normalTwo >= 0.45 && normalTwo >= normalOne + 0.15,
   });
 
   const intermediateTwo = clearRate(balance, "intermediateTwoLegend");

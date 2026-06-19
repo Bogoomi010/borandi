@@ -48,6 +48,13 @@ const SCENARIOS = [
     expectation: "무전설 일반은 불안정해야 한다.",
   },
   {
+    id: "normalOneLegend",
+    label: "일반 / 전설 최대 1개 직접 플레이",
+    difficulty: "normal",
+    options: { maxLegendCount: 1 },
+    expectation: "전설 1개 조건이 무전설보다 좋아야 한다.",
+  },
+  {
     id: "normalTwoLegend",
     label: "일반 / 전설 최대 2개 직접 플레이",
     difficulty: "normal",
@@ -251,7 +258,7 @@ async function doPrep(page, options) {
 }
 
 async function playScenarioSeed(page, scenario, seedIndex) {
-  const seed = `DIRECT-${scenario.id}-${seedIndex}`;
+  const seed = `DIRECT-${seedIndex}`;
   await clearModals(page);
   await page.evaluate(({ seed, difficulty }) => {
     window.__randi_dev.newRun(seed, difficulty, 1);
@@ -342,6 +349,7 @@ function pct(n) {
 function evaluateObservations(results) {
   const novice = scenarioById(results, "noviceHero");
   const normalNoLegend = scenarioById(results, "normalNoLegend");
+  const normalOneLegend = scenarioById(results, "normalOneLegend");
   const normalTwoLegend = scenarioById(results, "normalTwoLegend");
   const intermediateTwoLegend = scenarioById(results, "intermediateTwoLegend");
   const intermediateFiveLegend = scenarioById(results, "intermediateFiveLegend");
@@ -357,13 +365,16 @@ function evaluateObservations(results) {
       detail: `${pct(novice.clearRate)}, 평균 ${novice.avgRound.toFixed(1)}R, 평균 전설 ${novice.avgLegendOrBetter.toFixed(1)}`,
     });
   }
-  if (normalNoLegend && normalTwoLegend) {
+  if (normalNoLegend && normalOneLegend && normalTwoLegend) {
     gates.push({
-      label: "일반 직접 플레이 표본은 2전설 조건이 무전설보다 유리",
-      pass: normalTwoLegend.clearRate > normalNoLegend.clearRate ||
-        normalTwoLegend.avgRound >= normalNoLegend.avgRound + 1 ||
-        normalTwoLegend.avgPressureRatio < normalNoLegend.avgPressureRatio,
-      detail: `0전설 ${pct(normalNoLegend.clearRate)} ${normalNoLegend.avgRound.toFixed(1)}R 압박 ${pct(normalNoLegend.avgPressureRatio)}, 2전설 ${pct(normalTwoLegend.clearRate)} ${normalTwoLegend.avgRound.toFixed(1)}R 압박 ${pct(normalTwoLegend.avgPressureRatio)}`,
+      label: "일반 직접 플레이 표본은 1~2전설 조건이 무전설보다 유리",
+      pass: (normalOneLegend.clearRate > normalNoLegend.clearRate ||
+          normalOneLegend.avgRound >= normalNoLegend.avgRound + 1 ||
+          normalOneLegend.avgPressureRatio < normalNoLegend.avgPressureRatio) &&
+        (normalTwoLegend.clearRate > normalNoLegend.clearRate ||
+          normalTwoLegend.avgRound >= normalNoLegend.avgRound + 1 ||
+          normalTwoLegend.avgPressureRatio < normalNoLegend.avgPressureRatio),
+      detail: `0전설 ${pct(normalNoLegend.clearRate)} ${normalNoLegend.avgRound.toFixed(1)}R 압박 ${pct(normalNoLegend.avgPressureRatio)}, 1전설 ${pct(normalOneLegend.clearRate)} ${normalOneLegend.avgRound.toFixed(1)}R 압박 ${pct(normalOneLegend.avgPressureRatio)}, 2전설 ${pct(normalTwoLegend.clearRate)} ${normalTwoLegend.avgRound.toFixed(1)}R 압박 ${pct(normalTwoLegend.avgPressureRatio)}`,
     });
   }
   if (intermediateTwoLegend && intermediateFiveLegend) {
