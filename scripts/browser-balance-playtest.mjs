@@ -35,6 +35,20 @@ const scenarios = [
     targetRound: 11,
   },
   {
+    id: "normalTwoHero",
+    label: "일반 / 영웅 2개",
+    difficulty: "normal",
+    units: HEROES.slice(0, 2),
+    targetRound: 11,
+  },
+  {
+    id: "intermediateTwoLegend",
+    label: "중급자 / 전설 2개",
+    difficulty: "intermediate",
+    units: LEGENDS.slice(0, 2),
+    targetRound: 11,
+  },
+  {
     id: "intermediateFiveLegend",
     label: "중급자 / 전설 5개",
     difficulty: "intermediate",
@@ -138,9 +152,23 @@ function pressureParts(result) {
   return { current, limit };
 }
 
+function isWeakerEarlyRun(weak, strong) {
+  const weakBoss10 = boss10Seconds(weak);
+  const strongBoss10 = boss10Seconds(strong);
+  const weakPressure = pressureParts(weak);
+  const strongPressure = pressureParts(strong);
+  if (weak.final.mode === "ended" && strong.final.mode !== "ended") return true;
+  if (weak.final.round < strong.final.round) return true;
+  if (weakBoss10 === null && strongBoss10 !== null) return true;
+  if (weakBoss10 !== null && strongBoss10 !== null && weakBoss10 >= strongBoss10 * 1.5) return true;
+  return weakPressure.current > strongPressure.current;
+}
+
 function evaluateGates(results) {
   const novice = getScenario(results, "noviceHeroOnly");
   const normal = getScenario(results, "normalTwoLegend");
+  const normalWeak = getScenario(results, "normalTwoHero");
+  const intermediateWeak = getScenario(results, "intermediateTwoLegend");
   const intermediate = getScenario(results, "intermediateFiveLegend");
   const expert = getScenario(results, "expertFiveLegend");
   const master = getScenario(results, "masterNoLegend");
@@ -164,6 +192,18 @@ function evaluateGates(results) {
         boss10Seconds(normal) !== null &&
         normal.final.boss.failedRounds.length === 0,
       detail: `${normal.final.round}R, 전설 ${normal.final.unitSummary.legendOrBetter}, 10R 보스 ${boss10Seconds(normal) ?? "미처치"}s`,
+    },
+    {
+      label: "일반은 2영웅보다 2전설 조건이 명확히 유리",
+      pass: normalWeak.final.unitSummary.legendOrBetter === 0 &&
+        isWeakerEarlyRun(normalWeak, normal),
+      detail: `2영웅 ${normalWeak.final.round}R ${normalWeak.final.pressure} 10R=${boss10Seconds(normalWeak) ?? "미처치"}, 2전설 ${normal.final.round}R ${normal.final.pressure} 10R=${boss10Seconds(normal) ?? "미처치"}`,
+    },
+    {
+      label: "중급자는 2전설보다 5전설 조건이 명확히 유리",
+      pass: intermediateWeak.final.unitSummary.legendOrBetter === 2 &&
+        isWeakerEarlyRun(intermediateWeak, intermediate),
+      detail: `2전설 ${intermediateWeak.final.round}R ${intermediateWeak.final.pressure} 10R=${boss10Seconds(intermediateWeak) ?? "미처치"}, 5전설 ${intermediate.final.round}R ${intermediate.final.pressure} 10R=${boss10Seconds(intermediate) ?? "미처치"}`,
     },
     {
       label: "중급자는 전설 5개로 10R 보스 이후까지 진입",
