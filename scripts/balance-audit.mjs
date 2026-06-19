@@ -17,6 +17,7 @@ const directPath = String(args.direct ?? "output/browser-direct.json");
 const manualPath = String(args.manual ?? "output/manual-balance-playlog.json");
 const outPath = typeof args.out === "string" && args.out !== "true" ? args.out : "";
 const MIN_MANUAL_MINUTES_PER_DIFFICULTY = 12;
+const MIN_MANUAL_TARGET_SESSION_MINUTES = 12;
 
 function readJson(path) {
   if (!existsSync(path)) return null;
@@ -180,6 +181,10 @@ function legendCount(session) {
 
 function reachedFinalRound(session) {
   return Number(session.round ?? 0) >= 40;
+}
+
+function isMeaningfulManualTargetSession(session) {
+  return sessionMinutes(session) >= MIN_MANUAL_TARGET_SESSION_MINUTES;
 }
 
 function manualEvidence(sessions) {
@@ -359,12 +364,12 @@ function buildRows(balance, browser, direct, manual) {
   const expertManual = manualSessions(manual, "expert");
   const masterManual = manualSessions(manual, "master");
 
-  const noviceManualPass = hasManual(manual, "novice", (s) => isClear(s) && reachedFinalRound(s) && legendCount(s) === 0);
-  const normalManualPass = hasManual(manual, "normal", (s) => isClear(s) && reachedFinalRound(s) && legendCount(s) >= 1 && legendCount(s) <= 2);
-  const intermediateManualPass = hasManual(manual, "intermediate", (s) => isClear(s) && reachedFinalRound(s) && legendCount(s) >= 5);
-  const expertManualWeakFail = hasManual(manual, "expert", (s) => isLoss(s) && reachedFinalRound(s) && legendCount(s) <= 5);
-  const expertManualStrongClear = hasManual(manual, "expert", (s) => isClear(s) && reachedFinalRound(s) && legendCount(s) >= 6);
-  const masterManualPass = hasManual(manual, "master", (s) => isLoss(s));
+  const noviceManualPass = hasManual(manual, "novice", (s) => isMeaningfulManualTargetSession(s) && isClear(s) && reachedFinalRound(s) && legendCount(s) === 0);
+  const normalManualPass = hasManual(manual, "normal", (s) => isMeaningfulManualTargetSession(s) && isClear(s) && reachedFinalRound(s) && legendCount(s) >= 1 && legendCount(s) <= 2);
+  const intermediateManualPass = hasManual(manual, "intermediate", (s) => isMeaningfulManualTargetSession(s) && isClear(s) && reachedFinalRound(s) && legendCount(s) >= 5);
+  const expertManualWeakFail = hasManual(manual, "expert", (s) => isMeaningfulManualTargetSession(s) && isLoss(s) && reachedFinalRound(s) && legendCount(s) <= 5);
+  const expertManualStrongClear = hasManual(manual, "expert", (s) => isMeaningfulManualTargetSession(s) && isClear(s) && reachedFinalRound(s) && legendCount(s) >= 6);
+  const masterManualPass = hasManual(manual, "master", (s) => isMeaningfulManualTargetSession(s) && isLoss(s));
 
   rows.push({
     req: "사람이 직접 2시간 플레이",
