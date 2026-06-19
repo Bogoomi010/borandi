@@ -29,6 +29,8 @@ yarn browser-balance --json=output/browser-balance.json --screenshots=output/bro
                           # 실행 중인 yarn dev 서버를 대상으로 10R 전후 브라우저 플레이테스트 게이트 실행
 yarn browser-direct --json=output/browser-direct.json --screenshots=output/browser-direct-shots
                           # 실행 중인 yarn dev 서버에서 실제 소환/합성/조합/업그레이드 입력 흐름으로 긴 밸런스 표본 수집
+yarn balance-audit --out=output/balance-audit.md
+                          # balance/browser-balance/browser-direct JSON을 모아 요구사항별 근거 감사표 생성
 yarn check                # npm 의존성 없이 Node만으로 코어 스모크 테스트
 ```
 
