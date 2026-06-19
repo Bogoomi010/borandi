@@ -200,18 +200,20 @@ function manualProofChecklist(r: ResultSummary): Array<{ label: string; ok: bool
   const playedMinutes = (r.wallSeconds ?? 0) / 60;
   const finalRound = r.reachedRound >= 40;
   const result = r.cleared ? "클리어" : "패배";
-  const checks = [
+  const checks: Array<{ label: string; ok: boolean; detail: string }> = [
     {
       label: "12분 이상 실제 플레이",
       ok: (r.wallSeconds ?? 0) >= 12 * 60,
       detail: `${playedMinutes.toFixed(1)}분`,
     },
-    {
+  ];
+  if (r.difficultyId !== "master") {
+    checks.push({
       label: "40R 최종 보스 구간",
       ok: finalRound,
       detail: `${r.reachedRound}R`,
-    },
-  ];
+    });
+  }
   switch (r.difficultyId) {
     case "novice":
       checks.push(
