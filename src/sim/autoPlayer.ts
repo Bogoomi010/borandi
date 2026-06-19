@@ -43,7 +43,12 @@ function enforceLegendLimit(game: Game, maxLegendCount?: number) {
   if (maxLegendCount === undefined) return;
   const legends = game.state.units
     .filter((u) => UNIT_BY_ID[u.defId].grade === "legend")
-    .sort((a, b) => unitScore(b.defId) - unitScore(a.defId) || a.uid - b.uid);
+    .sort((a, b) => {
+      const sameA = game.state.units.filter((u) => u.defId === a.defId).length;
+      const sameB = game.state.units.filter((u) => u.defId === b.defId).length;
+      if (sameA !== sameB) return sameA - sameB;
+      return unitScore(b.defId) - unitScore(a.defId) || a.uid - b.uid;
+    });
   const sell = legends.slice(maxLegendCount).map((u) => u.uid);
   if (sell.length > 0) game.dispatch("sell", { unitIds: sell });
 }
@@ -91,10 +96,18 @@ function doCrafts(game: Game, maxCrafts: number, options: AutoPlayOptions) {
         return true;
       });
     if (statuses.length === 0) return;
-    // 결과 등급이 높은 것 우선
-    statuses.sort((a, b) =>
-      GRADE_ORDER.indexOf(UNIT_BY_ID[b.recipe.resultUnitId].grade) -
-      GRADE_ORDER.indexOf(UNIT_BY_ID[a.recipe.resultUnitId].grade));
+    // 결과 등급이 높은 것 우선, 같은 등급이면 현재 전투 기여도가 높은 조합 우선
+    statuses.sort((a, b) => {
+      const aDef = UNIT_BY_ID[a.recipe.resultUnitId];
+      const bDef = UNIT_BY_ID[b.recipe.resultUnitId];
+      const gradeDelta = GRADE_ORDER.indexOf(bDef.grade) - GRADE_ORDER.indexOf(aDef.grade);
+      if (gradeDelta !== 0) return gradeDelta;
+      if (!!a.reasonTag !== !!b.reasonTag) return a.reasonTag ? -1 : 1;
+      const aOwned = game.state.units.filter((u) => u.defId === a.recipe.resultUnitId).length;
+      const bOwned = game.state.units.filter((u) => u.defId === b.recipe.resultUnitId).length;
+      if (aOwned !== bOwned) return aOwned - bOwned;
+      return unitScore(b.recipe.resultUnitId) - unitScore(a.recipe.resultUnitId);
+    });
     const res = game.dispatch("craft", { recipeId: statuses[0].recipe.id });
     if (!res.ok) return;
   }
