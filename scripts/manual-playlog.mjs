@@ -34,6 +34,8 @@ function usage() {
     "  --out=output/manual-balance-playlog.json",
     "  --summary             # 현재 수동 로그 충족/미충족 항목만 출력",
     "  --summary --json      # 현재 수동 로그 상태를 JSON으로 출력",
+    "  --plan                # 남은 120분 수동 플레이 증거 수집 순서 출력",
+    "  --plan --json         # 남은 수동 플레이 계획을 JSON으로 출력",
     "  --notes=...",
     "  --startedAt=ISO --endedAt=ISO",
   ].join("\n");
@@ -204,6 +206,51 @@ function targetEvidence(sessions, difficulty, predicate) {
   }).join("; ");
 }
 
+const targetPlans = [
+  {
+    label: "입문자 무전설 40R 클리어",
+    difficulty: "novice",
+    minutes: 12,
+    goal: "전설 없이 40R 최종 보스 클리어",
+    logHint: "result=clear round=40 legends=0 maxGrade=hero 이하",
+  },
+  {
+    label: "일반 1~2전설 40R 클리어",
+    difficulty: "normal",
+    minutes: 12,
+    goal: "전설 1~2개로 40R 최종 보스 클리어",
+    logHint: "result=clear round=40 legends=1~2 maxGrade=legend",
+  },
+  {
+    label: "중급자 5전설 이상 40R 클리어",
+    difficulty: "intermediate",
+    minutes: 12,
+    goal: "전설 5개 이상으로 40R 최종 보스 클리어",
+    logHint: "result=clear round=40 legends>=5 maxGrade=legend|hidden",
+  },
+  {
+    label: "고수 5전설 이하 40R 실패",
+    difficulty: "expert",
+    minutes: 12,
+    goal: "전설 5개 이하 조건으로 40R까지 버틴 뒤 실패",
+    logHint: "result=loss round=40 legends<=5",
+  },
+  {
+    label: "고수 6전설 이상 40R 클리어",
+    difficulty: "expert",
+    minutes: 12,
+    goal: "전설 6개 이상 성장 조건으로 40R 최종 보스 클리어",
+    logHint: "result=clear round=40 legends>=6 maxGrade=legend|hidden",
+  },
+  {
+    label: "초고수 실패 기록",
+    difficulty: "master",
+    minutes: 12,
+    goal: "제한 없이 플레이하되 실패 결과 기록",
+    logHint: "result=loss legends=최종값",
+  },
+];
+
 function buildSummary() {
   const log = existsSync(outPath) ? readJson(outPath) : { sessions: [] };
   const allSessions = isExampleManualLog(log) ? [] : (log.sessions ?? []).filter((session) => !isExampleManualSession(session));
@@ -274,6 +321,73 @@ function buildSummary() {
   };
 }
 
+function buildPlan() {
+  const summary = buildSummary();
+  const missingTargets = targetPlans.filter((target) => {
+    const row = summary.rows.find((item) => item.label === target.label);
+    return !row?.pass;
+  });
+  const projectedMinutesByDifficulty = new Map(Object.entries(summary.minutesByDifficulty));
+  let projectedTotalMinutes = summary.totalMinutes;
+  for (const target of missingTargets) {
+    projectedMinutesByDifficulty.set(
+      target.difficulty,
+      Number(projectedMinutesByDifficulty.get(target.difficulty) ?? 0) + target.minutes,
+    );
+    projectedTotalMinutes += target.minutes;
+  }
+
+  const difficultyTopUps = difficulties
+    .map((difficulty) => ({
+      difficulty,
+      minutes: Math.max(0, 12 - Number(projectedMinutesByDifficulty.get(difficulty) ?? 0)),
+    }))
+    .filter((item) => item.minutes > 0);
+  const projectedAfterDifficultyTopUps = projectedTotalMinutes +
+    difficultyTopUps.reduce((sum, item) => sum + item.minutes, 0);
+  const flexibleMinutes = Math.max(0, summary.requiredMinutes - projectedAfterDifficultyTopUps);
+
+  return {
+    schemaVersion: 1,
+    logPath: summary.logPath,
+    passed: summary.passed,
+    current: {
+      totalMinutes: summary.totalMinutes,
+      requiredMinutes: summary.requiredMinutes,
+      minutesByDifficulty: summary.minutesByDifficulty,
+      validSessionCount: summary.validSessionCount,
+    },
+    steps: [
+      ...missingTargets.map((target) => ({
+        kind: "target-session",
+        difficulty: target.difficulty,
+        minutes: target.minutes,
+        label: target.label,
+        goal: target.goal,
+        logHint: target.logHint,
+      })),
+      ...difficultyTopUps.map((item) => ({
+        kind: "difficulty-minimum",
+        difficulty: item.difficulty,
+        minutes: item.minutes,
+        label: `${item.difficulty} 최소 시간 보충`,
+        goal: `${item.difficulty} 난이도 유효 수동 플레이 ${item.minutes.toFixed(1)}분 추가`,
+        logHint: "결과 화면의 yarn manual-playlog 명령 사용",
+      })),
+      ...(flexibleMinutes > 0
+        ? [{
+          kind: "total-minutes",
+          difficulty: "any",
+          minutes: flexibleMinutes,
+          label: "총 120분 보충",
+          goal: `목표 세션 이후 남는 ${flexibleMinutes.toFixed(1)}분을 실제 플레이로 추가`,
+          logHint: "요약 명령의 다음 필요 항목을 보며 어떤 난이도든 실제 결과 기록",
+        }]
+        : []),
+    ],
+  };
+}
+
 function printSummary() {
   const summary = buildSummary();
   console.log("# 수동 플레이 로그 상태");
@@ -292,14 +406,49 @@ function printSummaryJson() {
   console.log(`${JSON.stringify(buildSummary(), null, 2)}`);
 }
 
+function printPlan() {
+  const plan = buildPlan();
+  console.log("# 수동 플레이 증거 수집 계획");
+  console.log(`- 로그: ${plan.logPath}`);
+  console.log(`- 현재: ${plan.current.validSessionCount}세션, ${plan.current.totalMinutes.toFixed(1)}/${plan.current.requiredMinutes.toFixed(1)}분`);
+  console.log(`- 난이도별: ${difficulties.map((id) => `${id} ${Number(plan.current.minutesByDifficulty[id] ?? 0).toFixed(1)}분`).join(", ")}`);
+  console.log("");
+  if (plan.steps.length === 0) {
+    console.log("PASS 수동 플레이 증거 계획상 남은 항목이 없습니다.");
+  } else {
+    plan.steps.forEach((step, index) => {
+      console.log(`${index + 1}. ${step.label} (${step.minutes.toFixed(1)}분 이상)`);
+      console.log(`   목표: ${step.goal}`);
+      console.log(`   기록 힌트: ${step.logHint}`);
+    });
+  }
+  console.log("");
+  console.log(`판정: ${plan.passed ? "수동 증거 충족" : "수동 증거 미충족"}`);
+}
+
+function printPlanJson() {
+  console.log(`${JSON.stringify(buildPlan(), null, 2)}`);
+}
+
 if (args.summary === "true" || args.status === "true") {
   if (args.json === "true" || args["summary-json"] === "true") printSummaryJson();
   else printSummary();
   process.exit(0);
 }
 
+if (args.plan === "true") {
+  if (args.json === "true" || args["plan-json"] === "true") printPlanJson();
+  else printPlan();
+  process.exit(0);
+}
+
 if (args["summary-json"] === "true") {
   printSummaryJson();
+  process.exit(0);
+}
+
+if (args["plan-json"] === "true") {
+  printPlanJson();
   process.exit(0);
 }
 

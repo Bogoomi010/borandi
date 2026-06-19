@@ -33,6 +33,8 @@ yarn manual-playlog --difficulty=normal --minutes=24 --result=loss --stage=1 --r
                           # 사람이 직접 플레이한 수동 밸런스 세션을 output/manual-balance-playlog.json에 누적
 yarn manual-playlog --summary
                           # 현재 수동 로그의 120분/난이도별/목표 결과 충족 상태와 다음 필요 세션 확인
+yarn manual-playlog --plan
+                          # 남은 120분 수동 플레이 증거를 어떤 순서로 채울지 출력
 yarn --silent manual-playlog --summary --json
                           # 같은 수동 로그 상태를 자동화 가능한 JSON으로 출력
 yarn balance-audit --manual=output/manual-balance-playlog.json --out=output/balance-audit.md
