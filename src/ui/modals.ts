@@ -78,6 +78,24 @@ function shellArg(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
+function manualStartId(difficultyId: DifficultyId, stageId: number, seed: string, startedAt: string): string {
+  return `${difficultyId}-${stageId}-${seed}-${Date.parse(startedAt)}`;
+}
+
+function manualStartCommand(ctx: AppCtx): string {
+  const s = ctx.game.state;
+  const id = manualStartId(s.difficulty, s.stageId, s.seed, ctx.runStartedAt);
+  return [
+    "yarn manual-playlog --start",
+    `--id=${shellArg(id)}`,
+    `--difficulty=${s.difficulty}`,
+    `--stage=${s.stageId}`,
+    `--seed=${shellArg(s.seed)}`,
+    `--startedAt=${shellArg(ctx.runStartedAt)}`,
+    `--notes=${shellArg(`${ctx.game.diff.name} 시작 마커`)}`,
+  ].join(" ");
+}
+
 function manualPlaylogCommand(r: ResultSummary): string {
   const seconds = Math.max(1, Math.round(r.wallSeconds ?? 0));
   const result = r.cleared ? "clear" : "loss";
@@ -95,6 +113,25 @@ function manualPlaylogCommand(r: ResultSummary): string {
     `--stateChecksum=${shellArg(r.stateChecksum)}`,
   ];
   if (r.manualStartedAt) args.push(`--startedAt=${shellArg(r.manualStartedAt)}`);
+  if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
+  args.push(`--notes=${shellArg(`${r.difficulty} ${result}, ${r.legendOrBetterCount}전설 이상`)}`);
+  return args.join(" ");
+}
+
+function manualPlaylogFinishCommand(r: ResultSummary): string {
+  const startedAt = r.manualStartedAt ?? r.playedAt;
+  const id = manualStartId(r.difficultyId, r.stageId, r.seed, startedAt);
+  const result = r.cleared ? "clear" : "loss";
+  const args = [
+    "yarn manual-playlog",
+    `--finish=${shellArg(id)}`,
+    `--result=${result}`,
+    `--round=${r.reachedRound}`,
+    `--legends=${r.legendOrBetterCount}`,
+    `--maxGrade=${r.maxGrade}`,
+    `--dataVersion=${shellArg(r.dataVersion)}`,
+    `--stateChecksum=${shellArg(r.stateChecksum)}`,
+  ];
   if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
   args.push(`--notes=${shellArg(`${r.difficulty} ${result}, ${r.legendOrBetterCount}전설 이상`)}`);
   return args.join(" ");
@@ -193,6 +230,12 @@ export function buildReportMarkdown(r: ResultSummary): string {
       "```bash",
       manualPlaylogThenNextCommand(r),
       "```",
+      "",
+      "## 시작 마커를 저장한 경우",
+      "",
+      "```bash",
+      manualPlaylogFinishCommand(r),
+      "```",
     );
   }
   lines.push("", `played at ${r.playedAt}`);
@@ -255,12 +298,15 @@ export function maybeShowResult(ctx: AppCtx) {
 
     const row = el("div", "row-btns");
     const manualCommand = manualPlaylogCommand(summary);
+    const manualFinishCommand = manualPlaylogFinishCommand(summary);
     const manualThenNextCommand = manualPlaylogThenNextCommand(summary);
 
     body.appendChild(el("h3", "", "수동 플레이 로그"));
     body.appendChild(el("pre", "report", manualCommand));
     body.appendChild(el("h3", "", "기록 후 다음 확인"));
     body.appendChild(el("pre", "report", manualThenNextCommand));
+    body.appendChild(el("h3", "", "시작 마커를 저장한 경우"));
+    body.appendChild(el("pre", "report", manualFinishCommand));
 
     const exportBtn = el("button", "", "리포트 내보내기 (.md)");
     exportBtn.onclick = async () => {
@@ -297,6 +343,17 @@ export function maybeShowResult(ctx: AppCtx) {
       }
     };
     row.appendChild(copyLogNext);
+
+    const copyFinish = el("button", "", "마커기록 복사");
+    copyFinish.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualFinishCommand);
+        toast("시작 마커 기반 기록 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
+      }
+    };
+    row.appendChild(copyFinish);
 
     const titleBtn = el("button", "", "타이틀로");
     titleBtn.onclick = () => { resetResultShown(); close(); ctx.goTitle(); };
@@ -407,16 +464,24 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
 
 // ---------- 수동 밸런스 증거 ----------
 
-export function openManualProofGuideModal() {
+export function openManualProofGuideModal(ctx?: AppCtx) {
   openModal((body, close) => {
     body.appendChild(el("h2", "", "수동 밸런스 증거"));
     body.appendChild(el("div", "modal-note", "결과 화면의 로그 명령을 실행한 뒤, 아래 요약 명령으로 남은 증거를 확인합니다."));
 
+    const currentStartCommand = ctx?.scene === "game" ? manualStartCommand(ctx) : "";
     const summaryCommand = "yarn manual-playlog --summary";
     const planCommand = "yarn manual-playlog --plan";
     const nextCommand = "yarn manual-playlog --next";
+    const pendingCommand = "yarn manual-playlog --pending";
     const summaryJsonCommand = "yarn --silent manual-playlog --summary --json";
+    if (currentStartCommand) {
+      body.appendChild(el("h3", "", "현재 판 시작 마커"));
+      body.appendChild(el("pre", "report", currentStartCommand));
+      body.appendChild(el("div", "modal-note", "플레이 시작 직후 한 번 실행해두면 결과 화면을 놓쳐도 --finish 명령으로 같은 시작 시각을 재사용할 수 있습니다."));
+    }
     body.appendChild(el("h3", "", "상태 확인"));
+    body.appendChild(el("pre", "report", pendingCommand));
     body.appendChild(el("pre", "report", nextCommand));
     body.appendChild(el("pre", "report", summaryCommand));
     body.appendChild(el("pre", "report", planCommand));
@@ -441,6 +506,28 @@ export function openManualProofGuideModal() {
     ));
 
     const row = el("div", "row-btns");
+    if (currentStartCommand) {
+      const copyStart = el("button", "", "시작마커 복사");
+      copyStart.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(currentStartCommand);
+          toast("현재 판 시작 마커 명령을 복사했습니다", "ok");
+        } catch {
+          toast("복사 실패: 명령을 직접 선택하세요", "warn");
+        }
+      };
+      row.appendChild(copyStart);
+    }
+    const copyPending = el("button", "", "대기목록 복사");
+    copyPending.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(pendingCommand);
+        toast("시작 마커 대기목록 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copyPending);
     const copyNext = el("button", "", "다음 세션 복사");
     copyNext.onclick = async () => {
       try {

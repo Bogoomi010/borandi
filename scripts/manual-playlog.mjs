@@ -32,6 +32,11 @@ function usage() {
     "",
     "선택:",
     "  --out=output/manual-balance-playlog.json",
+    "  --start --id=RUN1 --difficulty=normal --stage=1 --seed=RUN123 --startedAt=ISO",
+    "                          # 수동 플레이 시작 마커를 pendingSessions에 저장",
+    "  --pending                # 아직 finish되지 않은 시작 마커 목록 출력",
+    "  --finish=RUN1 --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=0.8.0 --stateChecksum=1234abcd",
+    "                          # 시작 마커의 startedAt/difficulty/stage/seed를 사용해 결과 세션 저장",
     "  --summary             # 현재 수동 로그 충족/미충족 항목만 출력",
     "  --summary --json      # 현재 수동 로그 상태를 JSON으로 출력",
     "  --plan                # 남은 120분 수동 플레이 증거 수집 순서 출력",
@@ -55,6 +60,7 @@ function readJson(path) {
   if (!existsSync(path)) return { sessions: [] };
   const data = JSON.parse(readFileSync(path, "utf8"));
   if (!Array.isArray(data.sessions)) data.sessions = [];
+  if (!Array.isArray(data.pendingSessions)) data.pendingSessions = [];
   return data;
 }
 
@@ -70,8 +76,16 @@ function requireNumber(name) {
   return asNumber(name);
 }
 
+function optionalNumber(name, fallback) {
+  const raw = args[name] ?? fallback;
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) fail(`--${name} 값이 숫자가 아닙니다: ${raw}`);
+  return value;
+}
+
 function durationSeconds() {
-  if (seconds !== undefined) return seconds;
+  if (computedSeconds !== undefined) return computedSeconds;
   return minutes * 60;
 }
 
@@ -465,6 +479,40 @@ function printNextJson() {
   console.log(`${JSON.stringify(buildNext(), null, 2)}`);
 }
 
+function pendingSessions(log) {
+  return (log.pendingSessions ?? []).filter((session) => !isExampleManualSession(session));
+}
+
+function buildPending() {
+  const log = readJson(outPath);
+  const pending = pendingSessions(log);
+  return {
+    schemaVersion: 1,
+    logPath: outPath,
+    pendingCount: pending.length,
+    pending,
+  };
+}
+
+function printPending() {
+  const pending = buildPending();
+  console.log("# 수동 플레이 시작 마커");
+  console.log(`- 로그: ${pending.logPath}`);
+  console.log(`- 대기 중: ${pending.pendingCount}개`);
+  console.log("");
+  if (pending.pending.length === 0) {
+    console.log("대기 중인 시작 마커가 없습니다.");
+    return;
+  }
+  for (const session of pending.pending) {
+    console.log(`- ${session.id}: ${session.difficulty} stage=${session.stage} seed=${session.seed} startedAt=${session.startedAt}`);
+  }
+}
+
+function printPendingJson() {
+  console.log(`${JSON.stringify(buildPending(), null, 2)}`);
+}
+
 function assertManualProof() {
   const summary = buildSummary();
   if (summary.passed) {
@@ -479,6 +527,52 @@ function assertManualProof() {
     console.error(`목표: ${next.next.goal}`);
   }
   process.exit(1);
+}
+
+function makePendingId({ difficulty, stage, seed, startedAt }) {
+  const suffix = String(startedAt).replace(/[^0-9A-Za-z]/g, "").slice(0, 20);
+  return `${difficulty}-${stage}-${String(seed).replace(/[^0-9A-Za-z_-]/g, "")}-${suffix}`;
+}
+
+function startManualSession() {
+  const difficulty = String(args.difficulty ?? "");
+  if (!difficulties.includes(difficulty)) {
+    fail(`지원하지 않는 난이도입니다: ${difficulty || "(없음)"}`);
+  }
+  const stage = requireNumber("stage");
+  const seed = String(args.seed ?? "");
+  if (!seed) fail("--seed 값이 필요합니다.");
+  const startedAt = parseDate("startedAt", args.startedAt) ?? new Date();
+  const id = String(args.id ?? makePendingId({ difficulty, stage, seed, startedAt: startedAt.toISOString() }));
+  if (!id.trim()) fail("--id 값이 비어 있습니다.");
+
+  const log = readJson(outPath);
+  log.schemaVersion = 1;
+  log.source = "manual-playlog";
+  if ((log.pendingSessions ?? []).some((session) => String(session.id) === id)) {
+    fail(`이미 같은 시작 마커가 있습니다: ${id}`);
+  }
+  log.pendingSessions = log.pendingSessions ?? [];
+  log.pendingSessions.push({
+    id,
+    source: "human-playtest-start",
+    difficulty,
+    stage,
+    seed,
+    startedAt: startedAt.toISOString(),
+    ...(args.notes ? { notes: String(args.notes) } : {}),
+  });
+
+  const dir = dirname(outPath);
+  if (dir && dir !== ".") mkdirSync(dir, { recursive: true });
+  writeFileSync(outPath, `${JSON.stringify(log, null, 2)}\n`, "utf8");
+
+  console.log(`수동 플레이 시작 마커 저장: ${outPath}`);
+  console.log(`- id: ${id}`);
+  console.log(`- 시작: ${startedAt.toISOString()}`);
+  console.log("");
+  console.log("결과가 나오면 아래 형식으로 마무리하세요:");
+  console.log(`yarn manual-playlog --finish=${id} --result=loss --round=40 --legends=0 --maxGrade=hero --dataVersion=0.8.0 --stateChecksum=1234abcd`);
 }
 
 if (args.summary === "true" || args.status === "true") {
@@ -496,6 +590,12 @@ if (args.plan === "true") {
 if (args.next === "true") {
   if (args.json === "true" || args["next-json"] === "true") printNextJson();
   else printNext();
+  process.exit(0);
+}
+
+if (args.pending === "true") {
+  if (args.json === "true" || args["pending-json"] === "true") printPendingJson();
+  else printPending();
   process.exit(0);
 }
 
@@ -519,7 +619,26 @@ if (args["next-json"] === "true") {
   process.exit(0);
 }
 
-const difficulty = args.difficulty;
+if (args["pending-json"] === "true") {
+  printPendingJson();
+  process.exit(0);
+}
+
+if (args.start === "true") {
+  startManualSession();
+  process.exit(0);
+}
+
+const finishId = typeof args.finish === "string" && args.finish !== "true" ? args.finish : "";
+const finishLog = finishId ? readJson(outPath) : null;
+const pendingFinish = finishId
+  ? pendingSessions(finishLog).find((session) => String(session.id) === finishId)
+  : null;
+if (finishId && !pendingFinish) {
+  fail(`--finish 시작 마커를 찾을 수 없습니다: ${finishId}`);
+}
+
+const difficulty = args.difficulty ?? pendingFinish?.difficulty;
 if (!difficulties.includes(difficulty)) {
   fail(`지원하지 않는 난이도입니다: ${difficulty ?? "(없음)"}`);
 }
@@ -529,10 +648,11 @@ if (!results.includes(result)) {
   fail(`--result 값은 ${results.join("|")} 중 하나여야 합니다.`);
 }
 
-const stage = requireNumber("stage");
+const stage = optionalNumber("stage", pendingFinish?.stage);
+if (stage === undefined) fail("--stage 값이 필요합니다.");
 const round = requireNumber("round");
 const legends = requireNumber("legends");
-const seed = String(args.seed ?? "");
+const seed = String(args.seed ?? pendingFinish?.seed ?? "");
 if (!seed) fail("--seed 값이 필요합니다.");
 
 const maxGrade = String(args.maxGrade ?? "");
@@ -554,17 +674,21 @@ if (!isLegendMetadataConsistent(maxGrade, legends)) {
 
 const minutes = asNumber("minutes");
 const seconds = asNumber("seconds");
-if (minutes === undefined && seconds === undefined) {
+const now = new Date();
+let endedAt = parseDate("endedAt", args.endedAt) ?? now;
+let startedAt = parseDate("startedAt", args.startedAt ?? pendingFinish?.startedAt);
+let computedSeconds = seconds;
+if (minutes === undefined && seconds === undefined && startedAt) {
+  computedSeconds = Math.round((endedAt.getTime() - startedAt.getTime()) / 1000);
+}
+if (minutes === undefined && computedSeconds === undefined) {
   fail("--minutes 또는 --seconds 중 하나가 필요합니다.");
 }
-if ((minutes ?? 0) <= 0 && (seconds ?? 0) <= 0) {
+if ((minutes ?? 0) <= 0 && (computedSeconds ?? 0) <= 0) {
   fail("플레이 시간은 0보다 커야 합니다.");
 }
 
-const now = new Date();
 const duration = durationSeconds();
-let endedAt = parseDate("endedAt", args.endedAt) ?? now;
-let startedAt = parseDate("startedAt", args.startedAt);
 if (!startedAt) {
   startedAt = new Date(endedAt.getTime() - (duration * 1000));
 }
@@ -580,9 +704,10 @@ if (Math.abs(actualDuration - duration) > tolerance) {
 const session = {
   source: "human-playtest",
   difficulty,
-  ...(minutes !== undefined ? { minutes } : { seconds }),
+  ...(minutes !== undefined ? { minutes } : { seconds: computedSeconds }),
   startedAt: startedAt.toISOString(),
   endedAt: endedAt.toISOString(),
+  ...(finishId ? { pendingSessionId: finishId } : {}),
   result,
   stage,
   round,
@@ -594,13 +719,16 @@ const session = {
   ...(args.notes ? { notes: String(args.notes) } : {}),
 };
 
-const log = readJson(outPath);
+const log = finishLog ?? readJson(outPath);
 log.schemaVersion = 1;
 log.source = "manual-playlog";
 if (log.sessions.some((s) => String(s.stateChecksum ?? "").toLowerCase() === stateChecksum.toLowerCase())) {
   fail(`이미 같은 결과 체크섬이 기록되어 있습니다: ${stateChecksum.toLowerCase()}`);
 }
 log.sessions.push(session);
+if (finishId) {
+  log.pendingSessions = pendingSessions(log).filter((pending) => String(pending.id) !== finishId);
+}
 log.totalMinutes = sessionsTotalMinutes(log);
 
 const dir = dirname(outPath);
@@ -612,7 +740,7 @@ const covered = coveredDifficulties(log);
 const missing = difficulties.filter((d) => !covered.has(d));
 
 console.log(`수동 플레이 로그 저장: ${outPath}`);
-console.log(`- 추가 세션: ${difficulty}, ${(minutes ?? seconds / 60).toFixed(1)}분`);
+console.log(`- 추가 세션: ${difficulty}, ${(minutes ?? computedSeconds / 60).toFixed(1)}분`);
 console.log(`- 누적 시간: ${total.toFixed(1)}분 / 120.0분`);
 console.log(`- 난이도 커버: ${[...covered].join(", ") || "없음"}`);
 console.log(`- 남은 난이도: ${missing.join(", ") || "없음"}`);

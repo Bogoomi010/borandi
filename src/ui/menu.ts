@@ -72,7 +72,7 @@ export function renderMenubar(ctx: AppCtx) {
       items: [
         { label: "100시드 시뮬레이션…", onClick: () => openSimModal(ctx) },
         { label: "5난이도 밸런스 게이트…", onClick: () => openBalanceGateModal() },
-        { label: "수동 밸런스 증거…", onClick: () => openManualProofGuideModal() },
+        { label: "수동 밸런스 증거…", onClick: () => openManualProofGuideModal(ctx) },
         "sep",
         {
           label: "앱 데이터 폴더 열기",

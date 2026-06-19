@@ -116,6 +116,51 @@ describe("manual-playlog plan", () => {
     expect(failed.stderr).toContain("다음 필요 세션: 입문자 무전설 40R 클리어");
   });
 
+  it("시작 마커를 저장한 뒤 finish로 실제 세션을 완성할 수 있다", () => {
+    const out = makeTempPath("pending-finish.json");
+    runManualPlaylog([
+      `--out=${out}`,
+      "--start",
+      "--id=normal-run-1",
+      "--difficulty=normal",
+      "--stage=1",
+      "--seed=PENDING-SEED",
+      "--startedAt=2026-06-20T00:00:00.000Z",
+    ]);
+
+    let pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+    expect(pending.pending).toHaveLength(1);
+    expect(pending.pending[0]).toMatchObject({
+      id: "normal-run-1",
+      difficulty: "normal",
+      seed: "PENDING-SEED",
+    });
+
+    runManualPlaylog([
+      `--out=${out}`,
+      "--finish=normal-run-1",
+      "--result=clear",
+      "--round=40",
+      "--legends=1",
+      "--maxGrade=legend",
+      "--dataVersion=0.8.0",
+      "--stateChecksum=20000010",
+      "--endedAt=2026-06-20T00:15:00.000Z",
+    ]);
+
+    const log = readJson(out);
+    pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+    expect(pending.pending).toHaveLength(0);
+    expect(log.sessions).toHaveLength(1);
+    expect(log.sessions[0]).toMatchObject({
+      pendingSessionId: "normal-run-1",
+      difficulty: "normal",
+      stage: 1,
+      seed: "PENDING-SEED",
+      seconds: 900,
+    });
+  });
+
   it("필수 목표와 120분을 채운 로그는 남은 계획이 없다", () => {
     const out = makeTempPath("complete.json");
     const sessions = [
