@@ -131,6 +131,44 @@ function countLegends(snap) {
   return snap.units.filter((u) => u.grade === "legend").length;
 }
 
+function hasRole(unit, role) {
+  return Array.isArray(unit.roles) && unit.roles.includes(role);
+}
+
+function isMajorUnit(unit) {
+  return unit.grade === "legend" || unit.grade === "hidden";
+}
+
+function selectionScore(info, snap) {
+  let score = info.score;
+  if (!isMajorUnit(info)) return score;
+
+  const majorUnits = snap.units.filter((u) => isMajorUnit(u) && u.uid !== info.uid);
+  const sameFamilyCount = majorUnits.filter((u) => u.family === info.family).length;
+  if (sameFamilyCount === 0) score += 90;
+  else score -= sameFamilyCount * 140;
+
+  const roleBonus = {
+    waveClear: 110,
+    bossKiller: 110,
+    debuff: 80,
+    hold: 80,
+    finisher: 35,
+    economy: 25,
+  };
+  for (const [role, bonus] of Object.entries(roleBonus)) {
+    if (!hasRole(info, role)) continue;
+    const sameRoleCount = majorUnits.filter((u) => hasRole(u, role)).length;
+    if (sameRoleCount === 0) score += bonus;
+    else score -= sameRoleCount * 45;
+  }
+  return score;
+}
+
+function legendKeepScore(unit, snap) {
+  return selectionScore(unit, snap);
+}
+
 function allowedUnit(info, snap, options) {
   if (options.maxGrade && rank(info.grade) > rank(options.maxGrade)) return false;
   if (options.maxLegendCount !== undefined && info.grade === "legend") {
@@ -152,7 +190,7 @@ async function enforceLimits(page, options) {
   if (options.maxLegendCount !== undefined) {
     const legends = snap.units
       .filter((u) => u.grade === "legend")
-      .sort((a, b) => b.score - a.score || a.uid - b.uid);
+      .sort((a, b) => legendKeepScore(b, snap) - legendKeepScore(a, snap) || b.score - a.score || a.uid - b.uid);
     const sell = legends.slice(options.maxLegendCount).map((u) => u.uid);
     if (sell.length > 0) await act(page, "sell", { unitIds: sell });
   }
@@ -165,7 +203,7 @@ async function claimSelectors(page, options) {
     if (!selector) return;
     const candidates = selector.candidates.filter((c) => allowedUnit(c, snap, options));
     if (candidates.length === 0) return;
-    candidates.sort((a, b) => b.score - a.score || rank(b.grade) - rank(a.grade));
+    candidates.sort((a, b) => selectionScore(b, snap) - selectionScore(a, snap) || rank(b.grade) - rank(a.grade));
     const ok = await act(page, "pickSelector", { selectorId: selector.id, unitId: candidates[0].id });
     if (!ok) return;
     await enforceLimits(page, options);
@@ -213,7 +251,7 @@ async function doCrafts(page, maxCrafts, options) {
       const ownedA = snap.units.filter((u) => u.id === a.result.id).length;
       const ownedB = snap.units.filter((u) => u.id === b.result.id).length;
       if (ownedA !== ownedB) return ownedA - ownedB;
-      return b.result.score - a.result.score;
+      return selectionScore(b.result, snap) - selectionScore(a.result, snap);
     });
     const ok = await act(page, "craft", { recipeId: craftable[0].id });
     if (!ok) return;

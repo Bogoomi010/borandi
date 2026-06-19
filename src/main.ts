@@ -587,6 +587,7 @@ if (import.meta.env.DEV) {
             name: def.name,
             grade: def.grade,
             family: def.family,
+            roles: def.roles,
             score: def.attack * def.attackSpeed * (1 + (def.bossDamageBonus ?? 0)) * (1 + (def.splashRadius ? 0.25 : 0)),
           };
         };

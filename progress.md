@@ -58,6 +58,10 @@ Original prompt: 완성된 에셋으로 게임 스테이지를 최대 15스테�
 - Result summaries now include difficulty id, legend/hidden counts, wall-clock session duration, and a ready-to-run `yarn manual-playlog` command in the result modal/report, so a human playtest can be logged immediately after each run.
 - `yarn balance-audit --manual=...` now checks manual logs for the actual target outcomes, not just time: novice no-legend clear, normal 1-2 legend clear, intermediate 5+ legend clear, expert 5-or-fewer legend loss plus 6+ legend clear, and master loss.
 - Manual target auditing now requires 40R evidence for manual clear rows and for the expert 5-or-fewer legend failure case, so an early or mislabeled clear cannot satisfy the requested 40-round balance proof.
+- `yarn balance-audit` now audits browser-direct JSON by target scenario and per-difficulty observation, instead of accepting any nonzero simulated browser-direct time as sufficient automated direct-input evidence.
+- Browser-direct selection now receives unit roles from the DEV balance snapshot and scores legend choices with family/role diversity bonuses, so 5-legend samples are less likely to waste the higher legend budget on redundant roles.
+- Latest browser-direct strict pass after role-diverse legend selection: 입문자/무전설 cleared 40R, 일반/0전설 failed 38R while 1전설 and 2전설 cleared 40R, 중급자/2전설 failed 40R while 5전설 cleared 40R, 고수/5전설 failed 40R while unrestricted cleared 40R with 14 legends, and 초고수/unrestricted failed at 3R.
+- Latest 30-seed `yarn balance` gate still passed after the browser-direct tooling change: 입문자 100.0%, 일반 0/1/2전설 20.0%/40.0%/56.7%, 중급자 2전설 13.3% vs 5전설 50.0%, 고수 5전설 0.0% vs unrestricted 63.3%, 초고수 0.0%.
 
 ## TODO
 

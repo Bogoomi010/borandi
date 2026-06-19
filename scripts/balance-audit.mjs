@@ -44,6 +44,26 @@ function rateText(balance, id) {
   return typeof rate === "number" ? pct(rate) : "n/a";
 }
 
+function directScenario(direct, id) {
+  return direct?.scenarios?.find((s) => s.id === id) ?? null;
+}
+
+function directObservation(direct, labelPrefix) {
+  return direct?.observations?.find((g) => g.label?.startsWith(labelPrefix)) ?? null;
+}
+
+function directText(scenario) {
+  if (!scenario) return "n/a";
+  return `${pct(Number(scenario.clearRate ?? 0))}, 평균 ${Number(scenario.avgRound ?? 0).toFixed(1)}R, 평균 전설 ${Number(scenario.avgLegendOrBetter ?? 0).toFixed(1)}, 압박 ${pct(Number(scenario.avgPressureRatio ?? 0))}`;
+}
+
+function directBetterThan(base, improved) {
+  if (!base || !improved) return false;
+  return Number(improved.clearRate ?? 0) > Number(base.clearRate ?? 0) ||
+    Number(improved.avgRound ?? 0) >= Number(base.avgRound ?? 0) + 1 ||
+    Number(improved.avgPressureRatio ?? 1) < Number(base.avgPressureRatio ?? 1);
+}
+
 function manualMinutes(manual) {
   if (!manual) return 0;
   if (typeof manual.totalMinutes === "number") return manual.totalMinutes;
@@ -172,11 +192,75 @@ function buildRows(balance, browser, direct, manual) {
   });
 
   const directSeconds = Number(direct?.totalSimulatedSeconds ?? 0);
+  const directScenarioIds = [
+    "noviceHero",
+    "normalNoLegend",
+    "normalOneLegend",
+    "normalTwoLegend",
+    "intermediateTwoLegend",
+    "intermediateFiveLegend",
+    "expertFiveLegend",
+    "expertOpen",
+    "masterOpen",
+  ];
+  const directCoversTargets = directScenarioIds.every((id) => !!directScenario(direct, id));
   rows.push({
-    req: "브라우저 직접 플레이형 자동 표본",
-    evidence: direct ? `${direct.scenarios?.length ?? 0} scenarios, ${(directSeconds / 3600).toFixed(2)} simulated hours` : "missing browser-direct JSON",
-    pass: !!direct && directSeconds > 0,
-    missing: !direct,
+    req: "브라우저 직접 플레이형 자동 표본 범위",
+    evidence: direct ? `${direct.scenarios?.length ?? 0}/${directScenarioIds.length} target scenarios, ${(directSeconds / 3600).toFixed(2)} simulated hours` : "missing browser-direct JSON",
+    pass: !!direct && directSeconds > 0 && directCoversTargets,
+    missing: !direct || !directCoversTargets,
+  });
+
+  const directNovice = directScenario(direct, "noviceHero");
+  const directNormalNo = directScenario(direct, "normalNoLegend");
+  const directNormalOne = directScenario(direct, "normalOneLegend");
+  const directNormalTwo = directScenario(direct, "normalTwoLegend");
+  const directIntermediateTwo = directScenario(direct, "intermediateTwoLegend");
+  const directIntermediateFive = directScenario(direct, "intermediateFiveLegend");
+  const directExpertFive = directScenario(direct, "expertFiveLegend");
+  const directExpertOpen = directScenario(direct, "expertOpen");
+  const directMaster = directScenario(direct, "masterOpen");
+  const directNovicePass = directObservation(direct, "입문자 직접 플레이 표본")?.pass ??
+    (!!directNovice && (Number(directNovice.clearRate ?? 0) >= 0.5 || Number(directNovice.avgRound ?? 0) >= 39));
+  const directNormalPass = directObservation(direct, "일반 직접 플레이 표본")?.pass ??
+    (directBetterThan(directNormalNo, directNormalOne) && directBetterThan(directNormalNo, directNormalTwo));
+  const directIntermediatePass = directObservation(direct, "중급자 직접 플레이 표본")?.pass ??
+    (!!directIntermediateTwo && !!directIntermediateFive &&
+      (Number(directIntermediateFive.clearRate ?? 0) > Number(directIntermediateTwo.clearRate ?? 0) ||
+        Number(directIntermediateFive.avgRound ?? 0) >= Number(directIntermediateTwo.avgRound ?? 0) + 1));
+  const directExpertPass = directObservation(direct, "고수 직접 플레이 표본")?.pass ??
+    directBetterThan(directExpertFive, directExpertOpen);
+  const directMasterPass = directObservation(direct, "초고수 직접 플레이 표본")?.pass ??
+    (!!directMaster && Number(directMaster.clearRate ?? 1) <= 0.1);
+  rows.push({
+    req: "브라우저 직접: 입문자 무전설 클리어권",
+    evidence: directText(directNovice),
+    pass: directNovicePass,
+    missing: !direct || !directNovice,
+  });
+  rows.push({
+    req: "브라우저 직접: 일반 1~2전설 개선",
+    evidence: `0전설 ${directText(directNormalNo)}; 1전설 ${directText(directNormalOne)}; 2전설 ${directText(directNormalTwo)}`,
+    pass: directNormalPass,
+    missing: !direct || !directNormalNo || !directNormalOne || !directNormalTwo,
+  });
+  rows.push({
+    req: "브라우저 직접: 중급자 5전설 개선",
+    evidence: `2전설 ${directText(directIntermediateTwo)}; 5전설 ${directText(directIntermediateFive)}`,
+    pass: directIntermediatePass,
+    missing: !direct || !directIntermediateTwo || !directIntermediateFive,
+  });
+  rows.push({
+    req: "브라우저 직접: 고수는 5전설보다 높은 성장 필요",
+    evidence: `5전설 ${directText(directExpertFive)}; 제한 없음 ${directText(directExpertOpen)}`,
+    pass: directExpertPass,
+    missing: !direct || !directExpertFive || !directExpertOpen,
+  });
+  rows.push({
+    req: "브라우저 직접: 초고수는 매우 어려움",
+    evidence: directText(directMaster),
+    pass: directMasterPass,
+    missing: !direct || !directMaster,
   });
 
   const manualTotalMinutes = manualMinutes(manual);
