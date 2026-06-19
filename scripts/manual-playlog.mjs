@@ -26,7 +26,8 @@ function usage() {
     "  --out=output/manual-balance-playlog.json",
     "  --result=clear|loss|quit",
     "  --stage=1 --round=40 --seed=...",
-    "  --legends=2 --maxGrade=legend",
+    "  --legends=2        # 전설 이상 보유 수",
+    "  --maxGrade=legend",
     "  --notes=...",
     "  --startedAt=ISO --endedAt=ISO",
   ].join("\n");

@@ -55,6 +55,7 @@ Original prompt: 완성된 에셋으로 게임 스테이지를 최대 15스테�
 - Softened expert slightly after browser-direct showed unrestricted expert was too brittle under real input automation; the 30-seed gate still passed with 고수 5전설 0.0% vs unrestricted 63.3%, and targeted browser-direct expert seeds passed with 5전설 0/2 clears vs unrestricted 1/2 clears.
 - Browser-direct now reuses the same seed index across compared scenarios, so 0/1/2 legend and 2/5 legend comparisons are less polluted by unrelated RNG differences. Targeted browser-direct checks passed for normal 0/1/2 legend, intermediate 2/5 legend, and expert 5-legend/open comparisons, but the full 2-seed strict browser-direct sweep remains noisy and should be treated as auxiliary evidence rather than the primary gate.
 - Added `yarn manual-playlog` so real human play sessions can be appended to `output/manual-balance-playlog.json` with difficulty, time, result, stage, round, legend count, and notes; `yarn balance-audit --manual=...` can then evaluate the requested 120-minute / five-difficulty manual evidence.
+- Result summaries now include difficulty id, legend/hidden counts, wall-clock session duration, and a ready-to-run `yarn manual-playlog` command in the result modal/report, so a human playtest can be logged immediately after each run.
 
 ## TODO
 

@@ -37,6 +37,8 @@ export function renderMenubar(ctx: AppCtx) {
           onClick: async () => {
             const summary = ctx.game.resultSummary();
             summary.playedAt = new Date().toISOString();
+            summary.manualStartedAt = ctx.runStartedAt;
+            summary.wallSeconds = Math.max(1, Math.round((performance.now() - ctx.runStartedAtMs) / 1000));
             try {
               const p = await writeReport(`randi-run-${summary.seed}-${Date.now()}.md`, buildReportMarkdown(summary));
               toast(`리포트 저장: ${p}`, "ok", 4000);

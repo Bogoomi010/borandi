@@ -63,6 +63,11 @@ let lastSelectorCount = game.state.pendingSelectors.length;
 let autosaveTimer: number | null = null;
 let endedHandled = false;
 
+function markRunStarted() {
+  ctx.runStartedAt = new Date().toISOString();
+  ctx.runStartedAtMs = performance.now();
+}
+
 const ctx: AppCtx = {
   game,
   renderer,
@@ -73,10 +78,13 @@ const ctx: AppCtx = {
   activeTab: "recipe",
   gradeFilter: "all",
   saveStatus: "idle",
+  runStartedAt: new Date().toISOString(),
+  runStartedAtMs: performance.now(),
   refresh: () => { panelsDirty = true; },
   newRun: (seed, difficulty, stageId = 1) => {
     game = new Game(seed || randomSeed(), difficulty, stageId);
     ctx.game = game;
+    markRunStarted();
     game.onEvent = onGameEvent;
     renderer.selectedUids.clear();
     renderer.resetFx();
@@ -96,6 +104,7 @@ const ctx: AppCtx = {
   adoptGame: (g) => {
     game = g;
     ctx.game = game;
+    markRunStarted();
     game.onEvent = onGameEvent;
     renderer.selectedUids.clear();
     renderer.resetFx();

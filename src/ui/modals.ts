@@ -73,6 +73,30 @@ export function openSelectorModal(ctx: AppCtx) {
 
 // ---------- 결과 ----------
 
+function shellArg(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+function manualPlaylogCommand(r: ResultSummary): string {
+  const seconds = Math.max(1, Math.round(r.wallSeconds ?? 0));
+  const result = r.cleared ? "clear" : "loss";
+  const args = [
+    "yarn manual-playlog",
+    `--difficulty=${r.difficultyId}`,
+    `--seconds=${seconds}`,
+    `--result=${result}`,
+    `--stage=${r.stageId}`,
+    `--round=${r.reachedRound}`,
+    `--seed=${shellArg(r.seed)}`,
+    `--legends=${r.legendOrBetterCount}`,
+    `--maxGrade=${r.maxGrade}`,
+  ];
+  if (r.manualStartedAt) args.push(`--startedAt=${shellArg(r.manualStartedAt)}`);
+  if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
+  args.push(`--notes=${shellArg(`${r.difficulty} ${result}, ${r.legendOrBetterCount}전설 이상`)}`);
+  return args.join(" ");
+}
+
 export function buildReportMarkdown(r: ResultSummary): string {
   const lines = [
     `# 차원 균열 랜덤 디펜스 결과`,
@@ -83,8 +107,10 @@ export function buildReportMarkdown(r: ResultSummary): string {
     `- 시드: \`${r.seed}\` / 난이도: ${r.difficulty} / 데이터 버전: ${r.dataVersion}`,
     `- 남은 라이프: ${r.life}`,
     `- 최고 등급: ${GRADE_LABEL[r.maxGrade]}`,
+    `- 전설/히든: ${r.legendCount}/${r.hiddenCount}`,
     `- 미션: ${r.missionsDone}/${r.missionsTotal}`,
     `- 조합 ${r.craftCount}회 · 3합성 ${r.merge3Count}회 · 보정 발동 ${r.pityTriggered}회`,
+    ...(r.wallSeconds ? [`- 실제 플레이 시간: ${(r.wallSeconds / 60).toFixed(1)}분`] : []),
     ``,
     `## 주요 딜러`,
     ``,
@@ -100,6 +126,9 @@ export function buildReportMarkdown(r: ResultSummary): string {
   if (r.failHint) {
     lines.push("", "## 개선 힌트", "", `- ${r.failHint}`);
   }
+  if (r.wallSeconds) {
+    lines.push("", "## 수동 플레이 로그", "", "```bash", manualPlaylogCommand(r), "```");
+  }
   lines.push("", `played at ${r.playedAt}`);
   return lines.join("\n");
 }
@@ -113,6 +142,9 @@ export function maybeShowResult(ctx: AppCtx) {
 
   const summary = ctx.game.resultSummary();
   summary.playedAt = new Date().toISOString();
+  summary.manualStartedAt = ctx.runStartedAt;
+  const wallSeconds = Math.max(1, Math.round((performance.now() - ctx.runStartedAtMs) / 1000));
+  summary.wallSeconds = wallSeconds;
   ctx.audio.sfx(summary.cleared ? "victory" : "defeat");
   void recordResult(summary).catch(() => toast("결과 저장 실패", "danger"));
 
@@ -128,6 +160,8 @@ export function maybeShowResult(ctx: AppCtx) {
     kv("맵", `${summary.stageId}. ${summary.stageName}`);
     kv("난이도", summary.difficulty);
     kv("최고 등급", GRADE_LABEL[summary.maxGrade]);
+    kv("전설/히든", `${summary.legendCount} / ${summary.hiddenCount}`);
+    kv("실제 플레이", `${(wallSeconds / 60).toFixed(1)}분`);
     kv("미션", `${summary.missionsDone}/${summary.missionsTotal}`);
     kv("조합/3합성", `${summary.craftCount} / ${summary.merge3Count}`);
     kv("보정 발동", `${summary.pityTriggered}회`);
@@ -150,6 +184,10 @@ export function maybeShowResult(ctx: AppCtx) {
     }
 
     const row = el("div", "row-btns");
+    const manualCommand = manualPlaylogCommand(summary);
+
+    body.appendChild(el("h3", "", "수동 플레이 로그"));
+    body.appendChild(el("pre", "report", manualCommand));
 
     const exportBtn = el("button", "", "리포트 내보내기 (.md)");
     exportBtn.onclick = async () => {
@@ -164,6 +202,17 @@ export function maybeShowResult(ctx: AppCtx) {
       }
     };
     row.appendChild(exportBtn);
+
+    const copyLog = el("button", "", "로그 명령 복사");
+    copyLog.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualCommand);
+        toast("수동 플레이 로그 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
+      }
+    };
+    row.appendChild(copyLog);
 
     const titleBtn = el("button", "", "타이틀로");
     titleBtn.onclick = () => { resetResultShown(); close(); ctx.goTitle(); };

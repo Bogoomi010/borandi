@@ -259,6 +259,7 @@ export interface GameState {
 
 export interface ResultSummary {
   seed: string;
+  difficultyId: DifficultyId;
   difficulty: string;
   stageId: number;
   stageName: string;
@@ -267,6 +268,9 @@ export interface ResultSummary {
   reachedRound: number;
   life: number;
   maxGrade: Grade;
+  legendCount: number;
+  hiddenCount: number;
+  legendOrBetterCount: number;
   missionsDone: number;
   missionsTotal: number;
   topDealers: { name: string; grade: Grade; damage: number }[];
@@ -277,4 +281,6 @@ export interface ResultSummary {
   craftCount: number;
   merge3Count: number;
   playedAt: string;
+  manualStartedAt?: string;
+  wallSeconds?: number;
 }

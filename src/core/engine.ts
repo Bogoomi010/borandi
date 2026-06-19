@@ -965,6 +965,8 @@ export class Game {
 
   resultSummary(): ResultSummary {
     const s = this.state;
+    const legendCount = s.units.filter((u) => UNIT_BY_ID[u.defId].grade === "legend").length;
+    const hiddenCount = s.units.filter((u) => UNIT_BY_ID[u.defId].grade === "hidden").length;
     const dealers = [...s.units]
       .sort((a, b) => b.totalDamage - a.totalDamage)
       .slice(0, 3)
@@ -975,6 +977,7 @@ export class Game {
       }));
     return {
       seed: s.seed,
+      difficultyId: s.difficulty,
       difficulty: this.diff.name,
       stageId: s.stageId,
       stageName: stageById(s.stageId).name,
@@ -983,6 +986,9 @@ export class Game {
       reachedRound: s.round,
       life: s.life,
       maxGrade: this.maxOwnedGrade(),
+      legendCount,
+      hiddenCount,
+      legendOrBetterCount: legendCount + hiddenCount,
       missionsDone: s.missions.filter((m) => m.status === "done").length,
       missionsTotal: s.missions.length,
       topDealers: dealers,

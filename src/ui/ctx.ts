@@ -17,6 +17,8 @@ export interface AppCtx {
   activeTab: RightTab;
   gradeFilter: string; // "all" | grade
   saveStatus: "idle" | "saving" | "saved" | "failed";
+  runStartedAt: string;
+  runStartedAtMs: number;
   /** 패널 다시 그리기 요청 */
   refresh: () => void;
   /** 새 게임 시작 (게임 씬으로 전환) */
