@@ -46,6 +46,7 @@ function usage() {
     "  --plan --json         # 남은 수동 플레이 계획을 JSON으로 출력",
     "  --next                # 바로 다음에 필요한 수동 플레이 세션 1개만 출력",
     "  --next --json         # 다음 필요 세션을 JSON으로 출력",
+    "                        # --next/--plan 출력에는 다음 세션 시작 마커 명령 템플릿도 포함",
     "  --assert              # 수동 증거가 모두 충족되지 않으면 실패 코드로 종료",
     "  --notes=...",
     "  --startedAt=ISO --endedAt=ISO",
@@ -226,6 +227,22 @@ function targetEvidence(sessions, difficulty, predicate) {
   }).join("; ");
 }
 
+function shellArg(value) {
+  return `'${String(value).replace(/'/g, "'\\''")}'`;
+}
+
+function startCommandTemplate(step) {
+  if (!step || step.kind === "total-minutes") return "";
+  const difficulty = step.difficulty === "any" ? "novice" : step.difficulty;
+  return [
+    "yarn manual-playlog --start",
+    `--difficulty=${difficulty}`,
+    "--stage=1",
+    "--seed=GAME_SEED_HERE",
+    `--notes=${shellArg(step.label)}`,
+  ].join(" ");
+}
+
 const targetPlans = [
   {
     label: "입문자 무전설 40R 클리어",
@@ -389,6 +406,7 @@ function buildPlan() {
         label: target.label,
         goal: target.goal,
         logHint: target.logHint,
+        startCommandTemplate: startCommandTemplate(target),
       })),
       ...difficultyTopUps.map((item) => ({
         kind: "difficulty-minimum",
@@ -397,6 +415,10 @@ function buildPlan() {
         label: `${item.difficulty} 최소 시간 보충`,
         goal: `${item.difficulty} 난이도 유효 수동 플레이 ${item.minutes.toFixed(1)}분 추가`,
         logHint: "결과 화면의 yarn manual-playlog 명령 사용",
+        startCommandTemplate: startCommandTemplate({
+          difficulty: item.difficulty,
+          label: `${item.difficulty} 최소 시간 보충`,
+        }),
       })),
       ...(flexibleMinutes > 0
         ? [{
@@ -406,6 +428,7 @@ function buildPlan() {
           label: "총 120분 보충",
           goal: `목표 세션 이후 남는 ${flexibleMinutes.toFixed(1)}분을 실제 플레이로 추가`,
           logHint: "요약 명령의 다음 필요 항목을 보며 어떤 난이도든 실제 결과 기록",
+          startCommandTemplate: "",
         }]
         : []),
     ],
@@ -453,6 +476,9 @@ function printPlan() {
       console.log(`${index + 1}. ${step.label} (${step.minutes.toFixed(1)}분 이상)`);
       console.log(`   목표: ${step.goal}`);
       console.log(`   기록 힌트: ${step.logHint}`);
+      if (step.startCommandTemplate) {
+        console.log(`   시작 마커: ${step.startCommandTemplate}`);
+      }
     });
   }
   console.log("");
@@ -486,6 +512,11 @@ function printNext() {
     console.log(`${next.next.label} (${next.next.minutes.toFixed(1)}분 이상)`);
     console.log(`목표: ${next.next.goal}`);
     console.log(`기록 힌트: ${next.next.logHint}`);
+    if (next.next.startCommandTemplate) {
+      console.log("시작 마커:");
+      console.log(next.next.startCommandTemplate);
+      console.log("  GAME_SEED_HERE는 새 게임 시작 후 상단에 표시된 실제 시드로 바꾸세요.");
+    }
   }
   console.log("");
   console.log(`판정: ${next.passed ? "수동 증거 충족" : "수동 증거 미충족"}`);

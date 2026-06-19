@@ -104,7 +104,11 @@ describe("manual-playlog plan", () => {
       difficulty: "novice",
       label: "입문자 무전설 40R 클리어",
       minutes: 12,
+      startCommandTemplate: "yarn manual-playlog --start --difficulty=novice --stage=1 --seed=GAME_SEED_HERE --notes='입문자 무전설 40R 클리어'",
     });
+    const text = runManualPlaylog([`--out=${out}`, "--next"]);
+    expect(text).toContain("시작 마커:");
+    expect(text).toContain("--seed=GAME_SEED_HERE");
   });
 
   it("수동 증거 assert는 빈 로그에서 실패 코드와 다음 세션을 출력한다", () => {
