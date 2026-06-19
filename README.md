@@ -41,7 +41,7 @@ yarn check                # npm 의존성 없이 Node만으로 코어 스모크 
 `yarn browser-direct`는 DEV 스폰으로 유닛을 고정하지 않고 소환/선택권/합성/조합/업그레이드 입력을 반복해 긴 브라우저 표본을 모으는 보조 플레이테스트다. JSON에는 누적 시뮬레이션 플레이 시간도 함께 기록된다.
 `yarn manual-playlog`는 사람이 직접 플레이한 세션을 `output/manual-balance-playlog.json`에 누적한다.
 `yarn balance-audit`는 `browser-direct` JSON의 시나리오 범위, strict 통과 여부, 관찰 게이트도 확인해 실제 브라우저 입력 표본이 난이도별 목표와 같은 방향인지 검사한다.
-수동 플레이 로그는 `docs/manual-balance-playlog.example.json` 형식을 따른다. 예시 파일은 `example: true`로 표시되어 감사 증거에서 제외된다. `yarn balance-audit`는 총 120분 이상, 5개 난이도 포함, 입문자 40R 무전설 클리어, 일반 40R 1~2전설 클리어, 중급자 40R 5전설 이상 클리어, 고수 40R 5전설 이하 실패 + 40R 6전설 이상 클리어, 초고수 실패 기록을 확인한다.
+수동 플레이 로그는 `docs/manual-balance-playlog.example.json` 형식을 따른다. 예시 파일은 `example: true`로 표시되어 감사 증거에서 제외된다. `yarn balance-audit`는 시작/종료 시각과 입력 시간이 일치하는 세션만 세며, 총 120분 이상, 5개 난이도 포함, 입문자 40R 무전설 클리어, 일반 40R 1~2전설 클리어, 중급자 40R 5전설 이상 클리어, 고수 40R 5전설 이하 실패 + 40R 6전설 이상 클리어, 초고수 실패 기록을 확인한다.
 게임 결과 화면과 결과 리포트에는 현재 세션의 실제 경과 시간을 넣은 `yarn manual-playlog` 명령이 함께 표시된다.
 
 ## 데스크탑 게임 구성

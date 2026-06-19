@@ -54,6 +54,18 @@ function asNumber(name) {
   return value;
 }
 
+function durationSeconds() {
+  if (seconds !== undefined) return seconds;
+  return minutes * 60;
+}
+
+function parseDate(name, value) {
+  if (!value) return undefined;
+  const date = new Date(String(value));
+  if (!Number.isFinite(date.getTime())) fail(`--${name} 값이 ISO 날짜가 아닙니다: ${value}`);
+  return date;
+}
+
 function sessionsTotalMinutes(log) {
   return log.sessions.reduce((sum, session) => {
     if (typeof session.minutes === "number") return sum + session.minutes;
@@ -81,12 +93,27 @@ if ((minutes ?? 0) <= 0 && (seconds ?? 0) <= 0) {
 }
 
 const now = new Date();
+const duration = durationSeconds();
+let endedAt = parseDate("endedAt", args.endedAt) ?? now;
+let startedAt = parseDate("startedAt", args.startedAt);
+if (!startedAt) {
+  startedAt = new Date(endedAt.getTime() - (duration * 1000));
+}
+const actualDuration = (endedAt.getTime() - startedAt.getTime()) / 1000;
+const tolerance = Math.max(2, duration * 0.05);
+if (actualDuration <= 0) {
+  fail("--endedAt은 --startedAt보다 늦어야 합니다.");
+}
+if (Math.abs(actualDuration - duration) > tolerance) {
+  fail(`입력한 플레이 시간(${duration.toFixed(0)}초)과 startedAt/endedAt 차이(${actualDuration.toFixed(0)}초)가 맞지 않습니다.`);
+}
+
 const session = {
   source: "human-playtest",
   difficulty,
   ...(minutes !== undefined ? { minutes } : { seconds }),
-  ...(args.startedAt ? { startedAt: String(args.startedAt) } : {}),
-  ...(args.endedAt ? { endedAt: String(args.endedAt) } : { endedAt: now.toISOString() }),
+  startedAt: startedAt.toISOString(),
+  endedAt: endedAt.toISOString(),
   ...(args.result ? { result: String(args.result) } : {}),
   ...(args.stage !== undefined ? { stage: asNumber("stage") } : {}),
   ...(args.round !== undefined ? { round: asNumber("round") } : {}),

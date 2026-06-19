@@ -97,13 +97,40 @@ function isExampleManualSession(session) {
 
 function realManualSessions(manual) {
   if (!manual || isExampleManualLog(manual)) return [];
-  return (manual.sessions ?? []).filter((s) => !isExampleManualSession(s));
+  return (manual.sessions ?? []).filter((s) => !isExampleManualSession(s) && hasValidManualTiming(s));
+}
+
+function countNonExampleManualSessions(manual) {
+  if (!manual || isExampleManualLog(manual)) return 0;
+  return (manual.sessions ?? []).filter((s) => !isExampleManualSession(s)).length;
 }
 
 function sessionMinutes(session) {
   if (typeof session.minutes === "number") return session.minutes;
   if (typeof session.seconds === "number") return session.seconds / 60;
   return 0;
+}
+
+function reportedSessionSeconds(session) {
+  if (typeof session.seconds === "number") return session.seconds;
+  if (typeof session.minutes === "number") return session.minutes * 60;
+  return 0;
+}
+
+function sessionTimeSpanSeconds(session) {
+  if (!session.startedAt || !session.endedAt) return 0;
+  const startedAt = new Date(String(session.startedAt)).getTime();
+  const endedAt = new Date(String(session.endedAt)).getTime();
+  if (!Number.isFinite(startedAt) || !Number.isFinite(endedAt)) return 0;
+  return (endedAt - startedAt) / 1000;
+}
+
+function hasValidManualTiming(session) {
+  const reported = reportedSessionSeconds(session);
+  const actual = sessionTimeSpanSeconds(session);
+  if (reported <= 0 || actual <= 0) return false;
+  const tolerance = Math.max(2, reported * 0.05);
+  return Math.abs(actual - reported) <= tolerance;
 }
 
 function sessionResult(session) {
@@ -293,6 +320,8 @@ function buildRows(balance, browser, direct, manual) {
   const manualTotalMinutes = manualMinutes(manual);
   const manualDiffs = manualDifficulties(manual);
   const manualCoversAll = requiredDifficulties.every((d) => manualDiffs.has(d));
+  const manualSessionCount = countNonExampleManualSessions(manual);
+  const validManualSessionCount = realManualSessions(manual).length;
   const noviceManual = manualSessions(manual, "novice");
   const normalManual = manualSessions(manual, "normal");
   const intermediateManual = manualSessions(manual, "intermediate");
@@ -309,7 +338,7 @@ function buildRows(balance, browser, direct, manual) {
   rows.push({
     req: "사람이 직접 2시간 플레이",
     evidence: manual
-      ? `${isExampleManualLog(manual) ? "예시 로그 제외, " : ""}${manualTotalMinutes.toFixed(1)}분, 난이도 ${[...manualDiffs].join(", ") || "없음"}`
+      ? `${isExampleManualLog(manual) ? "예시 로그 제외, " : ""}시간검증 ${validManualSessionCount}/${manualSessionCount}세션, ${manualTotalMinutes.toFixed(1)}분, 난이도 ${[...manualDiffs].join(", ") || "없음"}`
       : "아직 실제 수동 플레이 기록 없음",
     pass: !!manual && manualTotalMinutes >= 120 && manualCoversAll,
     missing: !manual || manualTotalMinutes < 120 || !manualCoversAll,
