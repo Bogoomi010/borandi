@@ -146,6 +146,23 @@ function manualPlaylogFinishCommand(r: ResultSummary): string {
   return args.join(" ");
 }
 
+function manualPlaylogFinishLatestCommand(r: ResultSummary): string {
+  const result = r.cleared ? "clear" : "loss";
+  const args = [
+    "yarn manual-playlog",
+    "--finish-latest",
+    `--result=${result}`,
+    `--round=${r.reachedRound}`,
+    `--legends=${r.legendOrBetterCount}`,
+    `--maxGrade=${r.maxGrade}`,
+    `--dataVersion=${shellArg(r.dataVersion)}`,
+    `--stateChecksum=${shellArg(r.stateChecksum)}`,
+  ];
+  if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
+  args.push(`--notes=${shellArg(`${r.difficulty} ${result}, ${r.legendOrBetterCount}전설 이상`)}`);
+  return args.join(" ");
+}
+
 function manualPlaylogThenNextCommand(r: ResultSummary): string {
   return `${manualPlaylogCommand(r)} && yarn manual-playlog --next`;
 }
@@ -250,6 +267,12 @@ export function buildReportMarkdown(r: ResultSummary): string {
       "```bash",
       manualPlaylogFinishCommand(r),
       "```",
+      "",
+      "## 가장 최근 시작 마커로 기록",
+      "",
+      "```bash",
+      manualPlaylogFinishLatestCommand(r),
+      "```",
     );
   }
   lines.push("", `played at ${r.playedAt}`);
@@ -313,6 +336,7 @@ export function maybeShowResult(ctx: AppCtx) {
     const row = el("div", "row-btns");
     const manualCommand = manualPlaylogCommand(summary);
     const manualFinishCommand = manualPlaylogFinishCommand(summary);
+    const manualFinishLatestCommand = manualPlaylogFinishLatestCommand(summary);
     const manualThenNextCommand = manualPlaylogThenNextCommand(summary);
 
     body.appendChild(el("h3", "", "수동 플레이 로그"));
@@ -321,6 +345,8 @@ export function maybeShowResult(ctx: AppCtx) {
     body.appendChild(el("pre", "report", manualThenNextCommand));
     body.appendChild(el("h3", "", "시작 마커를 저장한 경우"));
     body.appendChild(el("pre", "report", manualFinishCommand));
+    body.appendChild(el("h3", "", "가장 최근 시작 마커로 기록"));
+    body.appendChild(el("pre", "report", manualFinishLatestCommand));
 
     const exportBtn = el("button", "", "리포트 내보내기 (.md)");
     exportBtn.onclick = async () => {
@@ -368,6 +394,17 @@ export function maybeShowResult(ctx: AppCtx) {
       }
     };
     row.appendChild(copyFinish);
+
+    const copyFinishLatest = el("button", "", "최근마커 기록 복사");
+    copyFinishLatest.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualFinishLatestCommand);
+        toast("가장 최근 시작 마커 기록 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
+      }
+    };
+    row.appendChild(copyFinishLatest);
 
     const titleBtn = el("button", "", "타이틀로");
     titleBtn.onclick = () => { resetResultShown(); close(); ctx.goTitle(); };
