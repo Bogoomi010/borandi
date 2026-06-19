@@ -196,6 +196,56 @@ function manualProofTarget(r: ResultSummary): string {
   return "수동 플레이 시간에는 포함되지만 목표 결과 증거 조건과는 다릅니다.";
 }
 
+function manualProofChecklist(r: ResultSummary): Array<{ label: string; ok: boolean; detail: string }> {
+  const playedMinutes = (r.wallSeconds ?? 0) / 60;
+  const finalRound = r.reachedRound >= 40;
+  const result = r.cleared ? "클리어" : "패배";
+  const checks = [
+    {
+      label: "12분 이상 실제 플레이",
+      ok: (r.wallSeconds ?? 0) >= 12 * 60,
+      detail: `${playedMinutes.toFixed(1)}분`,
+    },
+    {
+      label: "40R 최종 보스 구간",
+      ok: finalRound,
+      detail: `${r.reachedRound}R`,
+    },
+  ];
+  switch (r.difficultyId) {
+    case "novice":
+      checks.push(
+        { label: "입문자 결과", ok: r.cleared && finalRound, detail: result },
+        { label: "전설 없이 진행", ok: r.legendOrBetterCount === 0, detail: `${r.legendOrBetterCount}전설+` },
+      );
+      break;
+    case "normal":
+      checks.push(
+        { label: "일반 결과", ok: r.cleared && finalRound, detail: result },
+        { label: "전설 1~2개", ok: r.legendOrBetterCount >= 1 && r.legendOrBetterCount <= 2, detail: `${r.legendOrBetterCount}전설+` },
+      );
+      break;
+    case "intermediate":
+      checks.push(
+        { label: "중급자 결과", ok: r.cleared && finalRound, detail: result },
+        { label: "전설 5개 이상", ok: r.legendOrBetterCount >= 5, detail: `${r.legendOrBetterCount}전설+` },
+      );
+      break;
+    case "expert":
+      checks.push(
+        { label: "고수 저전설 실패 증거", ok: !r.cleared && finalRound && r.legendOrBetterCount <= 5, detail: `${result}, ${r.legendOrBetterCount}전설+` },
+        { label: "고수 고전설 클리어 증거", ok: r.cleared && finalRound && r.legendOrBetterCount >= 6, detail: `${result}, ${r.legendOrBetterCount}전설+` },
+      );
+      break;
+    case "master":
+      checks.push(
+        { label: "초고수 실패 기록", ok: !r.cleared, detail: result },
+      );
+      break;
+  }
+  return checks;
+}
+
 function mapPermissionMessage(r: ResultSummary): string {
   const finalBossCleared = r.cleared && r.reachedRound >= FINAL_ROUND;
   if (r.unlockedNextStage && r.stageId < STAGES.length) {
@@ -218,6 +268,7 @@ function newlyUnlockedNextStage(r: ResultSummary) {
 
 export function buildReportMarkdown(r: ResultSummary): string {
   const proofTarget = manualProofTarget(r);
+  const proofChecks = manualProofChecklist(r);
   const lines = [
     `# 차원 균열 랜덤 디펜스 결과`,
     ``,
@@ -234,6 +285,10 @@ export function buildReportMarkdown(r: ResultSummary): string {
     `- 조합 ${r.craftCount}회 · 3합성 ${r.merge3Count}회 · 보정 발동 ${r.pityTriggered}회`,
     ...(r.wallSeconds ? [`- 실제 플레이 시간: ${(r.wallSeconds / 60).toFixed(1)}분`] : []),
     ...(r.wallSeconds ? [`- 수동 증거 판정: ${proofTarget}`] : []),
+    ``,
+    `## 수동 증거 체크리스트`,
+    ``,
+    ...proofChecks.map((check) => `- ${check.ok ? "충족" : "부족"}: ${check.label} (${check.detail})`),
     ``,
     `## 주요 딜러`,
     ``,
@@ -307,6 +362,7 @@ export function maybeShowResult(ctx: AppCtx) {
 
   openModal((body, close) => {
     const proofTarget = manualProofTarget(summary);
+    const proofChecks = manualProofChecklist(summary);
     body.appendChild(el("h2", "", summary.cleared ? `${summary.stageName} 40라운드 클리어!` : `${summary.reachedRound}라운드에서 패배`));
 
     const grid = el("div", "result-stats");
@@ -338,6 +394,17 @@ export function maybeShowResult(ctx: AppCtx) {
       }
       body.appendChild(table);
     }
+
+    body.appendChild(el("h3", "", "수동 증거 체크리스트"));
+    const proofTable = el("table", "kv-table");
+    for (const check of proofChecks) {
+      const tr = el("tr");
+      tr.appendChild(el("td", "", check.ok ? "충족" : "부족"));
+      tr.appendChild(el("td", "", check.label));
+      tr.appendChild(el("td", "", check.detail));
+      proofTable.appendChild(tr);
+    }
+    body.appendChild(proofTable);
 
     if (summary.failHint) {
       body.appendChild(el("div", "result-hint", `💡 ${summary.failHint}`));
