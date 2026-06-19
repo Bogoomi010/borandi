@@ -33,6 +33,8 @@ yarn manual-playlog --difficulty=normal --minutes=24 --result=loss --stage=1 --r
                           # 사람이 직접 플레이한 수동 밸런스 세션을 output/manual-balance-playlog.json에 누적
 yarn manual-playlog --summary
                           # 현재 수동 로그의 120분/난이도별/목표 결과 충족 상태와 다음 필요 세션 확인
+yarn --silent manual-playlog --summary --json
+                          # 같은 수동 로그 상태를 자동화 가능한 JSON으로 출력
 yarn balance-audit --manual=output/manual-balance-playlog.json --out=output/balance-audit.md
                           # balance/browser-balance/browser-direct/manual JSON을 모아 요구사항별 근거 감사표 생성
 yarn check                # npm 의존성 없이 Node만으로 코어 스모크 테스트

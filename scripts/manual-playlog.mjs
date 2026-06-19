@@ -33,6 +33,7 @@ function usage() {
     "선택:",
     "  --out=output/manual-balance-playlog.json",
     "  --summary             # 현재 수동 로그 충족/미충족 항목만 출력",
+    "  --summary --json      # 현재 수동 로그 상태를 JSON으로 출력",
     "  --notes=...",
     "  --startedAt=ISO --endedAt=ISO",
   ].join("\n");
@@ -203,7 +204,7 @@ function targetEvidence(sessions, difficulty, predicate) {
   }).join("; ");
 }
 
-function printSummary() {
+function buildSummary() {
   const log = existsSync(outPath) ? readJson(outPath) : { sessions: [] };
   const allSessions = isExampleManualLog(log) ? [] : (log.sessions ?? []).filter((session) => !isExampleManualSession(session));
   const validSessions = realManualSessions(log);
@@ -258,20 +259,47 @@ function printSummary() {
     },
   ];
 
+  return {
+    schemaVersion: 1,
+    logPath: outPath,
+    logExists: existsSync(outPath),
+    exampleExcluded: isExampleManualLog(log),
+    nonExampleSessionCount: allSessions.length,
+    validSessionCount: validSessions.length,
+    totalMinutes,
+    requiredMinutes: 120,
+    minutesByDifficulty: Object.fromEntries(difficulties.map((id) => [id, minutesByDifficulty.get(id) ?? 0])),
+    rows,
+    passed: rows.every((row) => row.pass),
+  };
+}
+
+function printSummary() {
+  const summary = buildSummary();
   console.log("# 수동 플레이 로그 상태");
-  console.log(`- 로그: ${outPath}${existsSync(outPath) ? "" : " (아직 없음)"}`);
-  console.log(`- 예시 로그 제외: ${isExampleManualLog(log) ? "예" : "아니오"}`);
+  console.log(`- 로그: ${summary.logPath}${summary.logExists ? "" : " (아직 없음)"}`);
+  console.log(`- 예시 로그 제외: ${summary.exampleExcluded ? "예" : "아니오"}`);
   console.log("");
-  for (const row of rows) {
+  for (const row of summary.rows) {
     console.log(`${row.pass ? "PASS" : "MISSING"} ${row.label}: ${row.evidence}`);
     if (!row.pass) console.log(`  다음 필요: ${row.next}`);
   }
   console.log("");
-  console.log(`판정: ${rows.every((row) => row.pass) ? "수동 증거 충족" : "수동 증거 미충족"}`);
+  console.log(`판정: ${summary.passed ? "수동 증거 충족" : "수동 증거 미충족"}`);
+}
+
+function printSummaryJson() {
+  console.log(`${JSON.stringify(buildSummary(), null, 2)}`);
 }
 
 if (args.summary === "true" || args.status === "true") {
-  printSummary();
+  if (args.json === "true" || args["summary-json"] === "true") printSummaryJson();
+  else printSummary();
+  process.exit(0);
+}
+
+if (args["summary-json"] === "true") {
+  printSummaryJson();
   process.exit(0);
 }
 
