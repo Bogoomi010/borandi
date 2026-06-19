@@ -161,6 +161,7 @@ describe("balance-audit assert", () => {
     ]);
 
     expect(output).toContain("목표 완료 여부: 감사표 기준으로 모든 항목이 충족되었다.");
+    expect(output).toContain("다음 수동 플레이 세션 | PASS | 필요 없음 - 수동 플레이 증거 목표 충족");
   });
 
   it("수동 2시간 증거가 없으면 assert가 실패한다", () => {
@@ -176,6 +177,7 @@ describe("balance-audit assert", () => {
 
     expect(failed.status).toBe(1);
     expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | MISSING");
+    expect(failed.stdout).toContain("다음 수동 플레이 세션 | MISSING | 입문자 무전설 40R 클리어");
     expect(failed.stderr).toContain("balance-audit assert failed");
   });
 

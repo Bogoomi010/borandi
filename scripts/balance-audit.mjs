@@ -18,6 +18,8 @@ const manualPath = String(args.manual ?? "output/manual-balance-playlog.json");
 const outPath = typeof args.out === "string" && args.out !== "true" ? args.out : "";
 const MIN_MANUAL_MINUTES_PER_DIFFICULTY = 12;
 const MIN_MANUAL_TARGET_SESSION_MINUTES = 12;
+const MIN_MANUAL_TOTAL_MINUTES = 120;
+const REQUIRED_DIFFICULTIES = ["novice", "normal", "intermediate", "expert", "master"];
 
 function readJson(path) {
   if (!existsSync(path)) return null;
@@ -241,14 +243,88 @@ function hasManual(manual, difficulty, predicate) {
   return manualSessions(manual, difficulty).some(predicate);
 }
 
+const MANUAL_TARGETS = [
+  {
+    label: "입문자 무전설 40R 클리어",
+    difficulty: "novice",
+    minutes: MIN_MANUAL_TARGET_SESSION_MINUTES,
+    goal: "전설 없이 40R 최종 보스 클리어",
+    logHint: "result=clear round=40 legends=0 maxGrade=hero 이하",
+    predicate: (s) => isMeaningfulManualTargetSession(s) && isClear(s) && reachedFinalRound(s) && legendCount(s) === 0,
+  },
+  {
+    label: "일반 1~2전설 40R 클리어",
+    difficulty: "normal",
+    minutes: MIN_MANUAL_TARGET_SESSION_MINUTES,
+    goal: "전설 1~2개로 40R 최종 보스 클리어",
+    logHint: "result=clear round=40 legends=1~2 maxGrade=legend",
+    predicate: (s) => isMeaningfulManualTargetSession(s) && isClear(s) && reachedFinalRound(s) && legendCount(s) >= 1 && legendCount(s) <= 2,
+  },
+  {
+    label: "중급자 5전설 이상 40R 클리어",
+    difficulty: "intermediate",
+    minutes: MIN_MANUAL_TARGET_SESSION_MINUTES,
+    goal: "전설 5개 이상으로 40R 최종 보스 클리어",
+    logHint: "result=clear round=40 legends>=5 maxGrade=legend|hidden",
+    predicate: (s) => isMeaningfulManualTargetSession(s) && isClear(s) && reachedFinalRound(s) && legendCount(s) >= 5,
+  },
+  {
+    label: "고수 5전설 이하 40R 실패",
+    difficulty: "expert",
+    minutes: MIN_MANUAL_TARGET_SESSION_MINUTES,
+    goal: "전설 5개 이하 성장 조건으로 40R 실패",
+    logHint: "result=loss round=40 legends<=5",
+    predicate: (s) => isMeaningfulManualTargetSession(s) && isLoss(s) && reachedFinalRound(s) && legendCount(s) <= 5,
+  },
+  {
+    label: "고수 6전설 이상 40R 클리어",
+    difficulty: "expert",
+    minutes: MIN_MANUAL_TARGET_SESSION_MINUTES,
+    goal: "전설 6개 이상 성장 조건으로 40R 최종 보스 클리어",
+    logHint: "result=clear round=40 legends>=6 maxGrade=legend|hidden",
+    predicate: (s) => isMeaningfulManualTargetSession(s) && isClear(s) && reachedFinalRound(s) && legendCount(s) >= 6,
+  },
+  {
+    label: "초고수 실패 기록",
+    difficulty: "master",
+    minutes: MIN_MANUAL_TARGET_SESSION_MINUTES,
+    goal: "초고수 난이도 실패 기록",
+    logHint: "result=loss",
+    predicate: (s) => isMeaningfulManualTargetSession(s) && isLoss(s),
+  },
+];
+
+function manualNextEvidence(manual) {
+  const totalMinutes = manualMinutes(manual);
+  const minutesByDifficulty = manualMinutesByDifficulty(manual);
+  for (const target of MANUAL_TARGETS) {
+    if (!hasManual(manual, target.difficulty, target.predicate)) {
+      return `${target.label} (${target.minutes.toFixed(1)}분 이상) - ${target.goal}; 기록 힌트: ${target.logHint}`;
+    }
+  }
+  for (const difficulty of REQUIRED_DIFFICULTIES) {
+    const current = minutesByDifficulty.get(difficulty) ?? 0;
+    if (current < MIN_MANUAL_MINUTES_PER_DIFFICULTY) {
+      return `${difficulty} 추가 ${(MIN_MANUAL_MINUTES_PER_DIFFICULTY - current).toFixed(1)}분 이상 - 난이도별 최소 ${MIN_MANUAL_MINUTES_PER_DIFFICULTY}분 보충`;
+    }
+  }
+  if (totalMinutes < MIN_MANUAL_TOTAL_MINUTES) {
+    return `자유 난이도 추가 ${(MIN_MANUAL_TOTAL_MINUTES - totalMinutes).toFixed(1)}분 이상 - 총 ${MIN_MANUAL_TOTAL_MINUTES}분 보충`;
+  }
+  return "필요 없음 - 수동 플레이 증거 목표 충족";
+}
+
+function manualNextMissing(manual) {
+  return manualNextEvidence(manual) !== "필요 없음 - 수동 플레이 증거 목표 충족";
+}
+
 function buildRows(balance, browser, direct, manual) {
   const rows = [];
-  const requiredDifficulties = ["novice", "normal", "intermediate", "expert", "master"];
   const difficulties = new Set((balance?.scenarios ?? []).map((s) => s.difficulty));
   rows.push({
     req: "난이도 5종",
     evidence: [...difficulties].join(", ") || "missing",
-    pass: requiredDifficulties.every((d) => difficulties.has(d)),
+    pass: REQUIRED_DIFFICULTIES.every((d) => difficulties.has(d)),
   });
 
   const novice = clearRate(balance, "noviceHero");
@@ -388,11 +464,11 @@ function buildRows(balance, browser, direct, manual) {
   const manualTotalMinutes = manualMinutes(manual);
   const manualDiffs = manualDifficulties(manual);
   const manualMinutesByDiff = manualMinutesByDifficulty(manual);
-  const manualDifficultyMinutesText = requiredDifficulties
+  const manualDifficultyMinutesText = REQUIRED_DIFFICULTIES
     .map((d) => `${d} ${(manualMinutesByDiff.get(d) ?? 0).toFixed(1)}분`)
     .join(", ");
-  const manualCoversAll = requiredDifficulties.every((d) => manualDiffs.has(d));
-  const manualCoversMinimumMinutes = requiredDifficulties.every((d) => (manualMinutesByDiff.get(d) ?? 0) >= MIN_MANUAL_MINUTES_PER_DIFFICULTY);
+  const manualCoversAll = REQUIRED_DIFFICULTIES.every((d) => manualDiffs.has(d));
+  const manualCoversMinimumMinutes = REQUIRED_DIFFICULTIES.every((d) => (manualMinutesByDiff.get(d) ?? 0) >= MIN_MANUAL_MINUTES_PER_DIFFICULTY);
   const manualSessionCount = countNonExampleManualSessions(manual);
   const validManualSessionCount = realManualSessions(manual).length;
   const pendingManual = pendingManualSessions(manual);
@@ -423,6 +499,12 @@ function buildRows(balance, browser, direct, manual) {
     evidence: manual ? pendingManualEvidence(pendingManual) : "수동 로그 없음",
     pass: pendingManual.length === 0,
     missing: !!manual && pendingManual.length > 0,
+  });
+  rows.push({
+    req: "다음 수동 플레이 세션",
+    evidence: manualNextEvidence(manual),
+    pass: !manualNextMissing(manual),
+    missing: manualNextMissing(manual),
   });
   rows.push({
     req: "수동: 입문자 무전설 클리어",
