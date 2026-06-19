@@ -89,7 +89,7 @@ export function profileRecordRun(cleared: boolean, difficulty: string, round: nu
   let unlockedNext = false;
   if (cleared) p.clears[difficulty] = (p.clears[difficulty] ?? 0) + 1;
   if (round > p.bestRound) p.bestRound = round;
-  if (cleared && round >= FINAL_ROUND && stageId >= p.unlockedStage) {
+  if (cleared && round >= FINAL_ROUND && stageId === p.unlockedStage) {
     const next = Math.min(stageId + 1, FINAL_STAGE);
     if (next > p.unlockedStage) {
       p.unlockedStage = next;

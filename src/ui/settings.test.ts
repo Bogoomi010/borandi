@@ -58,4 +58,11 @@ describe("프로필 맵 해금", () => {
     expect(unlocked).toBe(false);
     expect(loadProfile().unlockedStage).toBe(1);
   });
+
+  it("현재 해금된 맵을 건너뛴 클리어로는 뒤쪽 맵을 해금하지 않는다", () => {
+    const unlocked = profileRecordRun(true, "novice", FINAL_ROUND, 3);
+
+    expect(unlocked).toBe(false);
+    expect(loadProfile().unlockedStage).toBe(1);
+  });
 });

@@ -14,6 +14,7 @@ const args = Object.fromEntries(
 const balancePath = String(args.balance ?? "output/current-balance.json");
 const browserPath = String(args.browser ?? "output/browser-balance.json");
 const directPath = String(args.direct ?? "output/browser-direct.json");
+const manualPath = String(args.manual ?? "output/manual-balance-playlog.json");
 const outPath = typeof args.out === "string" && args.out !== "true" ? args.out : "";
 
 function readJson(path) {
@@ -43,13 +44,29 @@ function rateText(balance, id) {
   return typeof rate === "number" ? pct(rate) : "n/a";
 }
 
-function buildRows(balance, browser, direct) {
+function manualMinutes(manual) {
+  if (!manual) return 0;
+  if (typeof manual.totalMinutes === "number") return manual.totalMinutes;
+  if (typeof manual.totalSeconds === "number") return manual.totalSeconds / 60;
+  return (manual.sessions ?? []).reduce((sum, s) => {
+    if (typeof s.minutes === "number") return sum + s.minutes;
+    if (typeof s.seconds === "number") return sum + (s.seconds / 60);
+    return sum;
+  }, 0);
+}
+
+function manualDifficulties(manual) {
+  return new Set((manual?.sessions ?? []).map((s) => s.difficulty).filter(Boolean));
+}
+
+function buildRows(balance, browser, direct, manual) {
   const rows = [];
+  const requiredDifficulties = ["novice", "normal", "intermediate", "expert", "master"];
   const difficulties = new Set((balance?.scenarios ?? []).map((s) => s.difficulty));
   rows.push({
     req: "난이도 5종",
     evidence: [...difficulties].join(", ") || "missing",
-    pass: ["novice", "normal", "intermediate", "expert", "master"].every((d) => difficulties.has(d)),
+    pass: requiredDifficulties.every((d) => difficulties.has(d)),
   });
 
   const novice = clearRate(balance, "noviceHero");
@@ -110,18 +127,23 @@ function buildRows(balance, browser, direct) {
     missing: !direct,
   });
 
+  const manualTotalMinutes = manualMinutes(manual);
+  const manualDiffs = manualDifficulties(manual);
+  const manualCoversAll = requiredDifficulties.every((d) => manualDiffs.has(d));
   rows.push({
     req: "사람이 직접 2시간 플레이",
-    evidence: "아직 실제 수동 플레이 기록 없음",
-    pass: false,
-    missing: true,
+    evidence: manual
+      ? `${manualTotalMinutes.toFixed(1)}분, 난이도 ${[...manualDiffs].join(", ") || "없음"}`
+      : "아직 실제 수동 플레이 기록 없음",
+    pass: !!manual && manualTotalMinutes >= 120 && manualCoversAll,
+    missing: !manual || manualTotalMinutes < 120 || !manualCoversAll,
   });
 
   return rows;
 }
 
-function buildMarkdown(balance, browser, direct) {
-  const rows = buildRows(balance, browser, direct);
+function buildMarkdown(balance, browser, direct, manual) {
+  const rows = buildRows(balance, browser, direct, manual);
   const lines = [
     "# 5난이도 밸런스 감사",
     "",
@@ -129,6 +151,7 @@ function buildMarkdown(balance, browser, direct) {
     `- balance: ${balancePath} (${balance ? "loaded" : "missing"})`,
     `- browser-balance: ${browserPath} (${browser ? "loaded" : "missing"})`,
     `- browser-direct: ${directPath} (${direct ? "loaded" : "missing"})`,
+    `- manual-playlog: ${manualPath} (${manual ? "loaded" : "missing"})`,
     "",
     "| 요구사항 | 상태 | 근거 |",
     "| --- | --- | --- |",
@@ -144,14 +167,17 @@ function buildMarkdown(balance, browser, direct) {
   const missingRows = rows.filter((r) => r.missing);
   lines.push(`- 자동/브라우저 검증: ${hardPassed ? "PASS" : "FAIL"}`);
   lines.push(`- 미완료 항목: ${missingRows.length > 0 ? missingRows.map((r) => r.req).join(", ") : "없음"}`);
-  lines.push("- 목표 완료 여부: 사람이 직접 2시간 플레이한 기록이 없으므로 아직 완료로 보지 않는다.");
+  lines.push(missingRows.length === 0
+    ? "- 목표 완료 여부: 감사표 기준으로 모든 항목이 충족되었다."
+    : "- 목표 완료 여부: 미완료 항목이 있으므로 아직 완료로 보지 않는다.");
   return lines.join("\n");
 }
 
 const balance = readJson(balancePath);
 const browser = readJson(browserPath);
 const direct = readJson(directPath);
-const markdown = buildMarkdown(balance, browser, direct);
+const manual = readJson(manualPath);
+const markdown = buildMarkdown(balance, browser, direct, manual);
 
 console.log(markdown);
 

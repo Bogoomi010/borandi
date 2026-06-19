@@ -29,7 +29,7 @@ yarn browser-balance --json=output/browser-balance.json --screenshots=output/bro
                           # 실행 중인 yarn dev 서버를 대상으로 10R 전후 브라우저 플레이테스트 게이트 실행
 yarn browser-direct --json=output/browser-direct.json --screenshots=output/browser-direct-shots
                           # 실행 중인 yarn dev 서버에서 실제 소환/합성/조합/업그레이드 입력 흐름으로 긴 밸런스 표본 수집
-yarn balance-audit --out=output/balance-audit.md
+yarn balance-audit --manual=output/manual-balance-playlog.json --out=output/balance-audit.md
                           # balance/browser-balance/browser-direct JSON을 모아 요구사항별 근거 감사표 생성
 yarn check                # npm 의존성 없이 Node만으로 코어 스모크 테스트
 ```
@@ -37,6 +37,7 @@ yarn check                # npm 의존성 없이 Node만으로 코어 스모크 
 인게임에서도 `Tools > 100시드 시뮬레이션` 또는 `Tools > 5난이도 밸런스 게이트` 메뉴로 실행할 수 있다.
 40라운드 전체 클리어율 밴드는 `yarn balance`가 기준이고, `yarn browser-balance`는 실제 브라우저 런타임에서 난이도/전설 보유 조건과 10R 첫 보스 전후 체감 차이를 확인하는 보조 게이트다.
 `yarn browser-direct`는 DEV 스폰으로 유닛을 고정하지 않고 소환/선택권/합성/조합/업그레이드 입력을 반복해 긴 브라우저 표본을 모으는 보조 플레이테스트다. JSON에는 누적 시뮬레이션 플레이 시간도 함께 기록된다.
+`yarn balance-audit`의 수동 플레이 로그는 `docs/manual-balance-playlog.example.json` 형식을 따른다. 5개 난이도를 모두 포함하고 총 120분 이상이면 수동 플레이 항목이 통과한다.
 
 ## 데스크탑 게임 구성
 
