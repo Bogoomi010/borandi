@@ -162,6 +162,9 @@ const session = {
 const log = readJson(outPath);
 log.schemaVersion = 1;
 log.source = "manual-playlog";
+if (log.sessions.some((s) => String(s.stateChecksum ?? "").toLowerCase() === stateChecksum.toLowerCase())) {
+  fail(`이미 같은 결과 체크섬이 기록되어 있습니다: ${stateChecksum.toLowerCase()}`);
+}
 log.sessions.push(session);
 log.totalMinutes = sessionsTotalMinutes(log);
 

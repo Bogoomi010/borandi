@@ -107,7 +107,14 @@ function isExampleManualSession(session) {
 
 function realManualSessions(manual) {
   if (!manual || isExampleManualLog(manual)) return [];
-  return (manual.sessions ?? []).filter((s) => !isExampleManualSession(s) && hasValidManualTiming(s) && hasCompleteManualMetadata(s));
+  const seenChecksums = new Set();
+  return (manual.sessions ?? []).filter((s) => {
+    if (isExampleManualSession(s) || !hasValidManualTiming(s) || !hasCompleteManualMetadata(s)) return false;
+    const checksum = String(s.stateChecksum).toLowerCase();
+    if (seenChecksums.has(checksum)) return false;
+    seenChecksums.add(checksum);
+    return true;
+  });
 }
 
 function countNonExampleManualSessions(manual) {
