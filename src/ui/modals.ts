@@ -26,6 +26,7 @@ import {
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
 import { loadProfile } from "./settings";
 import { FINAL_ROUND } from "../data/waves";
+import { manualProofTargetFor } from "../core/manualProof";
 
 // ---------- 선택권 ----------
 
@@ -82,9 +83,17 @@ function manualStartId(difficultyId: DifficultyId, stageId: number, seed: string
   return `${difficultyId}-${stageId}-${seed}-${Date.parse(startedAt)}`;
 }
 
+function legendOrBetterCount(ctx: AppCtx): number {
+  return ctx.game.state.units.filter((unit) => {
+    const grade = UNIT_BY_ID[unit.defId].grade;
+    return grade === "legend" || grade === "hidden";
+  }).length;
+}
+
 function manualStartCommand(ctx: AppCtx): string {
   const s = ctx.game.state;
   const id = manualStartId(s.difficulty, s.stageId, s.seed, ctx.runStartedAt);
+  const target = manualProofTargetFor(s.difficulty, legendOrBetterCount(ctx));
   return [
     "yarn manual-playlog --start",
     `--id=${shellArg(id)}`,
@@ -92,7 +101,7 @@ function manualStartCommand(ctx: AppCtx): string {
     `--stage=${s.stageId}`,
     `--seed=${shellArg(s.seed)}`,
     `--startedAt=${shellArg(ctx.runStartedAt)}`,
-    `--notes=${shellArg(`${ctx.game.diff.name} 시작 마커`)}`,
+    `--notes=${shellArg(target.label)}`,
   ].join(" ");
 }
 
