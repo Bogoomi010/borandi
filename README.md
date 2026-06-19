@@ -35,6 +35,8 @@ yarn manual-playlog --summary
                           # 현재 수동 로그의 120분/난이도별/목표 결과 충족 상태와 다음 필요 세션 확인
 yarn manual-playlog --next
                           # 바로 다음에 채워야 할 수동 플레이 세션 1개만 확인
+yarn manual-playlog --assert
+                          # 120분 수동 증거가 완성되지 않았으면 실패 코드로 종료
 yarn manual-playlog --plan
                           # 남은 120분 수동 플레이 증거를 어떤 순서로 채울지 출력
 yarn --silent manual-playlog --summary --json

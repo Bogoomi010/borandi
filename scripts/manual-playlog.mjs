@@ -38,6 +38,7 @@ function usage() {
     "  --plan --json         # 남은 수동 플레이 계획을 JSON으로 출력",
     "  --next                # 바로 다음에 필요한 수동 플레이 세션 1개만 출력",
     "  --next --json         # 다음 필요 세션을 JSON으로 출력",
+    "  --assert              # 수동 증거가 모두 충족되지 않으면 실패 코드로 종료",
     "  --notes=...",
     "  --startedAt=ISO --endedAt=ISO",
   ].join("\n");
@@ -464,6 +465,22 @@ function printNextJson() {
   console.log(`${JSON.stringify(buildNext(), null, 2)}`);
 }
 
+function assertManualProof() {
+  const summary = buildSummary();
+  if (summary.passed) {
+    console.log("PASS 수동 플레이 증거 충족");
+    return;
+  }
+  printSummary();
+  const next = buildNext();
+  if (next.next) {
+    console.error("");
+    console.error(`다음 필요 세션: ${next.next.label} (${next.next.minutes.toFixed(1)}분 이상)`);
+    console.error(`목표: ${next.next.goal}`);
+  }
+  process.exit(1);
+}
+
 if (args.summary === "true" || args.status === "true") {
   if (args.json === "true" || args["summary-json"] === "true") printSummaryJson();
   else printSummary();
@@ -479,6 +496,11 @@ if (args.plan === "true") {
 if (args.next === "true") {
   if (args.json === "true" || args["next-json"] === "true") printNextJson();
   else printNext();
+  process.exit(0);
+}
+
+if (args.assert === "true") {
+  assertManualProof();
   process.exit(0);
 }
 

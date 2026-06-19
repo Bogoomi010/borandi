@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -16,6 +16,15 @@ function runManualPlaylog(args) {
     cwd: process.cwd(),
     encoding: "utf8",
   });
+}
+
+function runManualPlaylogFailure(args) {
+  const result = spawnSync(process.execPath, ["scripts/manual-playlog.mjs", ...args], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
+  if (result.status === 0) throw new Error("manual-playlog command unexpectedly succeeded");
+  return result;
 }
 
 function readJson(path) {
@@ -98,6 +107,15 @@ describe("manual-playlog plan", () => {
     });
   });
 
+  it("수동 증거 assert는 빈 로그에서 실패 코드와 다음 세션을 출력한다", () => {
+    const out = makeTempPath("assert-empty.json");
+    const failed = runManualPlaylogFailure([`--out=${out}`, "--assert"]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stdout).toContain("수동 증거 미충족");
+    expect(failed.stderr).toContain("다음 필요 세션: 입문자 무전설 40R 클리어");
+  });
+
   it("필수 목표와 120분을 채운 로그는 남은 계획이 없다", () => {
     const out = makeTempPath("complete.json");
     const sessions = [
@@ -132,5 +150,6 @@ describe("manual-playlog plan", () => {
     expect(plan.current.totalMinutes).toBe(120);
     expect(plan.steps).toEqual([]);
     expect(JSON.parse(runManualPlaylog([`--out=${out}`, "--next-json"])).next).toBeNull();
+    expect(runManualPlaylog([`--out=${out}`, "--assert"])).toContain("PASS 수동 플레이 증거 충족");
   });
 });
