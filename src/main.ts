@@ -497,6 +497,7 @@ function renderGameToText(): string {
   const s = game.state;
   const stage = stageById(s.stageId);
   const wave = waveForRound(Math.min(s.round, 40));
+  const manualProofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
   const gradeCounts: Record<Grade, number> = { common: 0, rare: 0, hero: 0, legend: 0, hidden: 0 };
   let maxGrade: Grade | null = null;
   for (const unit of s.units) {
@@ -519,6 +520,11 @@ function renderGameToText(): string {
       unlockRule: "clear_round_40_boss_on_current_unlocked_map",
       waypointCount: stage.waypoints.length,
       decorationCount: stage.decorations.length,
+    },
+    manualProof: {
+      elapsedSeconds: manualProofSeconds,
+      targetSeconds: 12 * 60,
+      targetMet: manualProofSeconds >= 12 * 60,
     },
     round: s.round,
     wave: { type: wave.type, enemyName: wave.enemyName, count: wave.count, spawned: s.waveSpawned, killed: s.waveKilled },

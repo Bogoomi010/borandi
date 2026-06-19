@@ -15,6 +15,15 @@ import { openSelectorModal } from "./modals";
 
 // ---------- 상단 상태바 ----------
 
+const MANUAL_PROOF_TARGET_SECONDS = 12 * 60;
+
+function clockText(seconds: number): string {
+  const safe = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safe / 60);
+  const rest = safe % 60;
+  return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
 export function renderTopbar(ctx: AppCtx) {
   const root = document.getElementById("topbar")!;
   root.innerHTML = "";
@@ -35,6 +44,11 @@ export function renderTopbar(ctx: AppCtx) {
   root.appendChild(stat("적 누적", `${s.enemies.length}/${diff.enemyLimit}`, "life"));
   root.appendChild(stat("골드", String(s.gold), "gold"));
   root.appendChild(stat("난이도", diff.name));
+  const proofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
+  const proofText = proofSeconds >= MANUAL_PROOF_TARGET_SECONDS
+    ? "12:00+ 충족"
+    : `${clockText(proofSeconds)}/12:00`;
+  root.appendChild(stat("수동증거", proofText, proofSeconds >= MANUAL_PROOF_TARGET_SECONDS ? "proof-ok" : "proof-wait"));
   root.appendChild(stat("시드", s.seed));
 
   const nextBoss = BOSS_ROUND_LIST.find((r) => r >= s.round);
