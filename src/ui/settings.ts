@@ -83,18 +83,19 @@ export function profileMarkSeen(unitIds: string[], hiddenRecipeIds: string[]) {
   if (changed) saveProfile(p);
 }
 
+export function canUnlockNextStage(cleared: boolean, round: number, stageId: number, unlockedStage: number): boolean {
+  return cleared && round >= FINAL_ROUND && stageId === unlockedStage && unlockedStage < FINAL_STAGE;
+}
+
 export function profileRecordRun(cleared: boolean, difficulty: string, round: number, stageId: number): boolean {
   const p = loadProfile();
   p.runs++;
   let unlockedNext = false;
   if (cleared) p.clears[difficulty] = (p.clears[difficulty] ?? 0) + 1;
   if (round > p.bestRound) p.bestRound = round;
-  if (cleared && round >= FINAL_ROUND && stageId === p.unlockedStage) {
-    const next = Math.min(stageId + 1, FINAL_STAGE);
-    if (next > p.unlockedStage) {
-      p.unlockedStage = next;
-      unlockedNext = true;
-    }
+  if (canUnlockNextStage(cleared, round, stageId, p.unlockedStage)) {
+    p.unlockedStage = stageId + 1;
+    unlockedNext = true;
   }
   saveProfile(p);
   return unlockedNext;

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { FINAL_STAGE } from "../data/stages";
 import { FINAL_ROUND } from "../data/waves";
-import { loadProfile, profileRecordRun } from "./settings";
+import { canUnlockNextStage, loadProfile, profileRecordRun } from "./settings";
 
 class MemoryStorage implements Storage {
   private data = new Map<string, string>();
@@ -36,6 +37,14 @@ describe("프로필 맵 해금", () => {
       value: new MemoryStorage(),
       configurable: true,
     });
+  });
+
+  it("해금 조건은 현재 열린 맵의 40라운드 클리어로만 참이다", () => {
+    expect(canUnlockNextStage(true, FINAL_ROUND, 1, 1)).toBe(true);
+    expect(canUnlockNextStage(true, FINAL_ROUND - 1, 1, 1)).toBe(false);
+    expect(canUnlockNextStage(false, FINAL_ROUND, 1, 1)).toBe(false);
+    expect(canUnlockNextStage(true, FINAL_ROUND, 2, 1)).toBe(false);
+    expect(canUnlockNextStage(true, FINAL_ROUND, FINAL_STAGE, FINAL_STAGE)).toBe(false);
   });
 
   it("클리어 플래그가 있어도 40라운드 전이면 다음 맵을 해금하지 않는다", () => {
@@ -80,5 +89,16 @@ describe("프로필 맵 해금", () => {
     expect(profileRecordRun(true, "novice", FINAL_ROUND, 2)).toBe(true);
 
     expect(loadProfile().unlockedStage).toBe(3);
+  });
+
+  it("마지막 맵 클리어는 더 이상 해금할 맵이 없다", () => {
+    for (let stageId = 1; stageId < FINAL_STAGE; stageId++) {
+      expect(profileRecordRun(true, "novice", FINAL_ROUND, stageId)).toBe(true);
+    }
+
+    const unlocked = profileRecordRun(true, "novice", FINAL_ROUND, FINAL_STAGE);
+
+    expect(unlocked).toBe(false);
+    expect(loadProfile().unlockedStage).toBe(FINAL_STAGE);
   });
 });

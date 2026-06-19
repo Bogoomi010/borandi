@@ -266,9 +266,9 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
     for (const stage of STAGES) {
       const b = el("button", "choice-btn stage-choice") as HTMLButtonElement;
       b.appendChild(el("span", "cname", `${stage.id}. ${stage.name}`));
-      b.appendChild(el("span", "cdesc", `${stage.subtitle} · 40R 최종 보스 클리어`));
+      b.appendChild(el("span", "cdesc", `${stage.subtitle} · 선택 후 1~40R 고정`));
       b.disabled = stage.id > unlockedStage;
-      if (b.disabled) b.appendChild(el("span", "cdesc", "잠김: 바로 이전 맵 40R 클리어 필요"));
+      if (b.disabled) b.appendChild(el("span", "cdesc", `잠김: ${stage.id - 1}번 맵 40R 보스 클리어 필요`));
       if (stage.id === chosenStage) b.style.borderColor = "var(--accent)";
       b.onclick = () => {
         chosenStage = stage.id;
