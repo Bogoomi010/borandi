@@ -1,4 +1,7 @@
 {
+  "schemaVersion": 1,
+  "source": "manual-playlog-example",
+  "example": true,
   "sessions": [
     {
       "difficulty": "novice",

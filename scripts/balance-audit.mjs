@@ -66,21 +66,38 @@ function directBetterThan(base, improved) {
 
 function manualMinutes(manual) {
   if (!manual) return 0;
+  if (isExampleManualLog(manual)) return 0;
+  if (Array.isArray(manual.sessions)) {
+    return realManualSessions(manual).reduce((sum, s) => {
+      if (typeof s.minutes === "number") return sum + s.minutes;
+      if (typeof s.seconds === "number") return sum + (s.seconds / 60);
+      return sum;
+    }, 0);
+  }
   if (typeof manual.totalMinutes === "number") return manual.totalMinutes;
   if (typeof manual.totalSeconds === "number") return manual.totalSeconds / 60;
-  return (manual.sessions ?? []).reduce((sum, s) => {
-    if (typeof s.minutes === "number") return sum + s.minutes;
-    if (typeof s.seconds === "number") return sum + (s.seconds / 60);
-    return sum;
-  }, 0);
+  return 0;
 }
 
 function manualDifficulties(manual) {
-  return new Set((manual?.sessions ?? []).map((s) => s.difficulty).filter(Boolean));
+  return new Set(realManualSessions(manual).map((s) => s.difficulty).filter(Boolean));
 }
 
 function manualSessions(manual, difficulty) {
-  return (manual?.sessions ?? []).filter((s) => s.difficulty === difficulty);
+  return realManualSessions(manual).filter((s) => s.difficulty === difficulty);
+}
+
+function isExampleManualLog(manual) {
+  return manual?.example === true || manual?.fixture === true;
+}
+
+function isExampleManualSession(session) {
+  return session?.example === true || session?.fixture === true || session?.source === "example";
+}
+
+function realManualSessions(manual) {
+  if (!manual || isExampleManualLog(manual)) return [];
+  return (manual.sessions ?? []).filter((s) => !isExampleManualSession(s));
 }
 
 function sessionMinutes(session) {
@@ -292,7 +309,7 @@ function buildRows(balance, browser, direct, manual) {
   rows.push({
     req: "사람이 직접 2시간 플레이",
     evidence: manual
-      ? `${manualTotalMinutes.toFixed(1)}분, 난이도 ${[...manualDiffs].join(", ") || "없음"}`
+      ? `${isExampleManualLog(manual) ? "예시 로그 제외, " : ""}${manualTotalMinutes.toFixed(1)}분, 난이도 ${[...manualDiffs].join(", ") || "없음"}`
       : "아직 실제 수동 플레이 기록 없음",
     pass: !!manual && manualTotalMinutes >= 120 && manualCoversAll,
     missing: !manual || manualTotalMinutes < 120 || !manualCoversAll,

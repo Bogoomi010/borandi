@@ -82,6 +82,7 @@ if ((minutes ?? 0) <= 0 && (seconds ?? 0) <= 0) {
 
 const now = new Date();
 const session = {
+  source: "human-playtest",
   difficulty,
   ...(minutes !== undefined ? { minutes } : { seconds }),
   ...(args.startedAt ? { startedAt: String(args.startedAt) } : {}),
@@ -96,6 +97,8 @@ const session = {
 };
 
 const log = readJson(outPath);
+log.schemaVersion = 1;
+log.source = "manual-playlog";
 log.sessions.push(session);
 log.totalMinutes = sessionsTotalMinutes(log);
 
