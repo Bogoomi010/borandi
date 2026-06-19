@@ -30,6 +30,8 @@ Original prompt: 완성된 에셋으로 게임 스테이지를 최대 15스테�
 - Added `difficulty` and `round` to `render_game_to_text` so browser playtests can verify the selected difficulty and current run state directly.
 - Re-ran the 30-seed five-difficulty balance gate on the current tree; all gates passed with 입문자 100.0%, 일반 0전설 6.7%, 일반 2전설 33.3%, 중급자 2전설 13.3%, 중급자 5전설 50.0%, 중급자 제한 없음 100.0%, 고수 5전설 0.0%, 고수 제한 없음 63.3%, 초고수 제한 없음 0.0%.
 - Verified the browser new-game UI starts all five difficulties and that `render_game_to_text` reports the expected difficulty id/name, stage, round, gold, life, and enemy limit.
+- Extended DEV-only `window.__randi_dev.newRun` to support `newRun(seed, difficulty, stageId)` while preserving the old `newRun(seed, stageId)` shape, so browser playtests can jump directly into any of the five difficulties.
+- Ran a short browser direct-play loop on all five difficulties using summon/startWave/advanceTime. With the same early actions, 입문자 reached 3R with pressure 0/100, 일반 41/54, 중급자 34/52, 고수 41/46, and 초고수 ended at 3R with pressure 39/32. This supports the current early-game difficulty separation but is still not a substitute for the requested 2-hour manual pass.
 - Latest checks passed: `yarn build`, `yarn test`, `yarn check`, balance matrix simulations with `yarn sim`, and Playwright browser UI/state checks.
 
 ## TODO

@@ -19,6 +19,7 @@ import { UNIT_BY_ID } from "./data/units";
 import { analyzeRecipes } from "./core/advisor";
 import { stageById } from "./data/stages";
 import { waveForRound } from "./data/waves";
+import type { DifficultyId } from "./core/types";
 
 const settings = loadSettings();
 const audio = new GameAudio(settings);
@@ -539,7 +540,11 @@ Object.assign(window, {
 if (import.meta.env.DEV) {
   Object.assign(window, {
     __randi_dev: {
-      newRun: (seed = "PLAYTEST", stageId = 1) => ctx.newRun(seed, "novice", stageId),
+      newRun: (seed = "PLAYTEST", difficultyOrStage: DifficultyId | number = "novice", stageId = 1) => {
+        const difficulty = typeof difficultyOrStage === "number" ? "novice" : difficultyOrStage;
+        const resolvedStageId = typeof difficultyOrStage === "number" ? difficultyOrStage : stageId;
+        ctx.newRun(seed, difficulty, resolvedStageId);
+      },
       act: (type: string, payload?: Record<string, unknown>) => ctx.act(type, payload),
       state: () => game.state,
     },
