@@ -487,6 +487,7 @@ function renderGameToText(): string {
     scene: ctx.scene,
     paused: ctx.paused,
     mode: s.phase,
+    difficulty: { id: s.difficulty, name: game.diff.name },
     stage: {
       current: s.stageId,
       name: stage.name,
@@ -494,6 +495,7 @@ function renderGameToText(): string {
       waypointCount: stage.waypoints.length,
       decorationCount: stage.decorations.length,
     },
+    round: s.round,
     wave: { type: wave.type, enemyName: wave.enemyName, count: wave.count, spawned: s.waveSpawned, killed: s.waveKilled },
     resources: {
       life: s.life, gold: s.gold,

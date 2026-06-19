@@ -27,8 +27,11 @@ Original prompt: 완성된 에셋으로 게임 스테이지를 최대 15스테�
 - Added `yarn balance --json=...` for storing scenario reports and pass/fail gate results as machine-readable evidence.
 - Added an in-game `Tools > 5난이도 밸런스 게이트` modal that reuses the same gate logic and can export Markdown/JSON reports.
 - Added deterministic testing hooks: `window.render_game_to_text`, `window.advanceTime(ms)`, and DEV-only `window.__randi_dev` for browser playtests.
+- Added `difficulty` and `round` to `render_game_to_text` so browser playtests can verify the selected difficulty and current run state directly.
+- Re-ran the 30-seed five-difficulty balance gate on the current tree; all gates passed with 입문자 100.0%, 일반 0전설 6.7%, 일반 2전설 33.3%, 중급자 2전설 13.3%, 중급자 5전설 50.0%, 중급자 제한 없음 100.0%, 고수 5전설 0.0%, 고수 제한 없음 63.3%, 초고수 제한 없음 0.0%.
+- Verified the browser new-game UI starts all five difficulties and that `render_game_to_text` reports the expected difficulty id/name, stage, round, gold, life, and enemy limit.
 - Latest checks passed: `yarn build`, `yarn test`, `yarn check`, balance matrix simulations with `yarn sim`, and Playwright browser UI/state checks.
 
 ## TODO
 
-- None for the current goal.
+- The requested "about 2 hours of direct play" balance pass is still not completed; current evidence is automated autoplay plus short browser UI/playtest smoke checks.
