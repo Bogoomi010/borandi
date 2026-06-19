@@ -167,6 +167,10 @@ function manualPlaylogThenNextCommand(r: ResultSummary): string {
   return `${manualPlaylogCommand(r)} && yarn manual-playlog --next`;
 }
 
+function manualPlaylogFinishLatestThenNextCommand(r: ResultSummary): string {
+  return `${manualPlaylogFinishLatestCommand(r)} && yarn manual-playlog --next`;
+}
+
 function manualProofTarget(r: ResultSummary): string {
   const targetLength = (r.wallSeconds ?? 0) >= 12 * 60;
   const finalRound = r.reachedRound >= 40;
@@ -273,6 +277,12 @@ export function buildReportMarkdown(r: ResultSummary): string {
       "```bash",
       manualPlaylogFinishLatestCommand(r),
       "```",
+      "",
+      "## 최근 시작 마커 기록 후 다음 확인",
+      "",
+      "```bash",
+      manualPlaylogFinishLatestThenNextCommand(r),
+      "```",
     );
   }
   lines.push("", `played at ${r.playedAt}`);
@@ -338,6 +348,7 @@ export function maybeShowResult(ctx: AppCtx) {
     const manualFinishCommand = manualPlaylogFinishCommand(summary);
     const manualFinishLatestCommand = manualPlaylogFinishLatestCommand(summary);
     const manualThenNextCommand = manualPlaylogThenNextCommand(summary);
+    const manualFinishLatestThenNextCommand = manualPlaylogFinishLatestThenNextCommand(summary);
 
     body.appendChild(el("h3", "", "수동 플레이 로그"));
     body.appendChild(el("pre", "report", manualCommand));
@@ -347,6 +358,8 @@ export function maybeShowResult(ctx: AppCtx) {
     body.appendChild(el("pre", "report", manualFinishCommand));
     body.appendChild(el("h3", "", "가장 최근 시작 마커로 기록"));
     body.appendChild(el("pre", "report", manualFinishLatestCommand));
+    body.appendChild(el("h3", "", "최근 시작 마커 기록 후 다음 확인"));
+    body.appendChild(el("pre", "report", manualFinishLatestThenNextCommand));
 
     const exportBtn = el("button", "", "리포트 내보내기 (.md)");
     exportBtn.onclick = async () => {
@@ -405,6 +418,17 @@ export function maybeShowResult(ctx: AppCtx) {
       }
     };
     row.appendChild(copyFinishLatest);
+
+    const copyFinishLatestNext = el("button", "", "최근기록+다음 복사");
+    copyFinishLatestNext.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualFinishLatestThenNextCommand);
+        toast("최근 시작 마커 기록 후 다음 확인 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
+      }
+    };
+    row.appendChild(copyFinishLatestNext);
 
     const titleBtn = el("button", "", "타이틀로");
     titleBtn.onclick = () => { resetResultShown(); close(); ctx.goTitle(); };
