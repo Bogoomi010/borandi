@@ -218,11 +218,6 @@ function mapPermissionMessage(r: ResultSummary): string {
   return `이 판에서는 맵이 바뀌지 않습니다. 다음 맵 선택 권한은 ${FINAL_ROUND}R 최종 보스 클리어 후 다음 새 게임에만 적용됩니다.`;
 }
 
-function newlyUnlockedNextStage(r: ResultSummary) {
-  if (!r.unlockedNextStage || r.stageId >= STAGES.length) return null;
-  return stageById(r.stageId + 1);
-}
-
 export function buildReportMarkdown(r: ResultSummary): string {
   const proofTarget = manualProofResultTarget(r);
   const proofChecks = manualProofResultChecklist(r);
@@ -514,17 +509,7 @@ export function maybeShowResult(ctx: AppCtx) {
     sameSeed.onclick = () => { resultShown = false; close(); ctx.newRun(summary.seed, ctx.game.state.difficulty, ctx.game.state.stageId); };
     row.appendChild(sameSeed);
 
-    const nextStage = newlyUnlockedNextStage(summary);
-    if (nextStage) {
-      const nextMapBtn = el("button", "primary", "새 게임에서 해금된 맵 고르기");
-      nextMapBtn.onclick = () => {
-        close();
-        openNewRunModal(ctx, true, nextStage.id);
-      };
-      row.appendChild(nextMapBtn);
-    }
-
-    const newBtn = el("button", nextStage ? "" : "primary", "새 게임");
+    const newBtn = el("button", "primary", "새 게임");
     newBtn.onclick = () => { close(); openNewRunModal(ctx); };
     row.appendChild(newBtn);
 
