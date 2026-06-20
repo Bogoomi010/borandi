@@ -526,6 +526,7 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("--dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM");
     expect(output).toContain("--endedAt=RESULT_ENDED_AT");
     expect(output).toContain("RESULT_ENDED_AT은 결과 화면의 종료 시각을 사용하세요");
+    expect(output).not.toContain("dry-run 검증용 임시 id 예시");
     expect(output).not.toContain("--dataVersion=0.8.0 --stateChecksum=1234abcd");
     expect(pending.pending).toHaveLength(1);
     expect(pending.pending[0]).toMatchObject({
@@ -554,6 +555,8 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("DRY-RUN 수동 플레이 시작 마커 검증 통과");
     expect(output).toContain("- 목표: 입문자 무전설 40R 클리어");
     expect(output).toContain("- 로그 쓰기: 안 함");
+    expect(output).toContain("아래 finish 명령은 dry-run 검증용 임시 id 예시입니다.");
+    expect(output).toContain("그 출력 또는 yarn manual-playlog --pending의 id를 사용하세요.");
     expect(output).toContain("yarn manual-playlog --finish='novice-1-DRY-SEED-20260620T021500000Z' --result=clear --round=40 --legends=0 --maxGrade=hero");
     expect(output).toContain("시작 마커를 실제로 저장하려면 같은 명령에서 --dry-run을 빼고 실행하세요.");
     expect(pending.pending).toHaveLength(0);

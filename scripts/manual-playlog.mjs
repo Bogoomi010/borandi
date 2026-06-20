@@ -1079,6 +1079,10 @@ function printStartSaved({ id, startedAt, next, dryRun = false }) {
     console.log("- 로그 쓰기: 안 함");
   }
   console.log("");
+  if (dryRun) {
+    console.log("아래 finish 명령은 dry-run 검증용 임시 id 예시입니다. 실제 플레이를 기록하려면 먼저 --dry-run을 뺀 시작 마커 저장 명령을 실행하고, 그 출력 또는 yarn manual-playlog --pending의 id를 사용하세요.");
+    console.log("");
+  }
   console.log("결과가 나오면 먼저 아래 형식으로 저장 전 검증을 실행하세요:");
   console.log(finishDryRunCommandTemplate({ id, next }));
   console.log("");
