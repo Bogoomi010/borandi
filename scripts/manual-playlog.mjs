@@ -321,6 +321,10 @@ function startCommandTemplate(step) {
   ].join(" ") + outPathArg();
 }
 
+function dryRunCommandTemplate(command) {
+  return command ? `${command} --dry-run` : "";
+}
+
 const targetPlans = [
   {
     label: "입문자 무전설 40R 클리어",
@@ -518,7 +522,9 @@ function buildPlanFromSummary(summary) {
         goal: target.goal,
         logHint: target.logHint,
         startCommandTemplate: startCommandTemplate(target),
+        startCommandDryRunTemplate: dryRunCommandTemplate(startCommandTemplate(target)),
         startNextCommandTemplate: startNextCommandTemplate(target),
+        startNextDryRunCommandTemplate: dryRunCommandTemplate(startNextCommandTemplate(target)),
         finishTemplate: finishTemplateForNext(target),
       })),
       ...difficultyTopUps.map((item) => ({
@@ -532,7 +538,12 @@ function buildPlanFromSummary(summary) {
           difficulty: item.difficulty,
           label: `${item.difficulty} 최소 시간 보충`,
         }),
+        startCommandDryRunTemplate: dryRunCommandTemplate(startCommandTemplate({
+          difficulty: item.difficulty,
+          label: `${item.difficulty} 최소 시간 보충`,
+        })),
         startNextCommandTemplate: startNextCommandTemplate(item),
+        startNextDryRunCommandTemplate: dryRunCommandTemplate(startNextCommandTemplate(item)),
         finishTemplate: finishTemplateForNext(item),
       })),
       ...(flexibleMinutes > 0
@@ -544,7 +555,9 @@ function buildPlanFromSummary(summary) {
           goal: `목표 세션 이후 남는 ${flexibleMinutes.toFixed(1)}분을 실제 플레이로 추가`,
           logHint: "요약 명령의 다음 필요 항목을 보며 어떤 난이도든 실제 결과 기록",
           startCommandTemplate: "",
+          startCommandDryRunTemplate: "",
           startNextCommandTemplate: startNextCommandTemplate({ difficulty: "any" }),
+          startNextDryRunCommandTemplate: dryRunCommandTemplate(startNextCommandTemplate({ difficulty: "any" })),
           finishTemplate: finishTemplateForNext(null),
         }]
         : []),
@@ -598,6 +611,10 @@ function printSummary() {
   const next = buildNext();
   if (next.next?.startNextCommandTemplate) {
     console.log("");
+    if (next.next.startNextDryRunCommandTemplate) {
+      console.log("추천 시작 검증:");
+      console.log(next.next.startNextDryRunCommandTemplate);
+    }
     console.log("추천 시작 마커:");
     console.log(next.next.startNextCommandTemplate);
     console.log("  GAME_SEED_HERE는 새 게임 시작 후 상단에 표시된 실제 시드로 바꾸세요.");
@@ -631,8 +648,14 @@ function printPlan() {
       if (step.finishTemplate) {
         console.log(`   마무리 조건: result=${step.finishTemplate.result} round=${step.finishTemplate.round} legends=${step.finishTemplate.legends} maxGrade=${step.finishTemplate.maxGrade}`);
       }
+      if (step.startNextDryRunCommandTemplate) {
+        console.log(`   추천 시작 검증: ${step.startNextDryRunCommandTemplate}`);
+      }
       if (step.startNextCommandTemplate) {
         console.log(`   추천 시작 마커: ${step.startNextCommandTemplate}`);
+      }
+      if (step.startCommandDryRunTemplate) {
+        console.log(`   직접 시작 검증: ${step.startCommandDryRunTemplate}`);
       }
       if (step.startCommandTemplate) {
         console.log(`   직접 시작 마커: ${step.startCommandTemplate}`);
@@ -663,6 +686,7 @@ function buildNextFromSummary(summary) {
       ? {
         ...nextStep,
         startNextCommandTemplate: startNextCommandTemplate(nextStep),
+        startNextDryRunCommandTemplate: dryRunCommandTemplate(startNextCommandTemplate(nextStep)),
       }
       : null,
   };
@@ -684,11 +708,19 @@ function printNext() {
       console.log(`마무리 조건: result=${next.next.finishTemplate.result} round=${next.next.finishTemplate.round} legends=${next.next.finishTemplate.legends} maxGrade=${next.next.finishTemplate.maxGrade}`);
     }
     if (next.next.startNextCommandTemplate) {
+      if (next.next.startNextDryRunCommandTemplate) {
+        console.log("추천 시작 검증:");
+        console.log(next.next.startNextDryRunCommandTemplate);
+      }
       console.log("추천 시작 마커:");
       console.log(next.next.startNextCommandTemplate);
       console.log("  GAME_SEED_HERE는 새 게임 시작 후 상단에 표시된 실제 시드로 바꾸세요.");
     }
     if (next.next.startCommandTemplate) {
+      if (next.next.startCommandDryRunTemplate) {
+        console.log("직접 시작 검증:");
+        console.log(next.next.startCommandDryRunTemplate);
+      }
       console.log("직접 시작 마커:");
       console.log(next.next.startCommandTemplate);
       console.log("  GAME_SEED_HERE는 새 게임 시작 후 상단에 표시된 실제 시드로 바꾸세요.");
@@ -746,6 +778,10 @@ function printPreflight() {
   } else {
     console.log("PASS 새 수동 플레이 시작 가능");
     if (preflight.nextStartCommandTemplate) {
+      if (preflight.nextStartDryRunCommandTemplate) {
+        console.log("추천 시작 검증:");
+        console.log(preflight.nextStartDryRunCommandTemplate);
+      }
       console.log("추천 시작 마커:");
       console.log(preflight.nextStartCommandTemplate);
       console.log("  GAME_SEED_HERE는 새 게임 시작 후 상단에 표시된 실제 시드로 바꾸세요.");
@@ -783,6 +819,7 @@ function buildPreflight() {
     targetRowsRemaining: summary.targetRowsRemaining,
     next: summary.next,
     nextStartCommandTemplate: summary.next?.startNextCommandTemplate ?? "",
+    nextStartDryRunCommandTemplate: summary.next?.startNextDryRunCommandTemplate ?? "",
     summary,
   };
 }
