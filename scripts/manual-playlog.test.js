@@ -904,7 +904,7 @@ describe("manual-playlog plan", () => {
       ["novice", "clear", 40, 0, "hero", "abc10001"],
       ["normal", "clear", 40, 1, "legend", "abc10002"],
       ["intermediate", "clear", 40, 5, "legend", "abc10003"],
-      ["expert", "loss", 40, 5, "legend", "abc10004"],
+      ["expert", "loss", 33, 5, "legend", "abc10004"],
       ["expert", "clear", 40, 6, "legend", "abc10005"],
     ];
     let startMs = Date.parse("2026-06-20T00:00:00.000Z");
@@ -942,7 +942,7 @@ describe("manual-playlog plan", () => {
       ["novice", "clear", 40, 0, "hero", "abc20001"],
       ["normal", "clear", 40, 1, "legend", "abc20002"],
       ["intermediate", "clear", 40, 5, "legend", "abc20003"],
-      ["expert", "loss", 40, 5, "legend", "abc20004"],
+      ["expert", "loss", 33, 5, "legend", "abc20004"],
       ["expert", "clear", 40, 6, "legend", "abc20005"],
       ["master", "loss", 18, 3, "legend", "abc20006"],
     ];
@@ -1525,7 +1525,7 @@ describe("manual-playlog plan", () => {
       ["novice", 12, "clear", 40, 0, "hero", "20000001"],
       ["normal", 12, "clear", 40, 1, "legend", "20000002"],
       ["intermediate", 12, "clear", 40, 5, "legend", "20000003"],
-      ["expert", 12, "loss", 40, 5, "legend", "20000004"],
+      ["expert", 12, "loss", 33, 5, "legend", "20000004"],
       ["expert", 12, "clear", 40, 6, "legend", "20000005"],
       ["master", 12, "loss", 3, 0, "hero", "20000006"],
       ["novice", 48, "quit", 20, 0, "hero", "20000007"],

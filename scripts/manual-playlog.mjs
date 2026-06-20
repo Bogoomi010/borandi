@@ -411,12 +411,12 @@ const targetPlans = [
     predicate: (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 5,
   },
   {
-    label: "고수 5전설 이하 40R 실패",
+    label: "고수 5전설 이하 실패",
     difficulty: "expert",
     minutes: 12,
-    goal: "전설 5개 이하 조건으로 40R까지 버틴 뒤 실패",
-    logHint: "result=loss round=40 legends<=5",
-    predicate: (session) => isTargetLength(session) && isLoss(session) && reachedFinalRound(session) && legendCount(session) <= 5,
+    goal: "전설 5개 이하 조건으로 플레이하다가 실패",
+    logHint: "result=loss round=RESULT_ROUND legends<=5",
+    predicate: (session) => isTargetLength(session) && isLoss(session) && legendCount(session) <= 5,
   },
   {
     label: "고수 6전설 이상 40R 클리어",
@@ -485,10 +485,10 @@ function buildSummary() {
       next: "intermediate clear 40R legends>=5 세션 12분 이상",
     },
     {
-      label: "고수 5전설 이하 40R 실패",
-      pass: hasTargetSession(validHumanSessions, "expert", (session) => isTargetLength(session) && isLoss(session) && reachedFinalRound(session) && legendCount(session) <= 5),
-      evidence: targetEvidence(validHumanSessions, "expert", (session) => isTargetLength(session) && isLoss(session) && reachedFinalRound(session) && legendCount(session) <= 5),
-      next: "expert loss 40R legends<=5 세션 12분 이상",
+      label: "고수 5전설 이하 실패",
+      pass: hasTargetSession(validHumanSessions, "expert", (session) => isTargetLength(session) && isLoss(session) && legendCount(session) <= 5),
+      evidence: targetEvidence(validHumanSessions, "expert", (session) => isTargetLength(session) && isLoss(session) && legendCount(session) <= 5),
+      next: "expert loss legends<=5 세션 12분 이상",
     },
     {
       label: "고수 6전설 이상 40R 클리어",
@@ -1299,8 +1299,8 @@ function finishTemplateForNext(step) {
       return { result: "clear", round: "40", legends: "1", maxGrade: "legend" };
     case "중급자 5전설 이상 40R 클리어":
       return { result: "clear", round: "40", legends: "5", maxGrade: "legend" };
-    case "고수 5전설 이하 40R 실패":
-      return { result: "loss", round: "40", legends: "5", maxGrade: "legend" };
+    case "고수 5전설 이하 실패":
+      return { result: "loss", round: "ROUND_REACHED", legends: "FINAL_LEGENDS", maxGrade: "MAX_GRADE" };
     case "고수 6전설 이상 40R 클리어":
       return { result: "clear", round: "40", legends: "6", maxGrade: "legend" };
     case "초고수 실패 기록":

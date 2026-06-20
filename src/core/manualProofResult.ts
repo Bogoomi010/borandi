@@ -20,8 +20,8 @@ export function manualProofResultTarget(r: ResultSummary): string {
   if (r.difficultyId === "intermediate" && r.cleared && finalRound && r.legendOrBetterCount >= 5) {
     return "중급자 5전설 이상 40R 클리어 증거";
   }
-  if (r.difficultyId === "expert" && !r.cleared && finalRound && r.legendOrBetterCount <= 5) {
-    return "고수 5전설 이하 40R 실패 증거";
+  if (r.difficultyId === "expert" && !r.cleared && r.legendOrBetterCount <= 5) {
+    return "고수 5전설 이하 실패 증거";
   }
   if (r.difficultyId === "expert" && r.cleared && finalRound && r.legendOrBetterCount >= 6) {
     return "고수 6전설 이상 40R 클리어 증거";
@@ -48,7 +48,7 @@ export function manualProofResultChecklist(r: ResultSummary): ManualProofCheck[]
       detail: `${playedMinutes.toFixed(1)}분`,
     },
   ];
-  if (r.difficultyId !== "master") {
+  if (r.difficultyId !== "master" && !(r.difficultyId === "expert" && r.legendOrBetterCount <= 5)) {
     checks.push({
       label: "40R 최종 보스 구간",
       ok: finalRound,
@@ -76,7 +76,7 @@ export function manualProofResultChecklist(r: ResultSummary): ManualProofCheck[]
       break;
     case "expert":
       if (r.legendOrBetterCount <= 5) {
-        checks.push({ label: "고수 5전설 이하 40R 실패", ok: !r.cleared && finalRound, detail: `${result}, ${r.legendOrBetterCount}전설+` });
+        checks.push({ label: "고수 5전설 이하 실패", ok: !r.cleared, detail: `${result}, ${r.legendOrBetterCount}전설+` });
       } else {
         checks.push({ label: "고수 6전설 이상 40R 클리어", ok: r.cleared && finalRound, detail: `${result}, ${r.legendOrBetterCount}전설+` });
       }

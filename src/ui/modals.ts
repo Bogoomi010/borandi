@@ -552,7 +552,7 @@ const MANUAL_BALANCE_TARGETS: Array<{
   { difficultyId: "novice", difficulty: "입문자", target: "무전설 40R 클리어", length: "12분 이상" },
   { difficultyId: "normal", difficulty: "일반", target: "1~2전설 40R 클리어", length: "12분 이상" },
   { difficultyId: "intermediate", difficulty: "중급자", target: "5전설 이상 40R 클리어", length: "12분 이상" },
-  { difficultyId: "expert", difficulty: "고수", target: "5전설 이하 40R 실패", length: "12분 이상" },
+  { difficultyId: "expert", difficulty: "고수", target: "5전설 이하 실패", length: "12분 이상" },
   { difficultyId: "expert", difficulty: "고수", target: "6전설 이상 40R 클리어", length: "12분 이상" },
   { difficultyId: "master", difficulty: "초고수", target: "실패 기록", length: "12분 이상" },
 ];
@@ -573,8 +573,8 @@ function manualResultExpected(target?: ManualProofTargetStatus): Record<string, 
       return { result: "clear", round: "40", legends: "1~2", maxGrade: "legend" };
     case "중급자 5전설 이상 40R 클리어":
       return { result: "clear", round: "40", legends: "5+", maxGrade: "legend|hidden" };
-    case "고수 5전설 이하 40R 실패":
-      return { result: "loss", round: "40", legends: "0~5", maxGrade: "hero|legend" };
+    case "고수 5전설 이하 실패":
+      return { result: "loss", round: "RESULT_ROUND", legends: "0~5", maxGrade: "hero|legend" };
     case "고수 6전설 이상 40R 클리어":
       return { result: "clear", round: "40", legends: "6+", maxGrade: "legend|hidden" };
     case "초고수 실패 기록":

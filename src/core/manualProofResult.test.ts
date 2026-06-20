@@ -41,16 +41,17 @@ function summary(args: {
 }
 
 describe("수동 결과 증거 판정", () => {
-  it("고수 5전설 이하는 40R 실패 증거 행만 검사한다", () => {
-    const r = summary({ difficultyId: "expert", cleared: false, legendOrBetterCount: 5 });
+  it("고수 5전설 이하는 40R 이전 실패도 증거 행으로 검사한다", () => {
+    const r = summary({ difficultyId: "expert", cleared: false, reachedRound: 33, legendOrBetterCount: 5 });
     const checks = manualProofResultChecklist(r);
 
-    expect(manualProofResultTarget(r)).toBe("고수 5전설 이하 40R 실패 증거");
+    expect(manualProofResultTarget(r)).toBe("고수 5전설 이하 실패 증거");
     expect(checks).toContainEqual({
-      label: "고수 5전설 이하 40R 실패",
+      label: "고수 5전설 이하 실패",
       ok: true,
       detail: "패배, 5전설+",
     });
+    expect(checks.some((check) => check.label === "40R 최종 보스 구간")).toBe(false);
     expect(checks.some((check) => check.label === "고수 6전설 이상 40R 클리어")).toBe(false);
   });
 
@@ -64,7 +65,7 @@ describe("수동 결과 증거 판정", () => {
       ok: true,
       detail: "클리어, 6전설+",
     });
-    expect(checks.some((check) => check.label === "고수 5전설 이하 40R 실패")).toBe(false);
+    expect(checks.some((check) => check.label === "고수 5전설 이하 실패")).toBe(false);
   });
 
   it("초고수 실패 기록은 40R 도달을 요구하지 않는다", () => {

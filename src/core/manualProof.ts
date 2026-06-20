@@ -29,7 +29,7 @@ export function manualProofTargetFor(difficulty: DifficultyId, legendOrBetter: n
         : { label: "중급자 5전설 이상 40R 클리어", status: `전설 ${legendOrBetter}/5`, state: "wait" };
     case "expert":
       return legendOrBetter <= 5
-        ? { label: "고수 5전설 이하 40R 실패", status: "5전설 이하 실패 목표", state: "wait" }
+        ? { label: "고수 5전설 이하 실패", status: "5전설 이하 실패 목표", state: "wait" }
         : { label: "고수 6전설 이상 40R 클리어", status: "6전설+ 클리어 목표", state: "ok" };
     case "master":
       return { label: "초고수 실패 기록", status: "실패 기록 목표", state: "wait" };

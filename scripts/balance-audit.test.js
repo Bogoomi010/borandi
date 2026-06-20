@@ -144,7 +144,7 @@ function completeManual() {
       session(1, "novice", "clear", 0, "hero"),
       session(2, "normal", "clear", 1, "legend"),
       session(3, "intermediate", "clear", 5, "legend"),
-      session(4, "expert", "loss", 5, "legend"),
+      session(4, "expert", "loss", 5, "legend", 33),
       session(5, "expert", "clear", 6, "legend"),
       session(6, "master", "loss", 0, "hero", 3),
     ],

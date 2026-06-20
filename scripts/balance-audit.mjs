@@ -308,8 +308,8 @@ function finishTemplateForPending(session) {
       return { result: "clear", round: "40", legends: "1", maxGrade: "legend" };
     case "중급자 5전설 이상 40R 클리어":
       return { result: "clear", round: "40", legends: "5", maxGrade: "legend" };
-    case "고수 5전설 이하 40R 실패":
-      return { result: "loss", round: "40", legends: "5", maxGrade: "legend" };
+    case "고수 5전설 이하 실패":
+      return { result: "loss", round: "ROUND_REACHED", legends: "FINAL_LEGENDS", maxGrade: "MAX_GRADE" };
     case "고수 6전설 이상 40R 클리어":
       return { result: "clear", round: "40", legends: "6", maxGrade: "legend" };
     case "초고수 실패 기록":
@@ -453,12 +453,12 @@ const MANUAL_TARGETS = [
     predicate: (s) => isMeaningfulManualTargetSession(s) && isClear(s) && reachedFinalRound(s) && legendCount(s) >= 5,
   },
   {
-    label: "고수 5전설 이하 40R 실패",
+    label: "고수 5전설 이하 실패",
     difficulty: "expert",
     minutes: MIN_MANUAL_TARGET_SESSION_MINUTES,
-    goal: "전설 5개 이하 성장 조건으로 40R 실패",
-    logHint: "result=loss round=40 legends<=5",
-    predicate: (s) => isMeaningfulManualTargetSession(s) && isLoss(s) && reachedFinalRound(s) && legendCount(s) <= 5,
+    goal: "전설 5개 이하 성장 조건으로 실패",
+    logHint: "result=loss round=RESULT_ROUND legends<=5",
+    predicate: (s) => isMeaningfulManualTargetSession(s) && isLoss(s) && legendCount(s) <= 5,
   },
   {
     label: "고수 6전설 이상 40R 클리어",
@@ -751,7 +751,7 @@ function buildRows(balance, browser, direct, manual, codex) {
   const noviceManualPass = hasManual(manual, "novice", (s) => isMeaningfulManualTargetSession(s) && isClear(s) && reachedFinalRound(s) && legendCount(s) === 0);
   const normalManualPass = hasManual(manual, "normal", (s) => isMeaningfulManualTargetSession(s) && isClear(s) && reachedFinalRound(s) && legendCount(s) >= 1 && legendCount(s) <= 2);
   const intermediateManualPass = hasManual(manual, "intermediate", (s) => isMeaningfulManualTargetSession(s) && isClear(s) && reachedFinalRound(s) && legendCount(s) >= 5);
-  const expertManualWeakFail = hasManual(manual, "expert", (s) => isMeaningfulManualTargetSession(s) && isLoss(s) && reachedFinalRound(s) && legendCount(s) <= 5);
+  const expertManualWeakFail = hasManual(manual, "expert", (s) => isMeaningfulManualTargetSession(s) && isLoss(s) && legendCount(s) <= 5);
   const expertManualStrongClear = hasManual(manual, "expert", (s) => isMeaningfulManualTargetSession(s) && isClear(s) && reachedFinalRound(s) && legendCount(s) >= 6);
   const masterManualPass = hasManual(manual, "master", (s) => isMeaningfulManualTargetSession(s) && isLoss(s));
   const manualTargetPassCount = [
