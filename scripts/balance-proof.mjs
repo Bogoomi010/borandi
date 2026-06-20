@@ -177,7 +177,9 @@ function assertSameSummary(name, expected, actual) {
 async function checkManualGuidanceArtifacts() {
   const missing = [manualPreflightPath, manualNextPath, manualNextJsonPath, manualSheetPath, manualPlanPath]
     .filter((path) => !existsSync(path));
-  if (missing.length) throw new Error(`수동 proof artifact 누락: ${missing.join(", ")}`);
+  if (missing.length) {
+    throw new Error(`수동 proof artifact 누락: ${missing.join(", ")}\n갱신 명령: yarn balance-proof --require-complete`);
+  }
 
   const livePreflightText = await runCapture("yarn", [
     "--silent",

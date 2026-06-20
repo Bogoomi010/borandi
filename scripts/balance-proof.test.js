@@ -276,6 +276,35 @@ exit 0
     expect(result.stdout).toContain("수동 proof artifact 최신");
   });
 
+  it("수동 proof artifact check는 누락 파일이 있으면 갱신 명령을 안내한다", () => {
+    const manualPath = join(tempDir, "manual.json");
+    const manualPreflight = join(tempDir, "manual-preflight.json");
+    const manualPlan = join(tempDir, "manual-plan.json");
+    const manualSheet = join(tempDir, "manual-sheet.md");
+    writeFileSync(manualPreflight, JSON.stringify(livePreflightArtifact, null, 2), "utf8");
+    writeFileSync(manualPlan, JSON.stringify(livePlanArtifact, null, 2), "utf8");
+    writeFileSync(manualSheet, "# 수동 밸런스 플레이 시트\n\n다음: 입문자 무전설 40R 클리어\n", "utf8");
+
+    const result = spawnSync(process.execPath, [
+      "scripts/balance-proof.mjs",
+      "--check-manual-artifacts",
+      `--manual=${manualPath}`,
+      `--manual-preflight=${manualPreflight}`,
+      `--manual-next=${join(tempDir, "missing-next.txt")}`,
+      `--manual-next-json=${join(tempDir, "missing-next.json")}`,
+      `--manual-sheet=${manualSheet}`,
+      `--manual-plan=${manualPlan}`,
+      `--balance=${join(tempDir, "balance.json")}`,
+    ], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("수동 proof artifact 누락");
+    expect(result.stderr).toContain("갱신 명령: yarn balance-proof --require-complete");
+  });
+
   it("수동 proof artifact check는 stale preflight 파일을 실패시킨다", () => {
     const logPath = join(tempDir, "fake-yarn.log");
     const manualPath = join(tempDir, "manual.json");
