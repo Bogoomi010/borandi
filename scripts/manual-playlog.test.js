@@ -202,9 +202,16 @@ describe("manual-playlog plan", () => {
     const text = runManualPlaylog([`--out=${out}`, "--summary"]);
     const summary = JSON.parse(runManualPlaylog([`--out=${out}`, "--summary-json"]));
     const plan = JSON.parse(runManualPlaylog([`--out=${out}`, "--plan-json"]));
+    const failed = runManualPlaylogFailure([`--out=${out}`, "--assert"]);
 
+    expect(summary.passed).toBe(false);
     expect(summary.validSessionCount).toBe(1);
     expect(summary.invalidSessionCount).toBe(2);
+    expect(summary.rows[0]).toMatchObject({
+      label: "수동 로그 무효 세션 없음",
+      pass: false,
+      evidence: "2개 무효 세션",
+    });
     expect(plan.current.invalidSessionCount).toBe(2);
     expect(summary.invalidSessions[0]).toMatchObject({
       index: 0,
@@ -225,6 +232,9 @@ describe("manual-playlog plan", () => {
     expect(text).toContain("startedAt/endedAt와 기록 시간이 맞지 않음");
     expect(text).toContain("#3 normal clear 40R seed=DUP-SEED #bad00002");
     expect(text).toContain("stateChecksum 중복");
+    expect(text).toContain("MISSING 수동 로그 무효 세션 없음: 2개 무효 세션");
+    expect(failed.stdout).toContain("MISSING 수동 로그 무효 세션 없음: 2개 무효 세션");
+    expect(failed.status).toBe(1);
   });
 
   it("start-next는 다음 필요 세션의 시작 마커를 바로 저장한다", () => {

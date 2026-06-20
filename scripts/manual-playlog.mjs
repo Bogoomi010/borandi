@@ -343,6 +343,12 @@ function buildSummary() {
 
   const rows = [
     {
+      label: "수동 로그 무효 세션 없음",
+      pass: invalidSessions.length === 0,
+      evidence: invalidSessions.length === 0 ? "무효 세션 없음" : `${invalidSessions.length}개 무효 세션`,
+      next: "INVALID 목록의 시간/메타데이터/checksum을 고치거나 해당 세션을 제거하세요.",
+    },
+    {
       label: "사람이 직접 2시간 플레이",
       pass: totalMinutes >= 120 && difficulties.every((id) => (minutesByDifficulty.get(id) ?? 0) >= 12),
       evidence: `${validSessions.length}/${allSessions.length}세션, ${totalMinutes.toFixed(1)}/120.0분, ${difficulties.map((id) => `${id} ${(minutesByDifficulty.get(id) ?? 0).toFixed(1)}분`).join(", ")}`,
