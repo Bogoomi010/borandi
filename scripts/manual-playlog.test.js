@@ -138,6 +138,8 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("- 기록 조건: result=clear round=40 legends=0 maxGrade=hero 이하");
     expect(output).toContain("yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero");
     expect(output).toContain("--dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM");
+    expect(output).toContain("--endedAt=RESULT_ENDED_AT");
+    expect(output).toContain("RESULT_ENDED_AT은 결과 화면의 종료 시각을 사용하세요");
     expect(output).not.toContain("--dataVersion=0.8.0 --stateChecksum=1234abcd");
     expect(pending.pending).toHaveLength(1);
     expect(pending.pending[0]).toMatchObject({
@@ -248,6 +250,7 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("- 목표: 초고수 실패 기록");
     expect(output).toContain("- 기록 조건: result=loss legends=최종값");
     expect(output).toContain("yarn manual-playlog --finish='master-1-MASTER-SEED-20260620T020000000Z' --result=loss --round=ROUND_REACHED --legends=FINAL_LEGENDS --maxGrade=MAX_GRADE");
+    expect(output).toContain("--endedAt=RESULT_ENDED_AT");
     expect(output).not.toContain("--result=loss --round=40 --legends=5");
   });
 

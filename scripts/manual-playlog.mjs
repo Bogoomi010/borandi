@@ -664,6 +664,7 @@ function finishCommandTemplate({ id, next }) {
     `--maxGrade=${template.maxGrade}`,
     "--dataVersion=RESULT_DATA_VERSION",
     "--stateChecksum=RESULT_CHECKSUM",
+    "--endedAt=RESULT_ENDED_AT",
   ].join(" ");
 }
 
@@ -700,7 +701,7 @@ function printStartSaved({ id, startedAt, next }) {
   console.log(`- id: ${id}`);
   console.log(`- 시작: ${startedAt.toISOString()}`);
   console.log("");
-  console.log("결과가 나오면 아래 형식으로 마무리하세요:");
+  console.log("결과가 나오면 아래 형식으로 마무리하세요. RESULT_ENDED_AT은 결과 화면의 종료 시각을 사용하세요:");
   console.log(finishCommandTemplate({ id, next }));
 }
 
