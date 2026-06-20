@@ -295,7 +295,7 @@ const targetPlans = [
 function buildSummary() {
   const log = existsSync(outPath) ? readJson(outPath) : { sessions: [] };
   const allSessions = isExampleManualLog(log) ? [] : (log.sessions ?? []).filter((session) => !isExampleManualSession(session));
-  const pending = isExampleManualLog(log) ? [] : pendingSessions(log);
+  const pending = isExampleManualLog(log) ? [] : pendingSessions(log).map(pendingSessionWithCommands);
   const validSessions = realManualSessions(log);
   const totalMinutes = validSessions.reduce((sum, session) => sum + sessionMinutes(session), 0);
   const minutesByDifficulty = new Map();
@@ -456,6 +456,9 @@ function printSummary() {
     console.log("PENDING 아직 finish되지 않은 시작 마커:");
     for (const session of summary.pending) {
       console.log(`  - ${session.id}: ${session.difficulty} stage=${session.stage} seed=${session.seed} startedAt=${session.startedAt}`);
+      if (session.finishCommandTemplate) {
+        console.log(`    마무리 템플릿: ${session.finishCommandTemplate}`);
+      }
     }
     console.log("");
   }

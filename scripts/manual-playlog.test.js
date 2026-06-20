@@ -329,8 +329,11 @@ describe("manual-playlog plan", () => {
     expect(pending.pending[0].finishCommandTemplate).toContain("--round=ROUND_REACHED");
     expect(runManualPlaylog([`--out=${out}`, "--pending"])).toContain("마무리 템플릿: yarn manual-playlog --finish='normal-run-1'");
     expect(summaryBeforeFinish.pendingCount).toBe(1);
+    expect(summaryBeforeFinish.pending[0].finishCommandTemplate).toContain("yarn manual-playlog --finish='normal-run-1'");
     expect(planBeforeFinish.current.pendingCount).toBe(1);
-    expect(runManualPlaylog([`--out=${out}`, "--summary"])).toContain("PENDING 아직 finish되지 않은 시작 마커");
+    const summaryText = runManualPlaylog([`--out=${out}`, "--summary"]);
+    expect(summaryText).toContain("PENDING 아직 finish되지 않은 시작 마커");
+    expect(summaryText).toContain("마무리 템플릿: yarn manual-playlog --finish='normal-run-1'");
 
     const finishOutput = runManualPlaylog([
       `--out=${out}`,
