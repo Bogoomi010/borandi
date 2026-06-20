@@ -460,6 +460,33 @@ describe("manual-playlog plan", () => {
     expect(pending.pending).toHaveLength(0);
   });
 
+  it("start와 start-next는 GAME_SEED_HERE placeholder seed를 저장하지 않는다", () => {
+    const startOut = makeTempPath("start-placeholder-seed.json");
+    const startNextOut = makeTempPath("start-next-placeholder-seed.json");
+    const startFailed = runManualPlaylogFailure([
+      `--out=${startOut}`,
+      "--start",
+      "--id=placeholder-start",
+      "--difficulty=novice",
+      "--stage=1",
+      "--seed=GAME_SEED_HERE",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+    ]);
+    const startNextFailed = runManualPlaylogFailure([
+      `--out=${startNextOut}`,
+      "--start-next",
+      "--seed=GAME_SEED_HERE",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+    ]);
+
+    expect(startFailed.status).toBe(1);
+    expect(startFailed.stderr).toContain("--seed=GAME_SEED_HERE는 템플릿 placeholder입니다.");
+    expect(startNextFailed.status).toBe(1);
+    expect(startNextFailed.stderr).toContain("게임 화면의 실제 시드로 바꿔 실행하세요.");
+    expect(JSON.parse(runManualPlaylog([`--out=${startOut}`, "--pending-json"])).pending).toHaveLength(0);
+    expect(JSON.parse(runManualPlaylog([`--out=${startNextOut}`, "--pending-json"])).pending).toHaveLength(0);
+  });
+
   it("start-next는 다음 필요 세션의 시작 마커를 바로 저장한다", () => {
     const out = makeTempPath("start-next.json");
     const output = runManualPlaylog([

@@ -1053,6 +1053,15 @@ function failIfInvalidManualSessionsExist() {
   fail(lines.join("\n"));
 }
 
+function requireStartSeed() {
+  const seed = String(args.seed ?? "").trim();
+  if (!seed) fail("--seed 값이 필요합니다.");
+  if (seed === "GAME_SEED_HERE") {
+    fail("--seed=GAME_SEED_HERE는 템플릿 placeholder입니다. 게임 화면의 실제 시드로 바꿔 실행하세요.");
+  }
+  return seed;
+}
+
 function startManualSession() {
   failIfInvalidManualSessionsExist();
   const difficulty = String(args.difficulty ?? "");
@@ -1060,8 +1069,7 @@ function startManualSession() {
     fail(`지원하지 않는 난이도입니다: ${difficulty || "(없음)"}`);
   }
   const stage = requireNumber("stage");
-  const seed = String(args.seed ?? "");
-  if (!seed) fail("--seed 값이 필요합니다.");
+  const seed = requireStartSeed();
   const startedAt = parseDate("startedAt", args.startedAt) ?? new Date();
   const id = String(args.id ?? makePendingId({ difficulty, stage, seed, startedAt: startedAt.toISOString() }));
   if (!id.trim()) fail("--id 값이 비어 있습니다.");
@@ -1097,8 +1105,7 @@ function startNextManualSession() {
     fail(`다음 필요 세션은 ${next.difficulty} 난이도입니다. --difficulty=${requestedDifficulty}로 시작할 수 없습니다.`);
   }
   const stage = optionalNumber("stage", 1);
-  const seed = String(args.seed ?? "");
-  if (!seed) fail("--seed 값이 필요합니다.");
+  const seed = requireStartSeed();
   const startedAt = parseDate("startedAt", args.startedAt) ?? new Date();
   const id = String(args.id ?? makePendingId({ difficulty, stage, seed, startedAt: startedAt.toISOString() }));
   if (!id.trim()) fail("--id 값이 비어 있습니다.");
