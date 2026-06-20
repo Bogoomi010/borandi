@@ -125,6 +125,29 @@ describe("조합", () => {
     expect(g.state.gold).toBe(140);
   });
 
+  it("전설 지휘 보너스는 5전설 이상부터 공격 배율을 준다", () => {
+    const g = new Game("LEGEND-COMMAND", "intermediate");
+    give(g, "solar_avatar", 4);
+    expect(g.legendCommandAttackMult()).toBe(1);
+
+    give(g, "chrono_marshal", 1);
+    expect(g.legendCommandAttackMult()).toBeCloseTo(1.08);
+
+    give(g, "titan_slayer", 4);
+    expect(g.legendCommandAttackMult()).toBeCloseTo(1.24);
+  });
+
+  it("일반 난이도는 1~2전설부터 지휘 보너스를 받는다", () => {
+    const g = new Game("NORMAL-COMMAND", "normal");
+    expect(g.legendCommandAttackMult()).toBe(1);
+
+    give(g, "solar_avatar", 1);
+    expect(g.legendCommandAttackMult()).toBeCloseTo(1.08);
+
+    give(g, "chrono_marshal", 3);
+    expect(g.legendCommandAttackMult()).toBeCloseTo(1.16);
+  });
+
   it("잠금 유닛은 조합 재료로 소비되지 않는다", () => {
     const g = new Game("LOCK", "novice");
     give(g, "ember_scout", 2);

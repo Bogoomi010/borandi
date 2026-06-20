@@ -124,26 +124,26 @@ export const UNITS: UnitDef[] = [
   {
     id: "solar_avatar", name: "태양 화신", grade: "legend", family: "flame",
     roles: ["waveClear"], attackType: "magic",
-    attack: 157, attackSpeed: 1.6, range: 170, targeting: "first",
+    attack: 165, attackSpeed: 1.6, range: 170, targeting: "first",
     splashRadius: 86, desc: "태양의 불꽃이 전장을 뒤덮는다.",
   },
   {
     id: "chrono_marshal", name: "시간의 집정관", grade: "legend", family: "frost",
     roles: ["hold", "debuff"], attackType: "magic",
-    attack: 121, attackSpeed: 1.3, range: 160, targeting: "first",
+    attack: 127, attackSpeed: 1.3, range: 160, targeting: "first",
     slowPct: 0.42, slowDuration: 2.7, stunChance: 0.16, stunDuration: 1.0,
     desc: "시간을 늦춰 적을 묶는다.",
   },
   {
     id: "titan_slayer", name: "거신 사냥꾼", grade: "legend", family: "iron",
     roles: ["bossKiller"], attackType: "physical",
-    attack: 324, attackSpeed: 0.9, range: 140, targeting: "highestHp",
+    attack: 340, attackSpeed: 0.9, range: 140, targeting: "highestHp",
     bossDamageBonus: 1.1, desc: "거신의 천적.",
   },
   {
     id: "ancient_world_tree", name: "고대 세계수", grade: "legend", family: "forest",
     roles: ["waveClear", "economy"], attackType: "magic",
-    attack: 151, attackSpeed: 1.4, range: 165, targeting: "first",
+    attack: 159, attackSpeed: 1.4, range: 165, targeting: "first",
     splashRadius: 74, killGoldBonus: 14, desc: "숲의 태초부터 자라온 거목.",
   },
 

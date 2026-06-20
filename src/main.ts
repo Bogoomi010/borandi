@@ -18,7 +18,7 @@ import { openDevSpawnModal } from "./ui/devTools"; // ⚠ DEV전용 (출시 전 
 import { UNIT_BY_ID } from "./data/units";
 import { analyzeRecipes } from "./core/advisor";
 import { stageById } from "./data/stages";
-import { waveForRound } from "./data/waves";
+import { FINAL_ROUND, waveForRound } from "./data/waves";
 import { UPGRADES, upgradeCost } from "./data/upgrades";
 import { GRADE_ORDER, type DifficultyId, type Grade } from "./core/types";
 import { MANUAL_PROOF_TARGET_SECONDS, manualProofRemainingSeconds, manualProofTargetFor } from "./core/manualProof";
@@ -269,7 +269,14 @@ function loop(now: number) {
     if (game.state.phase === "ended" && !endedHandled) {
       endedHandled = true;
       profileMarkSeen(game.state.units.map((u) => u.defId), game.state.discoveredRecipeIds);
-      const unlockedNext = profileRecordRun(game.state.cleared, game.state.difficulty, game.state.round, game.state.stageId);
+      const finalBossCleared = game.state.cleared && game.state.bossKillSeconds[FINAL_ROUND] !== undefined;
+      const unlockedNext = profileRecordRun(
+        game.state.cleared,
+        game.state.difficulty,
+        game.state.round,
+        game.state.stageId,
+        finalBossCleared,
+      );
       ctx.lastRunUnlockedNext = unlockedNext;
       if (unlockedNext) toast(`다음 새 게임부터 선택 가능: ${stageById(game.state.stageId + 1).name}`, "ok", 3200);
     }
@@ -501,7 +508,7 @@ requestAnimationFrame(loop);
 function renderGameToText(): string {
   const s = game.state;
   const stage = stageById(s.stageId);
-  const wave = waveForRound(Math.min(s.round, 40));
+  const wave = waveForRound(Math.min(s.round, FINAL_ROUND));
   const manualProofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
   const manualProofRemaining = manualProofRemainingSeconds(manualProofSeconds);
   const gradeCounts: Record<Grade, number> = { common: 0, rare: 0, hero: 0, legend: 0, hidden: 0 };
@@ -557,6 +564,7 @@ function renderGameToText(): string {
       total: s.units.length,
       gradeCounts,
       legendOrBetter,
+      legendCommandAttackBonusPct: Math.round((game.legendCommandAttackMult() - 1) * 100),
       maxGrade,
     },
     boss: {

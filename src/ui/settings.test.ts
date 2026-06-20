@@ -40,11 +40,12 @@ describe("프로필 맵 해금", () => {
   });
 
   it("해금 조건은 현재 열린 맵의 40라운드 최종 보스 클리어로만 참이다", () => {
-    expect(canUnlockNextStage(true, FINAL_ROUND, 1, 1)).toBe(true);
-    expect(canUnlockNextStage(true, FINAL_ROUND - 1, 1, 1)).toBe(false);
-    expect(canUnlockNextStage(false, FINAL_ROUND, 1, 1)).toBe(false);
-    expect(canUnlockNextStage(true, FINAL_ROUND, 2, 1)).toBe(false);
-    expect(canUnlockNextStage(true, FINAL_ROUND, FINAL_STAGE, FINAL_STAGE)).toBe(false);
+    expect(canUnlockNextStage(true, FINAL_ROUND, 1, 1, true)).toBe(true);
+    expect(canUnlockNextStage(true, FINAL_ROUND - 1, 1, 1, true)).toBe(false);
+    expect(canUnlockNextStage(false, FINAL_ROUND, 1, 1, true)).toBe(false);
+    expect(canUnlockNextStage(true, FINAL_ROUND, 1, 1, false)).toBe(false);
+    expect(canUnlockNextStage(true, FINAL_ROUND, 2, 1, true)).toBe(false);
+    expect(canUnlockNextStage(true, FINAL_ROUND, FINAL_STAGE, FINAL_STAGE, true)).toBe(false);
   });
 
   it("게임 시작 맵은 현재 선택 권한 안에서만 확정된다", () => {
@@ -56,55 +57,62 @@ describe("프로필 맵 해금", () => {
   });
 
   it("클리어 플래그가 있어도 40라운드 전이면 다음 맵을 해금하지 않는다", () => {
-    const unlocked = profileRecordRun(true, "novice", FINAL_ROUND - 1, 1);
+    const unlocked = profileRecordRun(true, "novice", FINAL_ROUND - 1, 1, true);
 
     expect(unlocked).toBe(false);
     expect(loadProfile().unlockedStage).toBe(1);
   });
 
   it("게임 시작 때 선택한 맵의 40라운드 최종 보스 클리어 후 다음 맵을 해금한다", () => {
-    const unlocked = profileRecordRun(true, "novice", FINAL_ROUND, 1);
+    const unlocked = profileRecordRun(true, "novice", FINAL_ROUND, 1, true);
 
     expect(unlocked).toBe(true);
     expect(loadProfile().unlockedStage).toBe(2);
   });
 
   it("40라운드에 도달해도 패배한 판이면 다음 맵을 해금하지 않는다", () => {
-    const unlocked = profileRecordRun(false, "novice", FINAL_ROUND, 1);
+    const unlocked = profileRecordRun(false, "novice", FINAL_ROUND, 1, true);
+
+    expect(unlocked).toBe(false);
+    expect(loadProfile().unlockedStage).toBe(1);
+  });
+
+  it("40라운드 클리어 플래그가 있어도 최종 보스 처치 기록이 없으면 다음 맵을 해금하지 않는다", () => {
+    const unlocked = profileRecordRun(true, "novice", FINAL_ROUND, 1, false);
 
     expect(unlocked).toBe(false);
     expect(loadProfile().unlockedStage).toBe(1);
   });
 
   it("현재 해금된 맵을 건너뛴 클리어로는 뒤쪽 맵을 해금하지 않는다", () => {
-    const unlocked = profileRecordRun(true, "novice", FINAL_ROUND, 3);
+    const unlocked = profileRecordRun(true, "novice", FINAL_ROUND, 3, true);
 
     expect(unlocked).toBe(false);
     expect(loadProfile().unlockedStage).toBe(1);
   });
 
   it("이미 클리어한 이전 맵을 다시 깨도 다음 다음 맵을 해금하지 않는다", () => {
-    expect(profileRecordRun(true, "novice", FINAL_ROUND, 1)).toBe(true);
+    expect(profileRecordRun(true, "novice", FINAL_ROUND, 1, true)).toBe(true);
 
-    const unlocked = profileRecordRun(true, "novice", FINAL_ROUND, 1);
+    const unlocked = profileRecordRun(true, "novice", FINAL_ROUND, 1, true);
 
     expect(unlocked).toBe(false);
     expect(loadProfile().unlockedStage).toBe(2);
   });
 
   it("현재 열린 맵을 40라운드까지 깨야 순서대로 다음 맵을 해금한다", () => {
-    expect(profileRecordRun(true, "novice", FINAL_ROUND, 1)).toBe(true);
-    expect(profileRecordRun(true, "novice", FINAL_ROUND, 2)).toBe(true);
+    expect(profileRecordRun(true, "novice", FINAL_ROUND, 1, true)).toBe(true);
+    expect(profileRecordRun(true, "novice", FINAL_ROUND, 2, true)).toBe(true);
 
     expect(loadProfile().unlockedStage).toBe(3);
   });
 
   it("마지막 맵 클리어는 더 이상 해금할 맵이 없다", () => {
     for (let stageId = 1; stageId < FINAL_STAGE; stageId++) {
-      expect(profileRecordRun(true, "novice", FINAL_ROUND, stageId)).toBe(true);
+      expect(profileRecordRun(true, "novice", FINAL_ROUND, stageId, true)).toBe(true);
     }
 
-    const unlocked = profileRecordRun(true, "novice", FINAL_ROUND, FINAL_STAGE);
+    const unlocked = profileRecordRun(true, "novice", FINAL_ROUND, FINAL_STAGE, true);
 
     expect(unlocked).toBe(false);
     expect(loadProfile().unlockedStage).toBe(FINAL_STAGE);

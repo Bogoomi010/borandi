@@ -173,7 +173,9 @@ function manualPlaylogFinishLatestThenNextCommand(r: ResultSummary): string {
 }
 
 function mapPermissionMessage(r: ResultSummary): string {
-  const finalBossCleared = r.cleared && r.reachedRound >= FINAL_ROUND;
+  const finalBossCleared = r.cleared &&
+    r.reachedRound >= FINAL_ROUND &&
+    r.bossKills.some((boss) => boss.round === FINAL_ROUND);
   if (r.unlockedNextStage && r.stageId < STAGES.length) {
     const next = stageById(r.stageId + 1);
     return `이번 판은 여기서 종료. 다음 새 게임부터 선택 가능: ${next.id}. ${next.name}`;

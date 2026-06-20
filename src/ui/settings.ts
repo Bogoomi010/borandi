@@ -83,8 +83,14 @@ export function profileMarkSeen(unitIds: string[], hiddenRecipeIds: string[]) {
   if (changed) saveProfile(p);
 }
 
-export function canUnlockNextStage(cleared: boolean, round: number, stageId: number, unlockedStage: number): boolean {
-  return cleared && round >= FINAL_ROUND && stageId === unlockedStage && unlockedStage < FINAL_STAGE;
+export function canUnlockNextStage(
+  cleared: boolean,
+  round: number,
+  stageId: number,
+  unlockedStage: number,
+  finalBossCleared: boolean,
+): boolean {
+  return cleared && round >= FINAL_ROUND && finalBossCleared && stageId === unlockedStage && unlockedStage < FINAL_STAGE;
 }
 
 export function playableStageId(requestedStageId: number, unlockedStage: number): number {
@@ -93,13 +99,19 @@ export function playableStageId(requestedStageId: number, unlockedStage: number)
   return Math.min(requested, maxPlayable);
 }
 
-export function profileRecordRun(cleared: boolean, difficulty: string, round: number, stageId: number): boolean {
+export function profileRecordRun(
+  cleared: boolean,
+  difficulty: string,
+  round: number,
+  stageId: number,
+  finalBossCleared: boolean,
+): boolean {
   const p = loadProfile();
   p.runs++;
   let unlockedNext = false;
   if (cleared) p.clears[difficulty] = (p.clears[difficulty] ?? 0) + 1;
   if (round > p.bestRound) p.bestRound = round;
-  if (canUnlockNextStage(cleared, round, stageId, p.unlockedStage)) {
+  if (canUnlockNextStage(cleared, round, stageId, p.unlockedStage, finalBossCleared)) {
     p.unlockedStage = stageId + 1;
     unlockedNext = true;
   }
