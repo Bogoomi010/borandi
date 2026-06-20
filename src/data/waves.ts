@@ -23,7 +23,7 @@ export const BOSSES: BossDef[] = [
   {
     id: "ancient_rift_lord", name: "고대 균열 군주", round: 40, slowResist: 0.45,
     weakness: "최종 화력 · 방깎 · 보스딜",
-    hint: "40라운드 최종 보스. 처치하면 다음 새 게임부터 다음 맵을 선택할 수 있다.",
+    hint: "40라운드 최종 보스. 처치해도 이번 판의 맵은 바뀌지 않고, 다음 새 게임부터 다음 맵을 선택할 수 있다.",
   },
 ];
 
