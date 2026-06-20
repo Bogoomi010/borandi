@@ -106,6 +106,16 @@ function manualStartCommand(ctx: AppCtx): string {
   ].join(" ");
 }
 
+function manualStartNextCommand(ctx: AppCtx): string {
+  const s = ctx.game.state;
+  return [
+    "yarn manual-playlog --start-next",
+    `--difficulty=${s.difficulty}`,
+    `--stage=${s.stageId}`,
+    `--seed=${shellArg(s.seed)}`,
+  ].join(" ");
+}
+
 function manualPlaylogCommand(r: ResultSummary): string {
   const seconds = Math.max(1, Math.round(r.wallSeconds ?? 0));
   const result = r.cleared ? "clear" : "loss";
@@ -550,6 +560,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     body.appendChild(el("div", "modal-note", "결과 화면의 로그 명령을 실행한 뒤, 아래 요약 명령으로 남은 증거를 확인합니다."));
 
     const currentStartCommand = ctx?.scene === "game" ? manualStartCommand(ctx) : "";
+    const currentStartNextCommand = ctx?.scene === "game" ? manualStartNextCommand(ctx) : "";
     const summaryCommand = "yarn manual-playlog --summary";
     const planCommand = "yarn manual-playlog --plan";
     const nextCommand = "yarn manual-playlog --next";
@@ -558,6 +569,10 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const summaryJsonCommand = "yarn --silent manual-playlog --summary --json";
     if (currentStartCommand) {
       body.appendChild(el("h3", "", "현재 판 시작 마커"));
+      if (currentStartNextCommand) {
+        body.appendChild(el("pre", "report", currentStartNextCommand));
+        body.appendChild(el("div", "modal-note", "현재 판이 다음 필요 세션과 같은 난이도라면 위 단축 명령을 쓰세요. 아니면 아래 직접 시작 마커를 사용하세요."));
+      }
       body.appendChild(el("pre", "report", currentStartCommand));
       body.appendChild(el("div", "modal-note", "플레이 시작 직후 한 번 실행해두면 결과 화면을 놓쳐도 --finish 명령으로 같은 시작 시각을 재사용할 수 있습니다."));
     }
@@ -589,6 +604,18 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
 
     const row = el("div", "row-btns");
     if (currentStartCommand) {
+      if (currentStartNextCommand) {
+        const copyCurrentStartNext = el("button", "", "현재 다음마커 복사");
+        copyCurrentStartNext.onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(currentStartNextCommand);
+            toast("현재 판 시드의 다음 필요 세션 시작 명령을 복사했습니다", "ok");
+          } catch {
+            toast("복사 실패: 명령을 직접 선택하세요", "warn");
+          }
+        };
+        row.appendChild(copyCurrentStartNext);
+      }
       const copyStart = el("button", "", "시작마커 복사");
       copyStart.onclick = async () => {
         try {
