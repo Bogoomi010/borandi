@@ -61,4 +61,11 @@ describe("5난이도 밸런스 게이트", () => {
     expect(result.passed).toBe(false);
     expect(result.gates.find((gate) => gate.label.startsWith("일반"))?.pass).toBe(false);
   });
+
+  it("초고수는 제한 없음에서도 클리어율이 0%가 아니면 실패한다", () => {
+    const result = evaluateBalanceGate(30, fullScenarioResults({ masterOpen: 1 / 30 }));
+
+    expect(result.passed).toBe(false);
+    expect(result.gates.find((gate) => gate.label.startsWith("초고수"))?.pass).toBe(false);
+  });
 });

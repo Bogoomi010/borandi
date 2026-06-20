@@ -583,9 +583,9 @@ function buildRows(balance, browser, direct, manual, codex) {
 
   const masterOpen = clearRate(balance, "masterOpen");
   rows.push({
-    req: "초고수: 매우 어려움",
+    req: "초고수: 클리어 접근 차단",
     evidence: `제한 없음 ${rateText(balance, "masterOpen")}`,
-    pass: typeof masterOpen === "number" && masterOpen <= 0.05,
+    pass: typeof masterOpen === "number" && masterOpen === 0,
   });
 
   rows.push({
@@ -645,8 +645,10 @@ function buildRows(balance, browser, direct, manual, codex) {
   const directExpertPass = directObservation(direct, "고수 직접 플레이 표본")?.pass ??
     (!!directExpertFive && Number(directExpertFive.clearRate ?? 1) <= 0.1 &&
       directClearAccess(directExpertOpen) && directBetterThan(directExpertFive, directExpertOpen));
-  const directMasterPass = directObservation(direct, "초고수 직접 플레이 표본")?.pass ??
-    (!!directMaster && Number(directMaster.clearRate ?? 1) <= 0.1);
+  const directMasterObservation = directObservation(direct, "초고수 직접 플레이 표본");
+  const directMasterPass = !!directMaster &&
+    Number(directMaster.clearRate ?? 1) === 0 &&
+    (directMasterObservation?.pass ?? true);
   rows.push({
     req: "브라우저 직접: 입문자 무전설 클리어권",
     evidence: directText(directNovice),
@@ -672,7 +674,7 @@ function buildRows(balance, browser, direct, manual, codex) {
     missing: !direct || !directExpertFive || !directExpertOpen,
   });
   rows.push({
-    req: "브라우저 직접: 초고수는 매우 어려움",
+    req: "브라우저 직접: 초고수 클리어 접근 차단",
     evidence: directText(directMaster),
     pass: directMasterPass,
     missing: !direct || !directMaster,

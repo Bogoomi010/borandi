@@ -552,8 +552,8 @@ function evaluateObservations(results) {
   }
   if (masterOpen) {
     gates.push({
-      label: "초고수 직접 플레이 표본은 매우 어려움",
-      pass: masterOpen.clearRate <= 0.1,
+      label: "초고수 직접 플레이 표본은 클리어 접근 차단",
+      pass: masterOpen.clearRate === 0,
       detail: `${pct(masterOpen.clearRate)}, 평균 ${masterOpen.avgRound.toFixed(1)}R`,
     });
   }

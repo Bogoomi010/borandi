@@ -97,9 +97,9 @@ export function evaluateBalanceGate(seeds: number, scenarioResults: BalanceScena
       detail: `5전설 ${pct(expertFiveLegend.clearRate)}, 제한 없음 ${pct(expertOpen.clearRate)}`,
     },
     {
-      label: "초고수는 자동 플레이 기준으로 매우 어려움",
-      pass: masterOpen.clearRate <= 0.05,
-      detail: `제한 없음 ${pct(masterOpen.clearRate)} <= 5.0%`,
+      label: "초고수는 자동 플레이 기준으로 클리어 접근 차단",
+      pass: masterOpen.clearRate === 0,
+      detail: `제한 없음 ${pct(masterOpen.clearRate)} == 0.0%`,
     },
   ];
 

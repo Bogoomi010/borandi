@@ -312,6 +312,33 @@ describe("balance-audit assert", () => {
     expect(failed.stderr).toContain("브라우저 직접: 중급자 5전설 개선");
   });
 
+  it("초고수 자동/직접 증거는 제한 없음 클리어율 0%만 통과한다", () => {
+    const balance = completeBalance();
+    balance.scenarios.find((item) => item.id === "masterOpen").report.clearRate = 1 / 30;
+    const direct = completeDirect();
+    direct.scenarios.find((item) => item.id === "masterOpen").clearRate = 1 / 30;
+    const paths = {
+      balance: writeJson("balance.json", balance),
+      browser: writeJson("browser.json", completeBrowser()),
+      direct: writeJson("direct.json", direct),
+      manual: writeJson("manual.json", completeManual()),
+    };
+
+    const failed = runAuditFailure([
+      `--balance=${paths.balance}`,
+      `--browser=${paths.browser}`,
+      `--direct=${paths.direct}`,
+      `--manual=${paths.manual}`,
+      "--assert",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stdout).toContain("초고수: 클리어 접근 차단 | FAIL | 제한 없음 3.3%");
+    expect(failed.stdout).toContain("브라우저 직접: 초고수 클리어 접근 차단 | FAIL | 3.3%");
+    expect(failed.stderr).toContain("초고수: 클리어 접근 차단");
+    expect(failed.stderr).toContain("브라우저 직접: 초고수 클리어 접근 차단");
+  });
+
   it("현재 데이터 버전이 아닌 자동/브라우저 증거는 assert가 실패한다", () => {
     const staleBalance = completeBalance();
     const staleBrowser = completeBrowser();
