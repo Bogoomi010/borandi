@@ -144,6 +144,7 @@ function manualWithPendingStart() {
       stage: 1,
       seed: "PENDING",
       startedAt: "2026-01-01T09:00:00.000Z",
+      notes: "일반 1~2전설 40R 클리어",
     },
   ];
   return manual;
@@ -225,6 +226,9 @@ describe("balance-audit assert", () => {
     expect(failed.status).toBe(1);
     expect(failed.stdout).toContain("수동: 시작 마커 미완료 없음 | MISSING");
     expect(failed.stdout).toContain("pending-run normal stage=1 seed=PENDING");
+    expect(failed.stdout).toContain("finish=yarn manual-playlog --finish=pending-run");
+    expect(failed.stdout).toContain("--result=clear --round=40 --legends=1 --maxGrade=legend");
+    expect(failed.stdout).toContain("--endedAt=RESULT_ENDED_AT");
     expect(failed.stderr).toContain("수동: 시작 마커 미완료 없음");
   });
 });

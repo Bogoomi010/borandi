@@ -138,9 +138,55 @@ function pendingManualEvidence(pendingSessions) {
       const stage = s.stage ?? "?";
       const seed = s.seed ?? "?";
       const startedAt = s.startedAt ?? "시작없음";
-      return `${id} ${difficulty} stage=${stage} seed=${seed} startedAt=${startedAt}`;
+      const finish = ` finish=${s.finishCommandTemplate ?? pendingFinishCommandTemplate(s)}`;
+      return `${id} ${difficulty} stage=${stage} seed=${seed} startedAt=${startedAt}${finish}`;
     })
     .join("; ");
+}
+
+function pendingFinishCommandTemplate(session) {
+  const template = finishTemplateForPending(session);
+  return [
+    `yarn manual-playlog --finish=${shellArg(session.id ?? "PENDING_ID")}`,
+    `--result=${template.result}`,
+    `--round=${template.round}`,
+    `--legends=${template.legends}`,
+    `--maxGrade=${template.maxGrade}`,
+    "--dataVersion=RESULT_DATA_VERSION",
+    "--stateChecksum=RESULT_CHECKSUM",
+    "--endedAt=RESULT_ENDED_AT",
+  ].join(" ");
+}
+
+function finishTemplateForPending(session) {
+  const base = {
+    result: "loss",
+    round: "ROUND_REACHED",
+    legends: "FINAL_LEGENDS",
+    maxGrade: "MAX_GRADE",
+  };
+  switch (session?.notes) {
+    case "입문자 무전설 40R 클리어":
+      return { result: "clear", round: "40", legends: "0", maxGrade: "hero" };
+    case "일반 1~2전설 40R 클리어":
+      return { result: "clear", round: "40", legends: "1", maxGrade: "legend" };
+    case "중급자 5전설 이상 40R 클리어":
+      return { result: "clear", round: "40", legends: "5", maxGrade: "legend" };
+    case "고수 5전설 이하 40R 실패":
+      return { result: "loss", round: "40", legends: "5", maxGrade: "legend" };
+    case "고수 6전설 이상 40R 클리어":
+      return { result: "clear", round: "40", legends: "6", maxGrade: "legend" };
+    case "초고수 실패 기록":
+      return { result: "loss", round: "ROUND_REACHED", legends: "FINAL_LEGENDS", maxGrade: "MAX_GRADE" };
+    default:
+      return base;
+  }
+}
+
+function shellArg(value) {
+  const text = String(value);
+  if (/^[A-Za-z0-9_./:@=-]+$/.test(text)) return text;
+  return `'${text.replace(/'/g, "'\\''")}'`;
 }
 
 function sessionMinutes(session) {
