@@ -95,6 +95,7 @@ function completeDirect({ seeds = 6 } = {}) {
     passed: true,
     seeds,
     totalSimulatedSeconds: 3600,
+    wallClockSeconds: 60,
     scenarios: [
       directScenario("noviceHero", 1, 40, 0, 0),
       directScenario("normalNoLegend", 0, 37, 0.9, 0),
@@ -234,6 +235,7 @@ describe("balance-audit assert", () => {
 
     expect(output).toContain("목표 완료 여부: 감사표 기준으로 모든 항목이 충족되었다.");
     expect(output).toContain("입문자: 전설 없이 클리어 가능 | PASS | 50시드 전설 없음 100.0%");
+    expect(output).toContain("브라우저 직접 플레이형 자동 표본 범위 | PASS | 10/10 target scenarios, 6/6 seeds, 1.00 simulated hours, 1.00 wall-clock minutes");
     expect(output).toContain("다음 수동 플레이 세션 | PASS | 필요 없음 - 수동 플레이 증거 목표 충족");
   });
 

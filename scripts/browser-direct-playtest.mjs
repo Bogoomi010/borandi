@@ -24,6 +24,8 @@ const CURRENT_DATA_VERSION = readCurrentDataVersion();
 const selectedScenarioIds = typeof args.scenarios === "string" && args.scenarios !== "true"
   ? new Set(args.scenarios.split(",").map((s) => s.trim()).filter(Boolean))
   : null;
+const runStartedAt = new Date();
+const runStartedMs = Date.now();
 
 const GRADE_ORDER = ["common", "rare", "hero", "legend", "hidden"];
 const SUMMON_COST = 20;
@@ -377,6 +379,8 @@ async function doPrep(page, options) {
 }
 
 async function playScenarioSeed(page, scenario, seedIndex) {
+  const wallClockStartedAt = new Date();
+  const wallClockStartedMs = Date.now();
   const seed = `DIRECT-${seedIndex}`;
   await clearModals(page);
   await page.evaluate(({ seed, difficulty }) => {
@@ -415,7 +419,9 @@ async function playScenarioSeed(page, scenario, seedIndex) {
   }
 
   const finalState = await readState(page);
-  const endedAt = new Date().toISOString();
+  const wallClockEndedAt = new Date();
+  const endedAt = wallClockEndedAt.toISOString();
+  const wallClockSeconds = Number(((wallClockEndedAt.getTime() - wallClockStartedMs) / 1000).toFixed(3));
   const final = {
     dataVersion: finalState.dataVersion,
     stateChecksum: finalState.stateChecksum,
@@ -433,6 +439,9 @@ async function playScenarioSeed(page, scenario, seedIndex) {
     seed,
     steps,
     simulatedSeconds: steps * (stepMs / 1000),
+    wallClockStartedAt: wallClockStartedAt.toISOString(),
+    wallClockEndedAt: endedAt,
+    wallClockSeconds,
     endedAt,
     final,
     codexDirectSession: codexDirectSession({
@@ -465,6 +474,7 @@ function summarizeScenario(scenario, runs) {
     ? clearedRuns.reduce((sum, r) => sum + r.final.round, 0) / clearedRuns.length
     : 0;
   const totalSimulatedSeconds = runs.reduce((sum, r) => sum + r.simulatedSeconds, 0);
+  const totalWallClockSeconds = runs.reduce((sum, r) => sum + Number(r.wallClockSeconds ?? 0), 0);
   const avgPressureRatio = runs.reduce((sum, r) => {
     const [current, limit] = r.final.pressure.split("/").map((v) => Number(v));
     return sum + current / Math.max(1, limit);
@@ -482,6 +492,8 @@ function summarizeScenario(scenario, runs) {
     avgClearedRound,
     totalSimulatedSeconds,
     avgSimulatedSeconds: totalSimulatedSeconds / runs.length,
+    totalWallClockSeconds,
+    avgWallClockSeconds: totalWallClockSeconds / runs.length,
     avgPressureRatio,
     runs,
   };
@@ -630,14 +642,20 @@ try {
     console.log(`${gate.pass ? "PASS" : "CHECK"} ${gate.label} (${gate.detail})`);
   }
 
+  const runEndedAt = new Date();
+  const wallClockSeconds = Number(((runEndedAt.getTime() - runStartedMs) / 1000).toFixed(3));
   const payload = {
     url,
-    generatedAt: new Date().toISOString(),
+    generatedAt: runEndedAt.toISOString(),
+    startedAt: runStartedAt.toISOString(),
+    endedAt: runEndedAt.toISOString(),
+    wallClockSeconds,
     dataVersion: CURRENT_DATA_VERSION,
     seeds,
     maxRound,
     stepMs,
     totalSimulatedSeconds: results.reduce((sum, r) => sum + r.totalSimulatedSeconds, 0),
+    totalWallClockSeconds: results.reduce((sum, r) => sum + Number(r.totalWallClockSeconds ?? 0), 0),
     scope: PLAYTEST_SCOPE,
     scenarios: results,
     observations,
@@ -655,6 +673,7 @@ try {
     writeFileSync(codexLogPath, JSON.stringify(codexDirectLog(results), null, 2), "utf8");
     console.log(`Codex 직접 조작 보조 로그 저장: ${codexLogPath}`);
   }
+  console.log(`실제 실행 시간: ${(wallClockSeconds / 60).toFixed(2)}분, 시뮬레이션 시간: ${(payload.totalSimulatedSeconds / 3600).toFixed(2)}시간`);
   if (strict && !payload.passed) process.exitCode = 1;
 } finally {
   await browser.close();

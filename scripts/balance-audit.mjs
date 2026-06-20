@@ -61,6 +61,12 @@ function pct(n) {
   return `${(n * 100).toFixed(1)}%`;
 }
 
+function minutesText(seconds) {
+  const value = Number(seconds);
+  if (!Number.isFinite(value) || value <= 0) return "";
+  return `${(value / 60).toFixed(2)} wall-clock minutes`;
+}
+
 function status(ok, missing = false) {
   if (missing) return "MISSING";
   return ok ? "PASS" : "FAIL";
@@ -631,6 +637,7 @@ function buildRows(balance, browser, direct, manual, codex) {
   });
 
   const directSeconds = Number(direct?.totalSimulatedSeconds ?? 0);
+  const directWallClockText = minutesText(direct?.wallClockSeconds ?? direct?.totalWallClockSeconds);
   const directScenarioIds = [
     "noviceHero",
     "normalNoLegend",
@@ -646,7 +653,7 @@ function buildRows(balance, browser, direct, manual, codex) {
   const directCoversTargets = directScenarioIds.every((id) => !!directScenario(direct, id));
   rows.push({
     req: "브라우저 직접 플레이형 자동 표본 범위",
-    evidence: direct ? `${direct.scenarios?.length ?? 0}/${directScenarioIds.length} target scenarios, ${direct.seeds ?? "?"}/${MIN_BROWSER_DIRECT_SEEDS} seeds, ${(directSeconds / 3600).toFixed(2)} simulated hours` : "missing browser-direct JSON",
+    evidence: direct ? `${direct.scenarios?.length ?? 0}/${directScenarioIds.length} target scenarios, ${direct.seeds ?? "?"}/${MIN_BROWSER_DIRECT_SEEDS} seeds, ${(directSeconds / 3600).toFixed(2)} simulated hours${directWallClockText ? `, ${directWallClockText}` : ""}` : "missing browser-direct JSON",
     pass: !!direct && Number(direct.seeds ?? 0) >= MIN_BROWSER_DIRECT_SEEDS && directSeconds > 0 && directCoversTargets,
     missing: !direct || !directCoversTargets,
   });
