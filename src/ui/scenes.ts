@@ -4,7 +4,7 @@
 import type { AppCtx } from "./ctx";
 import { el, openModal, toast } from "./widgets";
 import { openLoadModal, openNewRunModal, openSaveModal } from "./modals";
-import { loadProfile, saveSettings } from "./settings";
+import { loadProfile, maxSelectableStageId, saveSettings } from "./settings";
 import { UNITS } from "../data/units";
 import { RECIPES } from "../data/recipes";
 import { GRADE_LABEL, FAMILY_LABEL, ROLE_LABEL, GRADE_ORDER, type Grade } from "../core/types";
@@ -49,7 +49,7 @@ function buildTitle(ctx: AppCtx) {
   const h1 = el("h1");
   h1.innerHTML = "차원 균열<br>랜덤 디펜스";
   logo.appendChild(h1);
-  logo.appendChild(el("div", "title-sub", "새 게임에서 맵 하나 선택 · 1~40R 같은 맵 진행 · 클리어 후 다음 새 게임의 맵 선택 권한 추가"));
+  logo.appendChild(el("div", "title-sub", "새 게임 시작 때 맵 선택 · 40R 보스까지 같은 맵 진행 · 클리어 후 다음 맵 선택권 해금"));
   inner.appendChild(logo);
 
   const menu = el("div", "title-menu");
@@ -324,7 +324,7 @@ export function openCollection(ctx: AppCtx) {
     };
     kv("플레이 횟수", String(profile.runs));
     kv("최고 도달", profile.bestRound > 0 ? `${profile.bestRound}R` : "-");
-    kv("선택 가능한 맵", `${Math.max(1, Math.min(profile.unlockedStage, STAGES.length))}/${STAGES.length}`);
+    kv("맵 선택권", `1~${maxSelectableStageId(profile.unlockedStage)} / ${STAGES.length}`);
     for (const d of DIFFICULTIES) kv(`${d.name} 클리어`, String(profile.clears[d.id] ?? 0));
     kv("유닛 수집", `${profile.seenUnits.length}/${UNITS.length}`);
     kv("히든 조합 발견", `${profile.foundHiddenRecipes.length}/${RECIPES.filter((r) => r.visibility === "hidden").length}`);

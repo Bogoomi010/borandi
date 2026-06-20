@@ -25,6 +25,7 @@ const MIN_BROWSER_DIRECT_SEEDS = 6;
 const REQUIRED_DIFFICULTIES = ["novice", "normal", "intermediate", "expert", "master"];
 const FINAL_ROUND = 40;
 const CURRENT_DATA_VERSION = readCurrentDataVersion();
+const VALID_STAGE_IDS = readValidStageIds();
 
 function readJson(path) {
   if (!existsSync(path)) return null;
@@ -38,6 +39,22 @@ function readCurrentDataVersion() {
   } catch {
     return "";
   }
+}
+
+function readValidStageIds() {
+  try {
+    const source = readFileSync("src/data/stages.ts", "utf8");
+    return Array.from(source.matchAll(/\bid:\s*(\d+)/g), (match) => Number(match[1]))
+      .filter((stageId) => Number.isInteger(stageId) && stageId > 0);
+  } catch {
+    return [];
+  }
+}
+
+function isValidStageId(stage) {
+  return Number.isInteger(stage) &&
+    stage >= 1 &&
+    (VALID_STAGE_IDS.length === 0 || VALID_STAGE_IDS.includes(stage));
 }
 
 function pct(n) {
@@ -329,7 +346,7 @@ function hasCompleteManualMetadata(session) {
   const stateChecksum = String(session.stateChecksum ?? "");
   return ["novice", "normal", "intermediate", "expert", "master"].includes(difficulty) &&
     ["clear", "cleared", "win", "won", "victory", "loss", "lose", "lost", "fail", "failed", "defeat", "quit"].includes(result) &&
-    Number.isFinite(stage) && stage >= 1 &&
+    isValidStageId(stage) &&
     Number.isFinite(round) && round >= 1 && round <= FINAL_ROUND &&
     (!isClear(session) || round >= FINAL_ROUND) &&
     Number.isFinite(legends) && legends >= 0 &&

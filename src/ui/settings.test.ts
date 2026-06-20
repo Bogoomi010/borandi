@@ -7,6 +7,7 @@ import {
   defaultNewRunStageId,
   initialNewRunStageId,
   loadProfile,
+  maxSelectableStageId,
   playableStageId,
   profileRecordRun,
 } from "./settings";
@@ -57,6 +58,9 @@ describe("프로필 맵 해금", () => {
   });
 
   it("게임 시작 맵은 현재 선택 권한 안에서만 확정된다", () => {
+    expect(maxSelectableStageId(0)).toBe(1);
+    expect(maxSelectableStageId(3.9)).toBe(3);
+    expect(maxSelectableStageId(999)).toBe(FINAL_STAGE);
     expect(playableStageId(1, 3)).toBe(1);
     expect(playableStageId(3, 3)).toBe(3);
     expect(playableStageId(4, 3)).toBe(3);
@@ -83,7 +87,18 @@ describe("프로필 맵 해금", () => {
 
     const profile = loadProfile();
     expect(profile.unlockedStage).toBe(2);
+    expect(maxSelectableStageId(profile.unlockedStage)).toBe(2);
     expect(playableStageId(1, profile.unlockedStage)).toBe(1);
+    expect(playableStageId(2, profile.unlockedStage)).toBe(2);
+  });
+
+  it("맵 선택권이 늘어도 새 게임에서 맵을 고르기 전까지 특정 다음 맵으로 강제되지 않는다", () => {
+    expect(profileRecordRun(true, "novice", FINAL_ROUND, 1, true)).toBe(true);
+    const profile = loadProfile();
+
+    expect(maxSelectableStageId(profile.unlockedStage)).toBe(2);
+    expect(initialNewRunStageId(1, profile.unlockedStage)).toBe(1);
+    expect(defaultNewRunStageId(1, profile.unlockedStage)).toBe(1);
     expect(playableStageId(2, profile.unlockedStage)).toBe(2);
   });
 

@@ -515,4 +515,38 @@ describe("balance-audit assert", () => {
     expect(failed.stdout).toContain("필수 결과 메타데이터 누락 또는 모순");
     expect(failed.stderr).toContain("수동: 무효 세션 없음");
   });
+
+  it("실제 맵 범위 밖 stage 수동 세션은 감사에서 무효 처리한다", () => {
+    const manual = completeManual();
+    manual.sessions.push({
+      source: "human-playtest",
+      difficulty: "novice",
+      minutes: 20,
+      result: "clear",
+      stage: 16,
+      round: 40,
+      seed: "INVALID-STAGE",
+      legends: 0,
+      maxGrade: "hero",
+      dataVersion: CURRENT_DATA_VERSION,
+      stateChecksum: "bad00004",
+      startedAt: "2026-01-01T10:00:00.000Z",
+      endedAt: "2026-01-01T10:20:00.000Z",
+    });
+    const paths = writeCompleteInputs({ manual });
+
+    const failed = runAuditFailure([
+      `--balance=${paths.balance}`,
+      `--browser=${paths.browser}`,
+      `--direct=${paths.direct}`,
+      `--manual=${paths.manual}`,
+      "--assert",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | human 6/7세션, codex-direct 0세션 0.0분, 무효 1개");
+    expect(failed.stdout).toContain("#7 novice clear 40R seed=INVALID-STAGE #bad00004");
+    expect(failed.stdout).toContain("필수 결과 메타데이터 누락 또는 모순");
+    expect(failed.stderr).toContain("수동: 무효 세션 없음");
+  });
 });

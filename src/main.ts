@@ -23,7 +23,7 @@ import {
   resetResultShown,
 } from "./ui/modals";
 import { loadSlot, makeSaveRecord, saveSlot } from "./save/saveApi";
-import { loadProfile, loadSettings, playableStageId, profileMarkSeen, profileRecordRun } from "./ui/settings";
+import { loadProfile, loadSettings, maxSelectableStageId, playableStageId, profileMarkSeen, profileRecordRun } from "./ui/settings";
 import { GameAudio } from "./ui/audio";
 import { showGame, showTitle, openPauseMenu } from "./ui/scenes";
 import { openDevSpawnModal } from "./ui/devTools"; // ⚠ DEV전용 (출시 전 제거)
@@ -326,7 +326,10 @@ function loop(now: number) {
         finalBossCleared,
       );
       ctx.lastRunUnlockedNext = unlockedNext;
-      if (unlockedNext) toast(`다음 새 게임부터 선택 가능: ${stageById(game.state.stageId + 1).name}`, "ok", 3200);
+      if (unlockedNext) {
+        const nextStage = stageById(maxSelectableStageId(game.state.stageId + 1));
+        toast(`맵 선택권 해금: 다음 새 게임부터 ${nextStage.id}. ${nextStage.name} 선택 가능`, "ok", 3200);
+      }
     }
 
     // 라운드 사이 휴식 카운트다운 표시 (엔진 breakTicks 기반)

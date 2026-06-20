@@ -48,7 +48,7 @@ export interface Profile {
   runs: number;
   clears: Record<string, number>; // difficulty -> 클리어 수
   bestRound: number;
-  unlockedStage: number;
+  unlockedStage: number;        // 현재 런의 맵이 아니라, 새 게임에서 선택 가능한 최대 맵 번호
 }
 
 const DEFAULT_PROFILE: Profile = {
@@ -69,6 +69,10 @@ function saveProfile(p: Profile) {
   try {
     localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
   } catch { /* noop */ }
+}
+
+export function maxSelectableStageId(unlockedStage: number): number {
+  return Math.max(1, Math.min(Math.floor(unlockedStage || 1), FINAL_STAGE));
 }
 
 export function profileMarkSeen(unitIds: string[], hiddenRecipeIds: string[]) {
@@ -92,11 +96,15 @@ export function canUnlockNextStage(
 ): boolean {
   // 맵은 라운드 사이에 전환되지 않는다. 현재 선택 가능 맵을 새 게임에서 골라
   // 40R 최종 보스까지 클리어했을 때만 다음 새 게임의 맵 선택 권한이 열린다.
-  return cleared && round >= FINAL_ROUND && finalBossCleared && stageId === unlockedStage && unlockedStage < FINAL_STAGE;
+  return cleared &&
+    round >= FINAL_ROUND &&
+    finalBossCleared &&
+    stageId === maxSelectableStageId(unlockedStage) &&
+    maxSelectableStageId(unlockedStage) < FINAL_STAGE;
 }
 
 export function playableStageId(requestedStageId: number, unlockedStage: number): number {
-  const maxPlayable = Math.max(1, Math.min(unlockedStage, FINAL_STAGE));
+  const maxPlayable = maxSelectableStageId(unlockedStage);
   const requested = Math.max(1, Math.min(Math.floor(requestedStageId || 1), FINAL_STAGE));
   return Math.min(requested, maxPlayable);
 }
