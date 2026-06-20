@@ -524,6 +524,7 @@ function renderGameToText(): string {
   }
   const legendOrBetter = gradeCounts.legend + gradeCounts.hidden;
   const manualProofTarget = manualProofTargetFor(s.difficulty, legendOrBetter);
+  const currentStateChecksum = stateChecksum(s);
   const manualStartInput = {
     difficultyId: s.difficulty,
     stageId: s.stageId,
@@ -544,6 +545,7 @@ function renderGameToText(): string {
     mode: s.phase,
     dataVersion: s.dataVersion,
     seed: s.seed,
+    stateChecksum: currentStateChecksum,
     difficulty: { id: s.difficulty, name: game.diff.name },
     stage: {
       current: s.stageId,
@@ -579,6 +581,16 @@ function renderGameToText(): string {
       conditionState: manualProofTarget.state,
       startedAt: ctx.scene === "game" ? ctx.runStartedAt : null,
       commands: manualProofCommands,
+      evidenceFields: ctx.scene === "game"
+        ? {
+            difficulty: s.difficulty,
+            stage: s.stageId,
+            seed: s.seed,
+            dataVersion: s.dataVersion,
+            currentStateChecksum,
+            startedAt: ctx.runStartedAt,
+          }
+        : null,
     },
     round: s.round,
     wave: { type: wave.type, enemyName: wave.enemyName, count: wave.count, spawned: s.waveSpawned, killed: s.waveKilled },
