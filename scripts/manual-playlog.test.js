@@ -866,6 +866,43 @@ describe("manual-playlog plan", () => {
     expect(failed.stderr).toContain("다음 필요 세션은 novice 난이도입니다");
   });
 
+  it("start-next는 일부 목표를 채운 뒤에도 다음 필요 난이도와 다른 강제 난이도를 거부한다", () => {
+    const out = makeTempPath("start-next-wrong-difficulty-after-progress.json");
+    const sessions = [
+      ["novice", "clear", 40, 0, "hero", "abc40001"],
+      ["normal", "clear", 40, 1, "legend", "abc40002"],
+      ["intermediate", "clear", 40, 5, "legend", "abc40003"],
+    ];
+    let startMs = Date.parse("2026-06-20T00:00:00.000Z");
+    for (const [difficulty, result, round, legends, maxGrade, checksum] of sessions) {
+      appendSession(out, {
+        difficulty,
+        minutes: 12,
+        result,
+        round,
+        legends,
+        maxGrade,
+        checksum,
+        startedAt: new Date(startMs).toISOString(),
+      });
+      startMs += 13 * 60_000;
+    }
+
+    const failed = runManualPlaylogFailure([
+      `--out=${out}`,
+      "--start-next",
+      "--difficulty=master",
+      "--seed=WRONG-MID-SEED",
+      "--startedAt=2026-06-20T02:30:00.000Z",
+    ]);
+    const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+
+    expect(failed.status).toBe(1);
+    expect(failed.stderr).toContain("다음 필요 세션은 expert 난이도입니다");
+    expect(failed.stderr).toContain("--difficulty=master로 시작할 수 없습니다");
+    expect(pending.pending).toHaveLength(0);
+  });
+
   it("start-next는 채워진 목표 다음 세션의 마무리 템플릿을 목표 조건에 맞춘다", () => {
     const out = makeTempPath("start-next-after-novice.json");
     appendSession(out, {
