@@ -199,8 +199,9 @@ function pendingManualEvidence(pendingSessions) {
       const stage = s.stage ?? "?";
       const seed = s.seed ?? "?";
       const startedAt = s.startedAt ?? "시작없음";
-      const finish = ` finish=${s.finishCommandTemplate ?? pendingFinishCommandTemplate(s)}`;
-      return `${id} ${difficulty} stage=${stage} seed=${seed} startedAt=${startedAt}${finish}`;
+      const finish = s.finishCommandTemplate ?? pendingFinishCommandTemplate(s);
+      const dryRunFinish = s.finishDryRunCommandTemplate ?? `${finish} --dry-run`;
+      return `${id} ${difficulty} stage=${stage} seed=${seed} startedAt=${startedAt} dryRunFinish=${dryRunFinish} finish=${finish}`;
     })
     .join("; ");
 }
