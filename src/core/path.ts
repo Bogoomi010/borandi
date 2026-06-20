@@ -1,5 +1,5 @@
 // 전투판 경로와 유닛 배치 (논리 좌표계 960x560)
-// 적 경로는 선택한 스테이지 waypoint 루프를 따른다. 적은 끝에 닿으면 계속 순환한다.
+// 적 경로는 새 게임에서 선택한 맵의 waypoint 루프를 따른다. 적은 끝에 닿으면 계속 순환한다.
 // 아군 유닛은 공통 활동 영역 안에서만 움직인다.
 
 import { stageById } from "../data/stages";
@@ -78,7 +78,7 @@ export function clampToField(x: number, y: number): { x: number; y: number } {
   };
 }
 
-/** 루프 거리(dist)에 해당하는 경로 좌표. dist는 스테이지 경로 둘레로 wrap된다. */
+/** 루프 거리(dist)에 해당하는 경로 좌표. dist는 선택 맵 경로 둘레로 wrap된다. */
 export function posAtDist(dist: number, stageId = 1): { x: number; y: number } {
   const path = pathForStage(stageId);
   let d = dist % path.length;

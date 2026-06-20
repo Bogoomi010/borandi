@@ -7,12 +7,13 @@ import { UNIT_BY_ID } from "../data/units";
 import { analyzeRecipes, bossOutlook } from "../core/advisor";
 import { MISSION_BY_ID } from "../data/missions";
 import { waveForRound, FINAL_ROUND, BOSS_ROUND_LIST } from "../data/waves";
-import { stageById } from "../data/stages";
+import { FINAL_STAGE, stageById } from "../data/stages";
 import { UPGRADES, upgradeCost } from "../data/upgrades";
 import { SUMMON_COST, SELL_REFUND, DIFFICULTY_BY_ID } from "../data/difficulty";
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
 import { openManualProofGuideModal, openSelectorModal } from "./modals";
 import { MANUAL_PROOF_TARGET_SECONDS, manualProofRemainingSeconds, manualProofTargetFor } from "../core/manualProof";
+import { loadProfile } from "./settings";
 
 // ---------- 상단 상태바 ----------
 
@@ -28,6 +29,7 @@ export function renderTopbar(ctx: AppCtx) {
   root.innerHTML = "";
   const s = ctx.game.state;
   const diff = DIFFICULTY_BY_ID[s.difficulty];
+  const unlockedStage = Math.max(1, Math.min(loadProfile().unlockedStage, FINAL_STAGE));
 
   const stat = (label: string, value: string, cls = "") => {
     const d = el("div", "stat");
@@ -39,6 +41,7 @@ export function renderTopbar(ctx: AppCtx) {
   const stage = stageById(s.stageId);
   root.appendChild(stat("맵", `${stage.id}. ${stage.name}`));
   root.appendChild(stat("현재 판", "선택 맵 고정 · 40R 보스까지", "mapgoal"));
+  root.appendChild(stat("맵권한", `1~${unlockedStage} 선택 가능`));
   root.appendChild(stat("라운드", `${Math.min(s.round, FINAL_ROUND)}/${FINAL_ROUND}`));
   root.appendChild(stat("적 누적", `${s.enemies.length}/${ctx.game.enemyLimit()}`, "life"));
   root.appendChild(stat("골드", String(s.gold), "gold"));

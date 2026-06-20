@@ -600,6 +600,7 @@ function renderGameToText(): string {
       current: s.stageId,
       name: stage.name,
       ground: stage.ground,
+      progressionModel: "choose_one_map_at_new_game_start_then_unlock_next_map_permission_after_round_40_boss",
       fixedForRun: true,
       currentRunMapLocked: true,
       runGoal: "selected_map_round_1_to_40_final_boss",
@@ -611,6 +612,7 @@ function renderGameToText(): string {
       decorationCount: stage.decorations.length,
     },
     map: {
+      progressionContract: "choose map once at new game start; play same map through 40R boss; clearing final boss unlocks next map selection permission for a later new game",
       selectedAtNewGameStart: true,
       fixedUntilFinalBossRound: 40,
       fixedForRounds: "1-40",
