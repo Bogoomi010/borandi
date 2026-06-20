@@ -393,6 +393,18 @@ describe("manual-playlog plan", () => {
     expect(summary.targetRowsPassed).toBe(0);
     expect(summary.targetRowsTotal).toBe(6);
     expect(summary.targetRowsRemaining).toBe(6);
+    expect(summary.commandTemplates).toMatchObject({
+      preflight: `yarn manual-playlog --preflight --out=${shellArg(out)}`,
+      preflightJson: `yarn --silent manual-playlog --preflight-json --out=${shellArg(out)}`,
+      plan: `yarn manual-playlog --plan --out=${shellArg(out)}`,
+      planJson: `yarn --silent manual-playlog --plan-json --out=${shellArg(out)}`,
+      summary: `yarn manual-playlog --summary --out=${shellArg(out)}`,
+      summaryJson: `yarn --silent manual-playlog --summary-json --out=${shellArg(out)}`,
+      next: `yarn manual-playlog --next --out=${shellArg(out)}`,
+      nextJson: `yarn --silent manual-playlog --next-json --out=${shellArg(out)}`,
+      startNext: `yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
+      startNextDryRun: `yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`,
+    });
     expect(text).toContain("추천 시작 검증:");
     expect(text).toContain("yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
     expect(text).toContain("--dry-run");

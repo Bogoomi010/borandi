@@ -530,7 +530,23 @@ function buildSummary() {
     passed: rows.every((row) => row.pass),
   };
   summary.next = buildNextFromSummary(summary).next;
+  summary.commandTemplates = manualProofCommandTemplates(summary.next);
   return summary;
+}
+
+function manualProofCommandTemplates(next) {
+  return {
+    preflight: manualPreflightCommandTemplate(),
+    preflightJson: `yarn --silent manual-playlog --preflight-json${outPathArg()}`,
+    plan: manualPlanCommandTemplate(),
+    planJson: `yarn --silent manual-playlog --plan-json${outPathArg()}`,
+    summary: `yarn manual-playlog --summary${outPathArg()}`,
+    summaryJson: `yarn --silent manual-playlog --summary-json${outPathArg()}`,
+    next: `yarn manual-playlog --next${outPathArg()}`,
+    nextJson: `yarn --silent manual-playlog --next-json${outPathArg()}`,
+    startNext: next?.startNextCommandTemplate ?? "",
+    startNextDryRun: next?.startNextDryRunCommandTemplate ?? "",
+  };
 }
 
 function buildPlan() {
