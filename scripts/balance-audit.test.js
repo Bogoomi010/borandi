@@ -86,7 +86,7 @@ function completeBrowser() {
 }
 
 function directScenario(id, clearRate, avgRound, avgPressureRatio, avgLegendOrBetter) {
-  return { id, clearRate, avgRound, avgPressureRatio, avgLegendOrBetter };
+  return { id, clearRate, avgRound, avgPressureRatio, avgLegendOrBetter, avgClearedLegendOrBetter: avgLegendOrBetter };
 }
 
 function completeDirect({ seeds = 6 } = {}) {
@@ -112,7 +112,7 @@ function completeDirect({ seeds = 6 } = {}) {
       { label: "일반 직접 플레이 표본", pass: true },
       { label: "중급자 직접 플레이 표본", pass: true },
       { label: "중급자 직접 플레이 표본은 제한 없음", pass: true },
-      { label: "고수 직접 플레이 표본", pass: true },
+      { label: "고수 직접 플레이 표본은 중급자 5전설보다 높은 성장 필요", pass: true },
       { label: "초고수 직접 플레이 표본", pass: true },
     ],
   };
@@ -299,6 +299,35 @@ describe("balance-audit assert", () => {
     expect(failed.stdout).toContain("브라우저 직접 플레이형 자동 표본 범위 | MISSING | 9/10 target scenarios");
     expect(failed.stdout).toContain("브라우저 직접: 중급자 제한 없음 안정권 | MISSING");
     expect(failed.stderr).toContain("브라우저 직접 플레이형 자동 표본 범위");
+  });
+
+  it("브라우저 직접 고수 증거는 중급자 5전설보다 높은 클리어 성장치를 요구한다", () => {
+    const direct = completeDirect();
+    for (const item of direct.scenarios) {
+      if (item.id === "expertOpen") {
+        item.avgLegendOrBetter = 5.4;
+        item.avgClearedLegendOrBetter = 5.4;
+      }
+    }
+    const paths = {
+      balance: writeJson("balance.json", completeBalance()),
+      browser: writeJson("browser.json", completeBrowser()),
+      direct: writeJson("direct.json", direct),
+      manual: writeJson("manual.json", completeManual()),
+    };
+
+    const failed = runAuditFailure([
+      `--balance=${paths.balance}`,
+      `--browser=${paths.browser}`,
+      `--direct=${paths.direct}`,
+      `--manual=${paths.manual}`,
+      "--assert",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stdout).toContain("브라우저 직접: 고수는 5전설보다 높은 성장 필요 | FAIL");
+    expect(failed.stdout).toContain("클리어런 평균 전설 5.4");
+    expect(failed.stderr).toContain("브라우저 직접: 고수는 5전설보다 높은 성장 필요");
   });
 
   it("관찰 배열이 없는 직접 입력 증거도 중급자 5전설 클리어권 기준을 요구한다", () => {

@@ -100,7 +100,7 @@ function directObservation(direct, labelPrefix) {
 
 function directText(scenario) {
   if (!scenario) return "n/a";
-  return `${pct(Number(scenario.clearRate ?? 0))}, 평균 ${Number(scenario.avgRound ?? 0).toFixed(1)}R, 평균 전설 ${Number(scenario.avgLegendOrBetter ?? 0).toFixed(1)}, 압박 ${pct(Number(scenario.avgPressureRatio ?? 0))}`;
+  return `${pct(Number(scenario.clearRate ?? 0))}, 평균 ${Number(scenario.avgRound ?? 0).toFixed(1)}R, 평균 전설 ${Number(scenario.avgLegendOrBetter ?? 0).toFixed(1)}, 클리어런 평균 전설 ${Number(scenario.avgClearedLegendOrBetter ?? scenario.avgLegendOrBetter ?? 0).toFixed(1)}, 압박 ${pct(Number(scenario.avgPressureRatio ?? 0))}`;
 }
 
 function directBetterThan(base, improved) {
@@ -115,6 +115,10 @@ function directClearAccess(scenario, { minClearRate = 0.5, minAvgRound = 39.5, m
     Number(scenario.clearRate ?? 0) >= minClearRate ||
     (Number(scenario.avgRound ?? 0) >= minAvgRound && Number(scenario.avgPressureRatio ?? 1) < maxPressureRatio)
   );
+}
+
+function directClearedLegendAverage(scenario) {
+  return Number(scenario?.avgClearedLegendOrBetter ?? scenario?.avgLegendOrBetter ?? 0);
 }
 
 function manualMinutes(manual) {
@@ -650,9 +654,14 @@ function buildRows(balance, browser, direct, manual, codex) {
     Number(directIntermediateOpen.clearRate ?? 0) >= Number(directIntermediateFive.clearRate ?? 1) &&
     Number(directIntermediateOpen.avgPressureRatio ?? 1) <= Number(directIntermediateFive.avgPressureRatio ?? 0) &&
     (directIntermediateOpenObservation ?? true);
-  const directExpertPass = directObservation(direct, "고수 직접 플레이 표본")?.pass ??
-    (!!directExpertFive && Number(directExpertFive.clearRate ?? 1) <= 0.1 &&
-      directClearAccess(directExpertOpen) && directBetterThan(directExpertFive, directExpertOpen));
+  const directExpertObservation = directObservation(direct, "고수 직접 플레이 표본")?.pass;
+  const directExpertGrowthPass = !!directIntermediateFive && !!directExpertOpen &&
+    directClearedLegendAverage(directExpertOpen) >= Math.max(6, directClearedLegendAverage(directIntermediateFive) + 1);
+  const directExpertPass = !!directExpertFive && Number(directExpertFive.clearRate ?? 1) <= 0.1 &&
+    directClearAccess(directExpertOpen) &&
+    directBetterThan(directExpertFive, directExpertOpen) &&
+    directExpertGrowthPass &&
+    (directExpertObservation ?? true);
   const directMasterObservation = directObservation(direct, "초고수 직접 플레이 표본");
   const directMasterPass = !!directMaster &&
     Number(directMaster.clearRate ?? 1) === 0 &&
@@ -683,9 +692,9 @@ function buildRows(balance, browser, direct, manual, codex) {
   });
   rows.push({
     req: "브라우저 직접: 고수는 5전설보다 높은 성장 필요",
-    evidence: `5전설 ${directText(directExpertFive)}; 제한 없음 ${directText(directExpertOpen)}`,
+    evidence: `중급 5전설 ${directText(directIntermediateFive)}; 고수 5전설 ${directText(directExpertFive)}; 고수 제한 없음 ${directText(directExpertOpen)}`,
     pass: directExpertPass,
-    missing: !direct || !directExpertFive || !directExpertOpen,
+    missing: !direct || !directIntermediateFive || !directExpertFive || !directExpertOpen,
   });
   rows.push({
     req: "브라우저 직접: 초고수 클리어 접근 차단",

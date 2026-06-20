@@ -455,8 +455,15 @@ async function playScenarioSeed(page, scenario, seedIndex) {
 
 function summarizeScenario(scenario, runs) {
   const clearCount = runs.filter((r) => r.final.cleared).length;
+  const clearedRuns = runs.filter((r) => r.final.cleared);
   const avgRound = runs.reduce((sum, r) => sum + r.final.round, 0) / runs.length;
   const avgLegend = runs.reduce((sum, r) => sum + r.final.unitSummary.legendOrBetter, 0) / runs.length;
+  const avgClearedLegend = clearedRuns.length > 0
+    ? clearedRuns.reduce((sum, r) => sum + r.final.unitSummary.legendOrBetter, 0) / clearedRuns.length
+    : 0;
+  const avgClearedRound = clearedRuns.length > 0
+    ? clearedRuns.reduce((sum, r) => sum + r.final.round, 0) / clearedRuns.length
+    : 0;
   const totalSimulatedSeconds = runs.reduce((sum, r) => sum + r.simulatedSeconds, 0);
   const avgPressureRatio = runs.reduce((sum, r) => {
     const [current, limit] = r.final.pressure.split("/").map((v) => Number(v));
@@ -471,6 +478,8 @@ function summarizeScenario(scenario, runs) {
     clearRate: clearCount / runs.length,
     avgRound,
     avgLegendOrBetter: avgLegend,
+    avgClearedLegendOrBetter: avgClearedLegend,
+    avgClearedRound,
     totalSimulatedSeconds,
     avgSimulatedSeconds: totalSimulatedSeconds / runs.length,
     avgPressureRatio,
@@ -558,13 +567,14 @@ function evaluateObservations(results) {
   }
   if (expertFiveLegend && expertOpen) {
     gates.push({
-      label: "고수 직접 플레이 표본은 5전설보다 제한 없음이 유리",
+      label: "고수 직접 플레이 표본은 중급자 5전설보다 높은 성장 필요",
       pass: expertFiveLegend.clearRate <= 0.1 &&
         clearAccess(expertOpen) &&
+        expertOpen.avgClearedLegendOrBetter >= Math.max(6, (intermediateFiveLegend?.avgClearedLegendOrBetter ?? intermediateFiveLegend?.avgLegendOrBetter ?? 5) + 1) &&
         (expertOpen.clearRate > expertFiveLegend.clearRate ||
           expertOpen.avgRound >= expertFiveLegend.avgRound + 1 ||
           expertOpen.avgPressureRatio < expertFiveLegend.avgPressureRatio),
-      detail: `5전설 ${pct(expertFiveLegend.clearRate)} ${expertFiveLegend.avgRound.toFixed(1)}R 압박 ${pct(expertFiveLegend.avgPressureRatio)}, 제한 없음 ${pct(expertOpen.clearRate)} ${expertOpen.avgRound.toFixed(1)}R 압박 ${pct(expertOpen.avgPressureRatio)}`,
+      detail: `고수 5전설 ${pct(expertFiveLegend.clearRate)} ${expertFiveLegend.avgRound.toFixed(1)}R 압박 ${pct(expertFiveLegend.avgPressureRatio)}, 고수 제한 없음 ${pct(expertOpen.clearRate)} ${expertOpen.avgRound.toFixed(1)}R 클리어런 평균 전설 ${expertOpen.avgClearedLegendOrBetter.toFixed(1)}, 중급자 5전설 클리어런 평균 전설 ${(intermediateFiveLegend?.avgClearedLegendOrBetter ?? intermediateFiveLegend?.avgLegendOrBetter ?? 0).toFixed(1)}`,
     });
   }
   if (masterOpen) {
