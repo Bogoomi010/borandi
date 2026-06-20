@@ -42,6 +42,7 @@ function scenario(id, difficulty, clearRate) {
 
 function completeBalance() {
   return {
+    seeds: 50,
     scenarios: [
       scenario("noviceHero", "novice", 1),
       scenario("normalNoLegend", "normal", 0.05),
@@ -207,6 +208,7 @@ describe("balance-audit assert", () => {
     ]);
 
     expect(output).toContain("목표 완료 여부: 감사표 기준으로 모든 항목이 충족되었다.");
+    expect(output).toContain("입문자: 전설 없이 클리어 가능 | PASS | 50시드 전설 없음 100.0%");
     expect(output).toContain("다음 수동 플레이 세션 | PASS | 필요 없음 - 수동 플레이 증거 목표 충족");
   });
 

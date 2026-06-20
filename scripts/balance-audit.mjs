@@ -422,6 +422,7 @@ function startNextCommandTemplate(step) {
 
 function buildRows(balance, browser, direct, manual) {
   const rows = [];
+  const balanceSeedText = `${balance?.seeds ?? "?"}시드`;
   const difficulties = new Set((balance?.scenarios ?? []).map((s) => s.difficulty));
   rows.push({
     req: "난이도 5종",
@@ -432,7 +433,7 @@ function buildRows(balance, browser, direct, manual) {
   const novice = clearRate(balance, "noviceHero");
   rows.push({
     req: "입문자: 전설 없이 클리어 가능",
-    evidence: `30시드 전설 없음 ${rateText(balance, "noviceHero")}`,
+    evidence: `${balanceSeedText} 전설 없음 ${rateText(balance, "noviceHero")}`,
     pass: typeof novice === "number" && novice >= 0.9,
   });
 
