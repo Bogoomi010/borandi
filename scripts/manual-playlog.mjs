@@ -580,6 +580,9 @@ function printSummary() {
     for (const session of summary.pending) {
       console.log(`  - ${session.id}: ${session.difficulty} stage=${session.stage} seed=${session.seed} startedAt=${session.startedAt}`);
       console.log(`    경과: ${pendingTimingLabel(session)}`);
+      if (session.finishDryRunCommandTemplate) {
+        console.log(`    저장 전 검증 템플릿: ${session.finishDryRunCommandTemplate}`);
+      }
       if (session.finishCommandTemplate) {
         console.log(`    마무리 템플릿: ${session.finishCommandTemplate}`);
       }
@@ -727,6 +730,9 @@ function printPreflight() {
     for (const session of summary.pending) {
       console.log(`  - ${session.id}: ${session.difficulty} stage=${session.stage} seed=${session.seed} startedAt=${session.startedAt}`);
       console.log(`    경과: ${pendingTimingLabel(session)}`);
+      if (session.finishDryRunCommandTemplate) {
+        console.log(`    저장 전 검증 템플릿: ${session.finishDryRunCommandTemplate}`);
+      }
       if (session.finishCommandTemplate) {
         console.log(`    마무리 템플릿: ${session.finishCommandTemplate}`);
       }
@@ -821,11 +827,15 @@ function pendingTimingLabel(session) {
 function pendingSessionWithCommands(session) {
   const id = String(session.id ?? "");
   const timing = pendingTiming(session.startedAt);
+  const next = targetPlanForPendingSession(session);
   return {
     ...session,
     ...timing,
     finishCommandTemplate: id
-      ? finishCommandTemplate({ id, next: targetPlanForPendingSession(session) })
+      ? finishCommandTemplate({ id, next })
+      : "",
+    finishDryRunCommandTemplate: id
+      ? finishDryRunCommandTemplate({ id, next })
       : "",
   };
 }
@@ -879,6 +889,9 @@ function printPending() {
   for (const session of pending.pending) {
     console.log(`- ${session.id}: ${session.difficulty} stage=${session.stage} seed=${session.seed} startedAt=${session.startedAt}`);
     console.log(`  경과: ${pendingTimingLabel(session)}`);
+    if (session.finishDryRunCommandTemplate) {
+      console.log(`  저장 전 검증 템플릿: ${session.finishDryRunCommandTemplate}`);
+    }
     if (session.finishCommandTemplate) {
       console.log(`  마무리 템플릿: ${session.finishCommandTemplate}`);
     }
@@ -959,6 +972,10 @@ function finishCommandTemplate({ id, next }) {
   ].join(" ") + outPathArg();
 }
 
+function finishDryRunCommandTemplate({ id, next }) {
+  return `${finishCommandTemplate({ id, next })} --dry-run`;
+}
+
 function savePendingSession({ difficulty, stage, seed, startedAt, id, notes }) {
   const log = readJson(outPath);
   log.schemaVersion = 1;
@@ -992,7 +1009,10 @@ function printStartSaved({ id, startedAt, next }) {
   console.log(`- id: ${id}`);
   console.log(`- 시작: ${startedAt.toISOString()}`);
   console.log("");
-  console.log("결과가 나오면 아래 형식으로 마무리하세요. RESULT_ENDED_AT은 결과 화면의 종료 시각을 사용하세요:");
+  console.log("결과가 나오면 먼저 아래 형식으로 저장 전 검증을 실행하세요:");
+  console.log(finishDryRunCommandTemplate({ id, next }));
+  console.log("");
+  console.log("검증이 통과하면 아래 형식으로 실제 저장하세요. RESULT_ENDED_AT은 결과 화면의 종료 시각을 사용하세요:");
   console.log(finishCommandTemplate({ id, next }));
 }
 

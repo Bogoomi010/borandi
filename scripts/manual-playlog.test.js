@@ -473,6 +473,10 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("- 목표: 입문자 무전설 40R 클리어");
     expect(output).toContain("- 플레이 조건: 전설 없이 40R 최종 보스 클리어");
     expect(output).toContain("- 기록 조건: result=clear round=40 legends=0 maxGrade=hero 이하");
+    expect(output).toContain("결과가 나오면 먼저 아래 형식으로 저장 전 검증을 실행하세요");
+    expect(output).toContain("yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT");
+    expect(output).toContain("--dry-run");
+    expect(output).toContain("검증이 통과하면 아래 형식으로 실제 저장하세요");
     expect(output).toContain("yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero");
     expect(output).toContain("--dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM");
     expect(output).toContain("--endedAt=RESULT_ENDED_AT");
@@ -487,6 +491,7 @@ describe("manual-playlog plan", () => {
       notes: "입문자 무전설 40R 클리어",
       startedAt: "2026-06-20T02:00:00.000Z",
       finishCommandTemplate: `yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT --out=${shellArg(out)}`,
+      finishDryRunCommandTemplate: `yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT --out=${shellArg(out)} --dry-run`,
     });
   });
 
@@ -882,14 +887,20 @@ describe("manual-playlog plan", () => {
       seed: "PENDING-SEED",
     });
     expect(pending.pending[0].finishCommandTemplate).toContain("yarn manual-playlog --finish='normal-run-1'");
+    expect(pending.pending[0].finishDryRunCommandTemplate).toContain("yarn manual-playlog --finish='normal-run-1'");
+    expect(pending.pending[0].finishDryRunCommandTemplate).toContain("--dry-run");
     expect(pending.pending[0].finishCommandTemplate).toContain("--round=ROUND_REACHED");
-    expect(runManualPlaylog([`--out=${out}`, "--pending"])).toContain("마무리 템플릿: yarn manual-playlog --finish='normal-run-1'");
+    const pendingText = runManualPlaylog([`--out=${out}`, "--pending"]);
+    expect(pendingText).toContain("저장 전 검증 템플릿: yarn manual-playlog --finish='normal-run-1'");
+    expect(pendingText).toContain("마무리 템플릿: yarn manual-playlog --finish='normal-run-1'");
     expect(summaryBeforeFinish.pendingCount).toBe(1);
     expect(summaryBeforeFinish.pending[0].finishCommandTemplate).toContain("yarn manual-playlog --finish='normal-run-1'");
+    expect(summaryBeforeFinish.pending[0].finishDryRunCommandTemplate).toContain("--dry-run");
     expect(planBeforeFinish.current.pendingCount).toBe(1);
     const summaryText = runManualPlaylog([`--out=${out}`, "--summary"]);
     expect(summaryText).toContain("PENDING 아직 finish되지 않은 시작 마커");
     expect(summaryText).toContain("경과: 12분 목표 충족");
+    expect(summaryText).toContain("저장 전 검증 템플릿: yarn manual-playlog --finish='normal-run-1'");
     expect(summaryText).toContain("마무리 템플릿: yarn manual-playlog --finish='normal-run-1'");
 
     const finishOutput = runManualPlaylog([
