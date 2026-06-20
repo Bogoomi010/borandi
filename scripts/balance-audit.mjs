@@ -360,6 +360,7 @@ function hasValidManualTiming(session) {
 }
 
 function hasCompleteManualMetadata(session) {
+  const source = String(session.source ?? "human-playtest");
   const difficulty = String(session.difficulty ?? "");
   const result = sessionResult(session);
   const stage = Number(session.stage);
@@ -369,6 +370,7 @@ function hasCompleteManualMetadata(session) {
   const seed = String(session.seed ?? "");
   const dataVersion = String(session.dataVersion ?? "");
   const stateChecksum = String(session.stateChecksum ?? "");
+  const inputCount = Number(session.inputCount ?? 0);
   return ["novice", "normal", "intermediate", "expert", "master"].includes(difficulty) &&
     ["clear", "cleared", "win", "won", "victory", "loss", "lose", "lost", "fail", "failed", "defeat", "quit"].includes(result) &&
     isValidStageId(stage) &&
@@ -379,7 +381,8 @@ function hasCompleteManualMetadata(session) {
     ["common", "rare", "hero", "legend", "hidden"].includes(maxGrade) &&
     seed.length > 0 &&
     dataVersion.length > 0 &&
-    /^[0-9a-f]{8}$/i.test(stateChecksum);
+    /^[0-9a-f]{8}$/i.test(stateChecksum) &&
+    (source !== "human-playtest" || (Number.isFinite(inputCount) && inputCount >= 1));
 }
 
 function isLegendMetadataConsistent(maxGrade, legends) {

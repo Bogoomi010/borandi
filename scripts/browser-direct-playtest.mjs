@@ -170,6 +170,7 @@ function manualPlaylogCommand({ scenario, seed, simulatedSeconds, final, endedAt
     `--seed=${shellArg(session.seed)}`,
     `--legends=${session.legends}`,
     `--maxGrade=${shellArg(session.maxGrade)}`,
+    `--inputCount=${session.inputCount}`,
     `--dataVersion=${shellArg(session.dataVersion)}`,
     `--stateChecksum=${shellArg(session.stateChecksum)}`,
     `--endedAt=${shellArg(session.endedAt)}`,
@@ -196,6 +197,7 @@ function codexDirectSession({ scenario, seed, simulatedSeconds, final, endedAt }
     seed,
     legends,
     maxGrade,
+    inputCount: Number(final.inputCount ?? 0),
     dataVersion: final.dataVersion,
     stateChecksum: final.stateChecksum,
     notes,
@@ -432,6 +434,7 @@ async function playScenarioSeed(page, scenario, seedIndex) {
     cleared: finalState.cleared,
     pressure: `${finalState.resources.enemyPressure}/${finalState.resources.enemyLimit}`,
     gold: finalState.resources.gold,
+    inputCount: finalState.inputCount,
     unitSummary: finalState.unitSummary,
     boss: finalState.boss,
   };

@@ -168,6 +168,7 @@ export function manualPlaylogCommand(r: ResultSummary): string {
     `--maxGrade=${r.maxGrade}`,
     `--dataVersion=${shellArg(r.dataVersion)}`,
     `--stateChecksum=${shellArg(r.stateChecksum)}`,
+    `--inputCount=${r.inputCount}`,
   ];
   if (r.manualStartedAt) args.push(`--startedAt=${shellArg(r.manualStartedAt)}`);
   if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
@@ -192,6 +193,7 @@ export function manualPlaylogFinishCommand(r: ResultSummary): string {
     `--maxGrade=${r.maxGrade}`,
     `--dataVersion=${shellArg(r.dataVersion)}`,
     `--stateChecksum=${shellArg(r.stateChecksum)}`,
+    `--inputCount=${r.inputCount}`,
   ];
   if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
   args.push(`--notes=${shellArg(manualProofResultLogNote(r))}`);
@@ -213,6 +215,7 @@ export function manualPlaylogFinishLatestCommand(r: ResultSummary): string {
     `--maxGrade=${r.maxGrade}`,
     `--dataVersion=${shellArg(r.dataVersion)}`,
     `--stateChecksum=${shellArg(r.stateChecksum)}`,
+    `--inputCount=${r.inputCount}`,
   ];
   if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
   args.push(`--notes=${shellArg(manualProofResultLogNote(r))}`);
@@ -266,6 +269,7 @@ export function buildReportMarkdown(r: ResultSummary): string {
     `- 전설/히든: ${r.legendCount}/${r.hiddenCount}`,
     `- 미션: ${r.missionsDone}/${r.missionsTotal}`,
     `- 조합 ${r.craftCount}회 · 3합성 ${r.merge3Count}회 · 보정 발동 ${r.pityTriggered}회`,
+    `- 플레이 입력: ${r.inputCount}회${Object.keys(r.inputCounts).length > 0 ? ` (${Object.entries(r.inputCounts).map(([type, count]) => `${type} ${count}`).join(", ")})` : ""}`,
     ...(r.wallSeconds ? [`- 실제 플레이 시간: ${(r.wallSeconds / 60).toFixed(1)}분`] : []),
     ...(r.wallSeconds ? [`- 수동 증거 판정: ${proofTarget}`] : []),
     ``,
@@ -602,6 +606,7 @@ function appendManualResultFieldChecklist(body: HTMLElement, target?: ManualProo
     ["endedAt", "결과 화면 RESULT_ENDED_AT", "실제 종료 시각"],
     ["dataVersion", "결과 화면 RESULT_DATA_VERSION", DATA_VERSION],
     ["stateChecksum", "결과 화면 RESULT_CHECKSUM", "8자리 checksum"],
+    ["inputCount", "결과 화면 플레이 입력 수", "1 이상"],
     ["result", "결과 화면 클리어/실패 상태", expected.result],
     ["round", "결과 화면 도달 라운드", expected.round],
     ["legends", "결과 화면 전설 이상 수", expected.legends],

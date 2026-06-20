@@ -665,6 +665,7 @@ function renderGameToText(): string {
     dataVersion: s.dataVersion,
     seed: s.seed,
     stateChecksum: currentStateChecksum,
+    inputCount: s.inputHistory.length,
     difficulty: { id: s.difficulty, name: game.diff.name },
     stage: {
       current: s.stageId,
@@ -715,6 +716,7 @@ function renderGameToText(): string {
             dataVersion: s.dataVersion,
             currentStateChecksum,
             startedAt: ctx.runStartedAt,
+            inputCount: s.inputHistory.length,
           }
         : null,
     },

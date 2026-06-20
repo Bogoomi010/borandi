@@ -13,7 +13,10 @@ function makeTempPath(name) {
 }
 
 function runManualPlaylog(args) {
-  return execFileSync(process.execPath, ["scripts/manual-playlog.mjs", ...args], {
+  const needsInputCount = args.some((arg) => arg === "--finish" || arg === "--finish-latest" || arg.startsWith("--finish=") || arg.startsWith("--result="));
+  const hasInputCount = args.some((arg) => arg.startsWith("--inputCount="));
+  const normalizedArgs = needsInputCount && !hasInputCount ? [...args, "--inputCount=1"] : args;
+  return execFileSync(process.execPath, ["scripts/manual-playlog.mjs", ...normalizedArgs], {
     cwd: process.cwd(),
     encoding: "utf8",
   });
@@ -552,6 +555,7 @@ describe("manual-playlog plan", () => {
           maxGrade: "hero",
           dataVersion: CURRENT_DATA_VERSION,
           stateChecksum: "bad00001",
+          inputCount: 4,
         },
         {
           source: "human-playtest",
@@ -567,6 +571,7 @@ describe("manual-playlog plan", () => {
           maxGrade: "hero",
           dataVersion: CURRENT_DATA_VERSION,
           stateChecksum: "bad00002",
+          inputCount: 4,
         },
         {
           source: "human-playtest",
@@ -582,6 +587,7 @@ describe("manual-playlog plan", () => {
           maxGrade: "legend",
           dataVersion: CURRENT_DATA_VERSION,
           stateChecksum: "bad00002",
+          inputCount: 4,
         },
       ],
     }, null, 2), "utf8");
@@ -644,6 +650,7 @@ describe("manual-playlog plan", () => {
           maxGrade: "hero",
           dataVersion: "0.0.0",
           stateChecksum: "bad00003",
+          inputCount: 4,
         },
       ],
     }, null, 2), "utf8");
@@ -759,11 +766,11 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("- 플레이 조건: 전설 없이 40R 최종 보스 클리어");
     expect(output).toContain("- 기록 조건: result=clear round=40 legends=0 maxGrade=hero 이하");
     expect(output).toContain("결과가 나오면 먼저 아래 형식으로 저장 전 검증을 실행하세요");
-    expect(output).toContain("yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT");
+    expect(output).toContain("yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --endedAt=RESULT_ENDED_AT");
     expect(output).toContain("--dry-run");
     expect(output).toContain("검증이 통과하면 아래 형식으로 실제 저장하세요");
     expect(output).toContain("yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero");
-    expect(output).toContain("--dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM");
+    expect(output).toContain("--dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT");
     expect(output).toContain("--endedAt=RESULT_ENDED_AT");
     expect(output).toContain("RESULT_ENDED_AT은 결과 화면의 종료 시각을 사용하세요");
     expect(output).not.toContain("dry-run 검증용 임시 id 예시");
@@ -776,8 +783,8 @@ describe("manual-playlog plan", () => {
       seed: "NEXT-SEED",
       notes: "입문자 무전설 40R 클리어",
       startedAt: "2026-06-20T02:00:00.000Z",
-      finishCommandTemplate: `yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT --out=${shellArg(out)}`,
-      finishDryRunCommandTemplate: `yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT --out=${shellArg(out)} --dry-run`,
+      finishCommandTemplate: `yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --endedAt=RESULT_ENDED_AT --out=${shellArg(out)}`,
+      finishDryRunCommandTemplate: `yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --endedAt=RESULT_ENDED_AT --out=${shellArg(out)} --dry-run`,
     });
   });
 
@@ -1158,8 +1165,34 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("- 저장하지 않음: --dry-run");
     expect(output).toContain("- 추가 예정 세션: novice, 15.0분");
     expect(output).toContain("- 상태 체크섬: 20000020");
+    expect(output).toContain("- 플레이 입력 수: 1");
     expect(output).toContain('"seed": "DRY-RUN"');
+    expect(output).toContain('"inputCount": 1');
     expect(existsSync(out)).toBe(false);
+  });
+
+  it("human-playtest 결과 저장은 결과 화면의 플레이 입력 수를 요구한다", () => {
+    const out = makeTempPath("missing-input-count.json");
+
+    const failed = runManualPlaylogFailure([
+      `--out=${out}`,
+      "--dry-run",
+      "--difficulty=novice",
+      "--seconds=900",
+      "--result=clear",
+      "--stage=1",
+      "--round=40",
+      "--seed=NO-INPUT-COUNT",
+      "--legends=0",
+      "--maxGrade=hero",
+      `--dataVersion=${CURRENT_DATA_VERSION}`,
+      "--stateChecksum=20000022",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+      "--endedAt=2026-06-20T02:15:00.000Z",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stderr).toContain("--inputCount 값은 결과 리포트의 성공한 플레이 입력 수");
   });
 
   it("결과 저장은 RESULT_* 및 GAME_SEED_HERE placeholder 값을 저장하지 않는다", () => {

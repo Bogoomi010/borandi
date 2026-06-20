@@ -281,6 +281,8 @@ export interface ResultSummary {
   pityTriggered: number;
   craftCount: number;
   merge3Count: number;
+  inputCount: number;
+  inputCounts: Record<string, number>;
   playedAt: string;
   manualStartedAt?: string;
   wallSeconds?: number;

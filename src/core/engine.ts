@@ -1019,6 +1019,10 @@ export class Game {
         grade: UNIT_BY_ID[u.defId].grade,
         damage: Math.round(u.totalDamage),
       }));
+    const inputCounts = s.inputHistory.reduce<Record<string, number>>((counts, input) => {
+      counts[input.type] = (counts[input.type] ?? 0) + 1;
+      return counts;
+    }, {});
     return {
       seed: s.seed,
       difficultyId: s.difficulty,
@@ -1045,6 +1049,8 @@ export class Game {
       pityTriggered: s.summonStats.pityTriggered,
       craftCount: s.craftCount,
       merge3Count: s.merge3Count,
+      inputCount: s.inputHistory.length,
+      inputCounts,
       playedAt: "",
     };
   }

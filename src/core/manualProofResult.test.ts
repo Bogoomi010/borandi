@@ -35,6 +35,8 @@ function summary(args: {
     pityTriggered: 0,
     craftCount: 0,
     merge3Count: 0,
+    inputCount: 1,
+    inputCounts: { summon: 1 },
     playedAt: "2026-06-20T00:00:00.000Z",
     wallSeconds: args.wallSeconds ?? 12 * 60,
   };
