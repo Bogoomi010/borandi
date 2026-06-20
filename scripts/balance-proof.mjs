@@ -22,6 +22,7 @@ const manualPath = String(args.manual ?? "output/manual-balance-playlog.json");
 const auditPath = String(args.out ?? "output/balance-audit.md");
 const manualSheetPath = String(args["manual-sheet"] ?? "output/manual-balance-play-sheet.md");
 const manualPlanPath = String(args["manual-plan"] ?? "output/manual-balance-play-plan.json");
+const manualPreflightPath = String(args["manual-preflight"] ?? "output/manual-balance-preflight.json");
 const browserScreenshots = String(args.screenshots ?? "output/browser-balance-shots");
 const directScreenshots = String(args["direct-screenshots"] ?? "output/browser-direct-shots");
 const directCodexLog = String(args["direct-codex-log"] ?? "output/codex-direct-playlog.json");
@@ -47,11 +48,12 @@ function run(command, commandArgs, options = {}) {
 
 function runCapture(command, commandArgs, options = {}) {
   return new Promise((resolve, reject) => {
+    const { allowFailure = false, ...spawnOptions } = options;
     console.log(`\n$ ${[command, ...commandArgs].join(" ")}`);
     const child = spawn(command, commandArgs, {
       stdio: ["ignore", "pipe", "inherit"],
       shell: false,
-      ...options,
+      ...spawnOptions,
     });
     let stdout = "";
     child.stdout.on("data", (chunk) => {
@@ -59,7 +61,7 @@ function runCapture(command, commandArgs, options = {}) {
     });
     child.on("error", reject);
     child.on("exit", (code) => {
-      if (code === 0) resolve(stdout);
+      if (code === 0 || allowFailure) resolve(stdout);
       else reject(new Error(`${command} exited with ${code}`));
     });
   });
@@ -71,11 +73,19 @@ function writeTextFile(path, text) {
 }
 
 async function writeManualGuidanceArtifacts() {
+  const manualPreflight = await runCapture("yarn", [
+    "--silent",
+    "manual-playlog",
+    `--out=${manualPath}`,
+    "--preflight-json",
+  ], { allowFailure: true });
+  writeTextFile(manualPreflightPath, manualPreflight);
+  console.log(`\n수동 플레이 preflight JSON 저장: ${manualPreflightPath}`);
   const manualSheet = await runCapture("yarn", [
     "manual-playlog",
     `--out=${manualPath}`,
     "--sheet",
-  ]);
+  ], { allowFailure: true });
   writeTextFile(manualSheetPath, manualSheet);
   console.log(`\n수동 플레이 시트 저장: ${manualSheetPath}`);
   const manualPlan = await runCapture("yarn", [
@@ -83,7 +93,7 @@ async function writeManualGuidanceArtifacts() {
     "manual-playlog",
     `--out=${manualPath}`,
     "--plan-json",
-  ]);
+  ], { allowFailure: true });
   writeTextFile(manualPlanPath, manualPlan);
   console.log(`수동 플레이 계획 JSON 저장: ${manualPlanPath}`);
 }

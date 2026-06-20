@@ -82,6 +82,9 @@ if [ "$1" = "manual-playlog" ]; then
 fi
 if [ "$1" = "--silent" ] && [ "$2" = "manual-playlog" ]; then
   for arg in "$@"; do
+    if [ "$arg" = "--preflight-json" ]; then
+      printf '%s\\n' '{"canStart":true,"remainingMinutes":120,"targetRowsPassed":0,"targetRowsTotal":6}'
+    fi
     if [ "$arg" = "--plan-json" ]; then
       printf '%s\\n' '{"passed":false,"steps":[{"label":"입문자 무전설 40R 클리어"}]}'
     fi
@@ -96,6 +99,7 @@ exit 0
     const directCodexLog = join(tempDir, "codex-direct.json");
     const manualSheet = join(tempDir, "manual-sheet.md");
     const manualPlan = join(tempDir, "manual-plan.json");
+    const manualPreflight = join(tempDir, "manual-preflight.json");
     const result = spawnSync(process.execPath, [
       "scripts/balance-proof.mjs",
       "--host=127.0.0.1",
@@ -110,6 +114,7 @@ exit 0
       `--direct-codex-log=${directCodexLog}`,
       `--manual-sheet=${manualSheet}`,
       `--manual-plan=${manualPlan}`,
+      `--manual-preflight=${manualPreflight}`,
       "--seeds=1",
       "--direct-seeds=1",
     ], {
@@ -127,10 +132,13 @@ exit 0
     expect(calls).toContain(`browser-balance --url=http://127.0.0.1:${port}/ --json=${join(tempDir, "browser.json")} --screenshots=${browserShots}`);
     expect(calls).toContain(`browser-direct --url=http://127.0.0.1:${port}/ --seeds=1 --strict --json=${join(tempDir, "direct.json")} --screenshots=${directShots} --codex-log=${directCodexLog}`);
     expect(calls).toContain(`balance-audit --balance=${join(tempDir, "balance.json")} --browser=${join(tempDir, "browser.json")} --direct=${join(tempDir, "direct.json")} --manual=${join(tempDir, "manual.json")} --codex=${directCodexLog} --out=${join(tempDir, "audit.md")}`);
+    expect(calls).toContain(`--silent manual-playlog --out=${join(tempDir, "manual.json")} --preflight-json`);
     expect(calls).toContain(`manual-playlog --out=${join(tempDir, "manual.json")} --sheet`);
     expect(calls).toContain(`--silent manual-playlog --out=${join(tempDir, "manual.json")} --plan-json`);
+    expect(JSON.parse(readFileSync(manualPreflight, "utf8"))).toMatchObject({ remainingMinutes: 120 });
     expect(readFileSync(manualSheet, "utf8")).toContain("# 수동 밸런스 플레이 시트");
     expect(JSON.parse(readFileSync(manualPlan, "utf8"))).toMatchObject({ passed: false });
+    expect(result.stdout).toContain(`수동 플레이 preflight JSON 저장: ${manualPreflight}`);
     expect(result.stdout).toContain(`수동 플레이 시트 저장: ${manualSheet}`);
     expect(result.stdout).toContain(`수동 플레이 계획 JSON 저장: ${manualPlan}`);
   });
@@ -139,6 +147,7 @@ exit 0
     const manualPath = join(tempDir, "missing-manual.json");
     const manualSheet = join(tempDir, "missing-manual-sheet.md");
     const manualPlan = join(tempDir, "missing-manual-plan.json");
+    const manualPreflight = join(tempDir, "missing-manual-preflight.json");
     const result = spawnSync(process.execPath, [
       "scripts/balance-proof.mjs",
       "--require-complete",
@@ -150,6 +159,7 @@ exit 0
       `--screenshots=${join(tempDir, "shots")}`,
       `--manual-sheet=${manualSheet}`,
       `--manual-plan=${manualPlan}`,
+      `--manual-preflight=${manualPreflight}`,
       "--port=59999",
     ], {
       cwd: process.cwd(),
@@ -159,8 +169,10 @@ exit 0
     expect(result.status).toBe(1);
     expect(result.stdout).toContain("$ yarn manual-playlog");
     expect(result.stdout).not.toContain("$ yarn balance ");
+    expect(JSON.parse(readFileSync(manualPreflight, "utf8"))).toMatchObject({ remainingMinutes: 120 });
     expect(readFileSync(manualSheet, "utf8")).toContain("# 수동 밸런스 플레이 시트");
     expect(JSON.parse(readFileSync(manualPlan, "utf8"))).toMatchObject({ passed: false });
+    expect(result.stdout).toContain(`수동 플레이 preflight JSON 저장: ${manualPreflight}`);
     expect(result.stdout).toContain(`수동 플레이 시트 저장: ${manualSheet}`);
     expect(result.stdout).toContain(`수동 플레이 계획 JSON 저장: ${manualPlan}`);
     expect(result.stderr).toContain(`시작 전 점검: yarn manual-playlog --preflight --out='${manualPath}'`);
