@@ -105,9 +105,16 @@ describe("manual-playlog plan", () => {
       label: "입문자 무전설 40R 클리어",
       minutes: 12,
       startCommandTemplate: "yarn manual-playlog --start --difficulty=novice --stage=1 --seed=GAME_SEED_HERE --notes='입문자 무전설 40R 클리어'",
+      finishTemplate: {
+        result: "clear",
+        round: "40",
+        legends: "0",
+        maxGrade: "hero",
+      },
     });
     const text = runManualPlaylog([`--out=${out}`, "--next"]);
     expect(text).toContain("시작 마커:");
+    expect(text).toContain("마무리 조건: result=clear round=40 legends=0 maxGrade=hero");
     expect(text).toContain("--seed=GAME_SEED_HERE");
   });
 
@@ -187,10 +194,17 @@ describe("manual-playlog plan", () => {
       "--seed=NORMAL-SEED",
       "--startedAt=2026-06-20T02:45:00.000Z",
     ]);
+    const next = JSON.parse(runManualPlaylog([`--out=${out}`, "--next-json"]));
 
     expect(output).toContain("- 목표: 일반 1~2전설 40R 클리어");
     expect(output).toContain("- 기록 조건: result=clear round=40 legends=1~2 maxGrade=legend");
     expect(output).toContain("yarn manual-playlog --finish='normal-1-NORMAL-SEED-20260620T024500000Z' --result=clear --round=40 --legends=1 --maxGrade=legend");
+    expect(next.next.finishTemplate).toEqual({
+      result: "clear",
+      round: "40",
+      legends: "1",
+      maxGrade: "legend",
+    });
   });
 
   it("start-next는 초고수 실패 기록에 40R 고정 마감 템플릿을 쓰지 않는다", () => {
