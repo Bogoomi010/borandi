@@ -109,6 +109,10 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("5. 결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 실행 후 실제 finish 저장");
     expect(output).toContain("전체 수집 계획:");
     expect(output).toContain(`yarn manual-playlog --plan --out=${shellArg(out)}`);
+    expect(output).toContain("결과 기록 필드:");
+    expect(output).toContain("- dataVersion: 결과 화면 RESULT_DATA_VERSION");
+    expect(output).toContain("- stateChecksum: 결과 화면 RESULT_CHECKSUM");
+    expect(output).toContain("- minutes: 시작/종료 시각으로 계산된 실제 플레이 시간 (기대값: 12분 이상)");
     expect(output).toContain("남은 계획 첫 항목:");
     expect(output).toContain("- 입문자 무전설 40R 클리어 (12.0분 이상)");
     expect(output).toContain("판정: 시작 가능");
@@ -132,6 +136,15 @@ describe("manual-playlog plan", () => {
       "일반 1~2전설 40R 클리어",
       "중급자 5전설 이상 40R 클리어",
     ]);
+    expect(preflight.resultFieldChecklist).toEqual(expect.arrayContaining([
+      expect.objectContaining({ field: "dataVersion", source: "결과 화면 RESULT_DATA_VERSION", expected: "0.8.4" }),
+      expect.objectContaining({ field: "stateChecksum", source: "결과 화면 RESULT_CHECKSUM", expected: "8자리 checksum" }),
+      expect.objectContaining({ field: "result", expected: "clear" }),
+      expect.objectContaining({ field: "round", expected: "40" }),
+      expect.objectContaining({ field: "legends", expected: "0" }),
+      expect.objectContaining({ field: "maxGrade", expected: "hero" }),
+      expect.objectContaining({ field: "minutes", expected: "12분 이상" }),
+    ]));
     expect(preflight.startWorkflow).toEqual([
       "게임에서 다음 목표 난이도로 새 게임을 시작하고 상단의 실제 시드를 확인",
       "추천 시작 검증 명령의 GAME_SEED_HERE를 실제 시드로 바꿔 --dry-run 실행",
@@ -405,6 +418,18 @@ describe("manual-playlog plan", () => {
       startNext: `yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
       startNextDryRun: `yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`,
     });
+    expect(summary.resultFieldChecklist).toEqual(expect.arrayContaining([
+      expect.objectContaining({ field: "seed", expected: "실제 게임 시드" }),
+      expect.objectContaining({ field: "startedAt", expected: "실제 시작 시각" }),
+      expect.objectContaining({ field: "endedAt", source: "결과 화면 RESULT_ENDED_AT" }),
+      expect.objectContaining({ field: "dataVersion", expected: "0.8.4" }),
+      expect.objectContaining({ field: "stateChecksum", expected: "8자리 checksum" }),
+      expect.objectContaining({ field: "result", expected: "clear" }),
+      expect.objectContaining({ field: "round", expected: "40" }),
+      expect.objectContaining({ field: "legends", expected: "0" }),
+      expect.objectContaining({ field: "maxGrade", expected: "hero" }),
+      expect.objectContaining({ field: "minutes", expected: "12분 이상" }),
+    ]));
     expect(text).toContain("추천 시작 검증:");
     expect(text).toContain("yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
     expect(text).toContain("--dry-run");

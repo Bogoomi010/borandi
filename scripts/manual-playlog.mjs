@@ -531,6 +531,7 @@ function buildSummary() {
   };
   summary.next = buildNextFromSummary(summary).next;
   summary.commandTemplates = manualProofCommandTemplates(summary.next);
+  summary.resultFieldChecklist = manualResultFieldChecklist(summary.next);
   return summary;
 }
 
@@ -547,6 +548,22 @@ function manualProofCommandTemplates(next) {
     startNext: next?.startNextCommandTemplate ?? "",
     startNextDryRun: next?.startNextDryRunCommandTemplate ?? "",
   };
+}
+
+function manualResultFieldChecklist(next) {
+  const finish = next?.finishTemplate ?? null;
+  return [
+    { field: "seed", source: "새 게임 시작 후 상단 시드 또는 결과 화면", required: true, expected: "실제 게임 시드" },
+    { field: "startedAt", source: "시작 마커 저장 명령 또는 pending 시작 마커", required: true, expected: "실제 시작 시각" },
+    { field: "endedAt", source: "결과 화면 RESULT_ENDED_AT", required: true, expected: "실제 종료 시각" },
+    { field: "dataVersion", source: "결과 화면 RESULT_DATA_VERSION", required: true, expected: CURRENT_DATA_VERSION },
+    { field: "stateChecksum", source: "결과 화면 RESULT_CHECKSUM", required: true, expected: "8자리 checksum" },
+    { field: "result", source: "결과 화면 클리어/실패 상태", required: true, expected: finish?.result ?? "clear 또는 loss" },
+    { field: "round", source: "결과 화면 도달 라운드", required: true, expected: finish?.round ?? "ROUND_REACHED" },
+    { field: "legends", source: "결과 화면 전설 이상 수", required: true, expected: finish?.legends ?? "FINAL_LEGENDS" },
+    { field: "maxGrade", source: "결과 화면 최고 등급", required: true, expected: finish?.maxGrade ?? "MAX_GRADE" },
+    { field: "minutes", source: "시작/종료 시각으로 계산된 실제 플레이 시간", required: true, expected: "12분 이상" },
+  ];
 }
 
 function buildPlan() {
@@ -918,6 +935,11 @@ function printPreflight() {
     console.log("");
     console.log("전체 수집 계획:");
     console.log(preflight.planCommandTemplate);
+    console.log("");
+    console.log("결과 기록 필드:");
+    for (const item of preflight.resultFieldChecklist) {
+      console.log(`- ${item.field}: ${item.source} (기대값: ${item.expected})`);
+    }
     if (preflight.remainingPlanPreview.length > 0) {
       console.log("남은 계획 첫 항목:");
       const first = preflight.remainingPlanPreview[0];
@@ -962,6 +984,7 @@ function buildPreflight() {
     planCommandTemplate: manualPlanCommandTemplate(),
     remainingPlanStepCount: plan.steps.length,
     remainingPlanPreview: plan.steps.slice(0, 3),
+    resultFieldChecklist: summary.resultFieldChecklist,
     startWorkflow: manualStartWorkflow(),
     summary,
   };
