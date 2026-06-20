@@ -9,7 +9,16 @@ import type { AppCtx } from "./ui/ctx";
 import { renderTopbar, renderLeftPanel, renderRightPanel, renderActionbar, renderUnitDetail } from "./ui/panels";
 import { renderMenubar } from "./ui/menu";
 import { toast, anyModalOpen, closeTopModal, confirmModal } from "./ui/widgets";
-import { manualPlaylogCommand, maybeShowResult, openSelectorModal, resetResultShown } from "./ui/modals";
+import {
+  manualPlaylogCommand,
+  manualPlaylogFinishCommand,
+  manualPlaylogFinishLatestCommand,
+  manualPlaylogFinishLatestThenNextCommand,
+  manualPlaylogThenNextCommand,
+  maybeShowResult,
+  openSelectorModal,
+  resetResultShown,
+} from "./ui/modals";
 import { loadSlot, makeSaveRecord, saveSlot } from "./save/saveApi";
 import { loadProfile, loadSettings, playableStageId, profileMarkSeen, profileRecordRun } from "./ui/settings";
 import { GameAudio } from "./ui/audio";
@@ -549,6 +558,10 @@ function renderGameToText(): string {
         start: buildManualStartCommand(manualStartInput),
         startNext: buildManualStartNextCommand(manualStartInput),
         result: null as string | null,
+        resultThenNext: null as string | null,
+        finish: null as string | null,
+        finishLatest: null as string | null,
+        finishLatestThenNext: null as string | null,
       }
     : null;
   if (manualProofCommands && s.phase === "ended") {
@@ -560,6 +573,10 @@ function renderGameToText(): string {
     summary.unlockedNextStage = ctx.lastRunUnlockedNext;
     summary.wallSeconds = Math.max(1, Math.round((endedAtMs - ctx.runStartedAtMs) / 1000));
     manualProofCommands.result = manualPlaylogCommand(summary);
+    manualProofCommands.resultThenNext = manualPlaylogThenNextCommand(summary);
+    manualProofCommands.finish = manualPlaylogFinishCommand(summary);
+    manualProofCommands.finishLatest = manualPlaylogFinishLatestCommand(summary);
+    manualProofCommands.finishLatestThenNext = manualPlaylogFinishLatestThenNextCommand(summary);
   }
   return JSON.stringify({
     coordinateSystem: "board origin top-left, x right, y down, logical size 960x560",

@@ -134,7 +134,7 @@ export function manualPlaylogCommand(r: ResultSummary): string {
   return args.join(" ");
 }
 
-function manualPlaylogFinishCommand(r: ResultSummary): string {
+export function manualPlaylogFinishCommand(r: ResultSummary): string {
   const startedAt = r.manualStartedAt ?? r.playedAt;
   const id = manualStartId(r.difficultyId, r.stageId, r.seed, startedAt);
   const result = r.cleared ? "clear" : "loss";
@@ -153,7 +153,7 @@ function manualPlaylogFinishCommand(r: ResultSummary): string {
   return args.join(" ");
 }
 
-function manualPlaylogFinishLatestCommand(r: ResultSummary): string {
+export function manualPlaylogFinishLatestCommand(r: ResultSummary): string {
   const result = r.cleared ? "clear" : "loss";
   const args = [
     "yarn manual-playlog",
@@ -170,11 +170,11 @@ function manualPlaylogFinishLatestCommand(r: ResultSummary): string {
   return args.join(" ");
 }
 
-function manualPlaylogThenNextCommand(r: ResultSummary): string {
+export function manualPlaylogThenNextCommand(r: ResultSummary): string {
   return `${manualPlaylogCommand(r)} && yarn manual-playlog --next`;
 }
 
-function manualPlaylogFinishLatestThenNextCommand(r: ResultSummary): string {
+export function manualPlaylogFinishLatestThenNextCommand(r: ResultSummary): string {
   return `${manualPlaylogFinishLatestCommand(r)} && yarn manual-playlog --next`;
 }
 
