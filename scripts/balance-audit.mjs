@@ -684,6 +684,13 @@ function buildRows(balance, browser, direct, manual) {
     missing: !manual || manualTotalMinutes < 120 || !manualCoversAll || !manualCoversMinimumMinutes,
   });
   rows.push({
+    req: "Codex 직접 조작 보조 증거 분리",
+    evidence: manual
+      ? `codex-direct ${codexDirectSessions.length}세션 ${codexDirectMinutes.toFixed(1)}분, human 집계 ${manualTotalMinutes.toFixed(1)}분에는 미포함`
+      : "수동 로그 없음, codex-direct 보조 세션 없음",
+    pass: true,
+  });
+  rows.push({
     req: "수동: 무효 세션 없음",
     evidence: manual ? invalidManualEvidence(invalidManual) : "수동 로그 없음",
     pass: invalidManual.length === 0,
