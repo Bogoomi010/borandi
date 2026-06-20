@@ -28,6 +28,12 @@ import { loadProfile } from "./settings";
 import { FINAL_ROUND } from "../data/waves";
 import { manualProofTargetFor } from "../core/manualProof";
 import { manualProofResultChecklist, manualProofResultTarget } from "../core/manualProofResult";
+import {
+  manualStartCommand as buildManualStartCommand,
+  manualStartId,
+  manualStartNextCommand as buildManualStartNextCommand,
+  shellArg,
+} from "../core/manualProofCommands";
 
 // ---------- 선택권 ----------
 
@@ -76,14 +82,6 @@ export function openSelectorModal(ctx: AppCtx) {
 
 // ---------- 결과 ----------
 
-function shellArg(value: string): string {
-  return `'${value.replace(/'/g, "'\\''")}'`;
-}
-
-function manualStartId(difficultyId: DifficultyId, stageId: number, seed: string, startedAt: string): string {
-  return `${difficultyId}-${stageId}-${seed}-${Date.parse(startedAt)}`;
-}
-
 function legendOrBetterCount(ctx: AppCtx): number {
   return ctx.game.state.units.filter((unit) => {
     const grade = UNIT_BY_ID[unit.defId].grade;
@@ -93,30 +91,24 @@ function legendOrBetterCount(ctx: AppCtx): number {
 
 function manualStartCommand(ctx: AppCtx): string {
   const s = ctx.game.state;
-  const id = manualStartId(s.difficulty, s.stageId, s.seed, ctx.runStartedAt);
   const target = manualProofTargetFor(s.difficulty, legendOrBetterCount(ctx));
-  return [
-    "yarn manual-playlog --start",
-    `--id=${shellArg(id)}`,
-    `--difficulty=${s.difficulty}`,
-    `--stage=${s.stageId}`,
-    `--seed=${shellArg(s.seed)}`,
-    `--startedAt=${shellArg(ctx.runStartedAt)}`,
-    `--notes=${shellArg(target.label)}`,
-  ].join(" ");
+  return buildManualStartCommand({
+    difficultyId: s.difficulty,
+    stageId: s.stageId,
+    seed: s.seed,
+    startedAt: ctx.runStartedAt,
+    notes: target.label,
+  });
 }
 
 function manualStartNextCommand(ctx: AppCtx): string {
   const s = ctx.game.state;
-  const id = manualStartId(s.difficulty, s.stageId, s.seed, ctx.runStartedAt);
-  return [
-    "yarn manual-playlog --start-next",
-    `--id=${shellArg(id)}`,
-    `--difficulty=${s.difficulty}`,
-    `--stage=${s.stageId}`,
-    `--seed=${shellArg(s.seed)}`,
-    `--startedAt=${shellArg(ctx.runStartedAt)}`,
-  ].join(" ");
+  return buildManualStartNextCommand({
+    difficultyId: s.difficulty,
+    stageId: s.stageId,
+    seed: s.seed,
+    startedAt: ctx.runStartedAt,
+  });
 }
 
 function manualPlaylogCommand(r: ResultSummary): string {
