@@ -79,7 +79,9 @@ describe("manual-playlog plan", () => {
       kind: "total-minutes",
       minutes: 48,
       label: "총 120분 보충",
+      startNextCommandTemplate: "yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE",
     });
+    expect(plan.steps.slice(0, 6).map((step) => step.startNextCommandTemplate)).toEqual(Array(6).fill("yarn manual-playlog --start-next --seed=GAME_SEED_HERE"));
   });
 
   it("예시 로그는 실제 2시간 수동 증거 계획에서 제외된다", () => {

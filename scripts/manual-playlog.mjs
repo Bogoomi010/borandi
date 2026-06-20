@@ -411,6 +411,7 @@ function buildPlan() {
         goal: target.goal,
         logHint: target.logHint,
         startCommandTemplate: startCommandTemplate(target),
+        startNextCommandTemplate: startNextCommandTemplate(target),
         finishTemplate: finishTemplateForNext(target),
       })),
       ...difficultyTopUps.map((item) => ({
@@ -424,6 +425,7 @@ function buildPlan() {
           difficulty: item.difficulty,
           label: `${item.difficulty} 최소 시간 보충`,
         }),
+        startNextCommandTemplate: startNextCommandTemplate(item),
         finishTemplate: finishTemplateForNext(item),
       })),
       ...(flexibleMinutes > 0
@@ -435,6 +437,7 @@ function buildPlan() {
           goal: `목표 세션 이후 남는 ${flexibleMinutes.toFixed(1)}분을 실제 플레이로 추가`,
           logHint: "요약 명령의 다음 필요 항목을 보며 어떤 난이도든 실제 결과 기록",
           startCommandTemplate: "",
+          startNextCommandTemplate: startNextCommandTemplate({ difficulty: "any" }),
           finishTemplate: finishTemplateForNext(null),
         }]
         : []),
@@ -486,8 +489,11 @@ function printPlan() {
       if (step.finishTemplate) {
         console.log(`   마무리 조건: result=${step.finishTemplate.result} round=${step.finishTemplate.round} legends=${step.finishTemplate.legends} maxGrade=${step.finishTemplate.maxGrade}`);
       }
+      if (step.startNextCommandTemplate) {
+        console.log(`   추천 시작 마커: ${step.startNextCommandTemplate}`);
+      }
       if (step.startCommandTemplate) {
-        console.log(`   시작 마커: ${step.startCommandTemplate}`);
+        console.log(`   직접 시작 마커: ${step.startCommandTemplate}`);
       }
     });
   }
