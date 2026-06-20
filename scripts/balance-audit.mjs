@@ -590,12 +590,23 @@ function buildRows(balance, browser, direct, manual) {
   const expertManualWeakFail = hasManual(manual, "expert", (s) => isMeaningfulManualTargetSession(s) && isLoss(s) && reachedFinalRound(s) && legendCount(s) <= 5);
   const expertManualStrongClear = hasManual(manual, "expert", (s) => isMeaningfulManualTargetSession(s) && isClear(s) && reachedFinalRound(s) && legendCount(s) >= 6);
   const masterManualPass = hasManual(manual, "master", (s) => isMeaningfulManualTargetSession(s) && isLoss(s));
+  const manualTargetPassCount = [
+    noviceManualPass,
+    normalManualPass,
+    intermediateManualPass,
+    expertManualWeakFail,
+    expertManualStrongClear,
+    masterManualPass,
+  ].filter(Boolean).length;
+  const manualTargetTotal = 6;
+  const manualRemainingMinutes = Math.max(0, MIN_MANUAL_TOTAL_MINUTES - manualTotalMinutes);
+  const manualProgressText = `남은 ${manualRemainingMinutes.toFixed(1)}분, 목표 ${manualTargetPassCount}/${manualTargetTotal}개 완료`;
 
   rows.push({
     req: "사람이 직접 2시간 플레이",
     evidence: manual
-      ? `${isExampleManualLog(manual) ? "예시 로그 제외, " : ""}증거검증 ${validManualSessionCount}/${manualSessionCount}세션, 무효 ${invalidManual.length}개, ${manualTotalMinutes.toFixed(1)}분, 난이도별 ${manualDifficultyMinutesText}, ${pendingManualText}`
-      : "아직 실제 수동 플레이 기록 없음",
+      ? `${isExampleManualLog(manual) ? "예시 로그 제외, " : ""}증거검증 ${validManualSessionCount}/${manualSessionCount}세션, 무효 ${invalidManual.length}개, ${manualTotalMinutes.toFixed(1)}/${MIN_MANUAL_TOTAL_MINUTES.toFixed(1)}분, ${manualProgressText}, 난이도별 ${manualDifficultyMinutesText}, ${pendingManualText}`
+      : `아직 실제 수동 플레이 기록 없음, ${manualProgressText}`,
     pass: !!manual && manualTotalMinutes >= 120 && manualCoversAll && manualCoversMinimumMinutes,
     missing: !manual || manualTotalMinutes < 120 || !manualCoversAll || !manualCoversMinimumMinutes,
   });

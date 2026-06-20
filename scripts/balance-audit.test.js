@@ -265,6 +265,7 @@ describe("balance-audit assert", () => {
 
     expect(failed.status).toBe(1);
     expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | MISSING");
+    expect(failed.stdout).toContain("아직 실제 수동 플레이 기록 없음, 남은 120.0분, 목표 0/6개 완료");
     expect(failed.stdout).toContain("다음 수동 플레이 세션 | MISSING | 입문자 무전설 40R 클리어");
     expect(failed.stdout).toContain("추천 시작 마커: yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
     expect(failed.stderr).toContain("balance-audit assert failed");
@@ -302,7 +303,7 @@ describe("balance-audit assert", () => {
     ]);
 
     expect(failed.status).toBe(1);
-    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | 증거검증 6/8세션, 무효 2개");
+    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | 증거검증 6/8세션, 무효 2개, 120.0/120.0분, 남은 0.0분, 목표 6/6개 완료");
     expect(failed.stdout).toContain("수동: 무효 세션 없음 | MISSING");
     expect(failed.stdout).toContain("#7 normal clear 40R seed=BAD-TIME #bad00001");
     expect(failed.stdout).toContain("startedAt/endedAt와 기록 시간이 맞지 않음");
