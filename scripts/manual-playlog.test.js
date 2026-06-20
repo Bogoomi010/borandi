@@ -521,6 +521,8 @@ describe("manual-playlog plan", () => {
     const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
     expect(output).toContain("- 연결된 시작 마커: novice-1-DIRECT-SEED-20260620T020000000Z");
     expect(output).toContain("- 시작 마커 목표: 입문자 무전설 40R 클리어 충족");
+    expect(output).toContain("- 남은 유효 플레이 시간: 105.0분");
+    expect(output).toContain("- 목표 세션: 1/6개 완료, 남은 5개");
     expect(pending.pending).toHaveLength(0);
     expect(log.sessions).toHaveLength(1);
     expect(log.sessions[0]).toMatchObject({
@@ -562,6 +564,8 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("- 연결된 시작 마커: novice-1-MISS-SEED-20260620T030000000Z");
     expect(output).toContain("- 시작 마커 목표: 입문자 무전설 40R 클리어 미충족");
     expect(output).toContain("이 세션은 실제 플레이 시간으로 저장됐지만 목표 증거 행은 아직 남아 있습니다.");
+    expect(output).toContain("- 남은 유효 플레이 시간: 105.0분");
+    expect(output).toContain("- 목표 세션: 0/6개 완료, 남은 6개");
     expect(pending.pending).toHaveLength(0);
     expect(log.sessions[0]).toMatchObject({
       pendingSessionId: "novice-1-MISS-SEED-20260620T030000000Z",

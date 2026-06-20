@@ -1086,6 +1086,7 @@ writeFileSync(outPath, `${JSON.stringify(log, null, 2)}\n`, "utf8");
 const total = log.totalMinutes;
 const covered = coveredDifficulties(log);
 const missing = difficulties.filter((d) => !covered.has(d));
+const summaryAfterSave = buildSummary();
 
 console.log(`수동 플레이 로그 저장: ${outPath}`);
 console.log(`- 추가 세션: ${difficulty}, ${(minutes ?? computedSeconds / 60).toFixed(1)}분`);
@@ -1096,11 +1097,13 @@ if (linkedTargetPlan) {
   if (!targetMet) console.log("- 이 세션은 실제 플레이 시간으로 저장됐지만 목표 증거 행은 아직 남아 있습니다.");
 }
 console.log(`- 누적 시간: ${total.toFixed(1)}분 / 120.0분`);
+console.log(`- 남은 유효 플레이 시간: ${summaryAfterSave.remainingMinutes.toFixed(1)}분`);
+console.log(`- 목표 세션: ${summaryAfterSave.targetRowsPassed}/${summaryAfterSave.targetRowsTotal}개 완료, 남은 ${summaryAfterSave.targetRowsRemaining}개`);
 console.log(`- 난이도 커버: ${[...covered].join(", ") || "없음"}`);
 console.log(`- 남은 난이도: ${missing.join(", ") || "없음"}`);
-console.log(`- 감사 통과 조건: ${total >= 120 && missing.length === 0 ? "충족" : "미충족"}`);
+console.log(`- 감사 통과 조건: ${summaryAfterSave.passed ? "충족" : "미충족"}`);
 
-const nextAfterSave = buildNext().next;
+const nextAfterSave = buildNextFromSummary(summaryAfterSave).next;
 console.log("");
 if (nextAfterSave) {
   console.log(`다음 필요 세션: ${nextAfterSave.label} (${nextAfterSave.minutes.toFixed(1)}분 이상)`);
