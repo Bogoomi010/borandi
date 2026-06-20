@@ -561,6 +561,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const nextCommand = "yarn manual-playlog --next";
     const startNextCommand = "yarn manual-playlog --start-next --seed=GAME_SEED_HERE";
     const pendingCommand = "yarn manual-playlog --pending";
+    const preflightCommand = "yarn manual-playlog --preflight";
     const summaryJsonCommand = "yarn --silent manual-playlog --summary-json";
     if (currentStartCommand) {
       body.appendChild(el("h3", "", "현재 판 시작 마커"));
@@ -572,6 +573,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       body.appendChild(el("div", "modal-note", "플레이 시작 직후 한 번 실행해두면 결과 화면을 놓쳐도 --finish 명령으로 같은 시작 시각을 재사용할 수 있습니다."));
     }
     body.appendChild(el("h3", "", "상태 확인"));
+    body.appendChild(el("pre", "report", preflightCommand));
     body.appendChild(el("pre", "report", pendingCommand));
     body.appendChild(el("pre", "report", nextCommand));
     body.appendChild(el("pre", "report", startNextCommand));
@@ -632,6 +634,16 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       }
     };
     row.appendChild(copyPending);
+    const copyPreflight = el("button", "", "시작점검 복사");
+    copyPreflight.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(preflightCommand);
+        toast("수동 플레이 시작 전 점검 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copyPreflight);
     const copyNext = el("button", "", "다음 세션 복사");
     copyNext.onclick = async () => {
       try {

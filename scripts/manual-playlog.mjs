@@ -38,6 +38,7 @@ function usage() {
     "  --start-next --seed=RUN123",
     "                          # 다음 필요 수동 세션의 난이도/목표로 시작 마커를 저장",
     "  --pending                # 아직 finish되지 않은 시작 마커 목록 출력",
+    "  --preflight              # 새 수동 세션 시작 전 무효/미완료 마커 점검",
     "  --finish=RUN1 --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM",
     "                          # 시작 마커의 startedAt/difficulty/stage/seed를 사용해 결과 세션 저장",
     "  --finish-latest --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM",
@@ -673,6 +674,56 @@ function printNextJson() {
   console.log(`${JSON.stringify(buildNext(), null, 2)}`);
 }
 
+function printPreflight() {
+  const summary = buildSummary();
+  const blocking = summary.invalidSessionCount > 0 || summary.pendingCount > 0;
+  console.log("# 수동 플레이 시작 전 점검");
+  console.log(`- 로그: ${summary.logPath}${summary.logExists ? "" : " (아직 없음)"}`);
+  console.log(`- 무효 세션: ${summary.invalidSessionCount}개`);
+  console.log(`- 시작 마커 대기: ${summary.pendingCount}개`);
+  console.log(`- 유효 플레이 시간: ${summary.totalMinutes.toFixed(1)}/${summary.requiredMinutes.toFixed(1)}분, 남은 ${summary.remainingMinutes.toFixed(1)}분`);
+  console.log(`- 목표 세션: ${summary.targetRowsPassed}/${summary.targetRowsTotal}개 완료, 남은 ${summary.targetRowsRemaining}개`);
+  console.log("");
+  if (summary.invalidSessionCount > 0) {
+    console.log("INVALID 먼저 고쳐야 하는 세션:");
+    for (const session of summary.invalidSessions) {
+      const label = [
+        `#${session.index + 1}`,
+        session.difficulty || "difficulty?",
+        session.result || "result?",
+        `${session.round || "?"}R`,
+        session.seed ? `seed=${session.seed}` : "",
+        session.checksum ? `#${session.checksum}` : "",
+      ].filter(Boolean).join(" ");
+      console.log(`  - ${label}: ${session.issues.join(", ")}`);
+    }
+    console.log("");
+  }
+  if (summary.pendingCount > 0) {
+    console.log("PENDING 새 시작 전에 먼저 finish해야 하는 시작 마커:");
+    for (const session of summary.pending) {
+      console.log(`  - ${session.id}: ${session.difficulty} stage=${session.stage} seed=${session.seed} startedAt=${session.startedAt}`);
+      if (session.finishCommandTemplate) {
+        console.log(`    마무리 템플릿: ${session.finishCommandTemplate}`);
+      }
+    }
+    console.log("");
+  }
+  if (blocking) {
+    console.log("FAIL 새 수동 플레이 시작 전 정리 필요");
+  } else {
+    console.log("PASS 새 수동 플레이 시작 가능");
+    if (summary.next?.startNextCommandTemplate) {
+      console.log("추천 시작 마커:");
+      console.log(summary.next.startNextCommandTemplate);
+      console.log("  GAME_SEED_HERE는 새 게임 시작 후 상단에 표시된 실제 시드로 바꾸세요.");
+    }
+  }
+  console.log("");
+  console.log(`판정: ${blocking ? "정리 필요" : "시작 가능"}`);
+  if (blocking) process.exitCode = 1;
+}
+
 function pendingSessions(log) {
   return (log.pendingSessions ?? []).filter((session) => !isExampleManualSession(session));
 }
@@ -951,6 +1002,11 @@ if (args.pending === "true") {
   if (args.json === "true" || args["pending-json"] === "true") printPendingJson();
   else printPending();
   process.exit(0);
+}
+
+if (args.preflight === "true") {
+  printPreflight();
+  process.exit(process.exitCode ?? 0);
 }
 
 if (args.assert === "true") {

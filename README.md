@@ -39,6 +39,8 @@ yarn manual-playlog --finish-latest --result=loss --round=40 --legends=1 --maxGr
                           # 가장 최근 시작 마커를 자동 선택해 결과 세션 마무리 (--finish도 동일)
 yarn manual-playlog --pending
                           # 아직 finish되지 않은 수동 플레이 시작 마커 확인
+yarn manual-playlog --preflight
+                          # 새 수동 세션 시작 전 무효 세션/미완료 시작 마커 점검
 yarn manual-playlog --summary
                           # 현재 수동 로그의 120분/난이도별/목표 결과, pending 시작 마커, 다음 필요 세션 확인
 yarn manual-playlog --next
