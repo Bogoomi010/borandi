@@ -637,6 +637,20 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const preflightCommand = "yarn manual-playlog --preflight";
     const preflightJsonCommand = "yarn --silent manual-playlog --preflight-json";
     const summaryJsonCommand = "yarn --silent manual-playlog --summary-json";
+    const primaryStartCheckCommand = currentStartNextDryRunCommand || preflightCommand;
+    const primaryStartMarkerCommand = currentStartNextCommand || startNextCommand;
+    body.appendChild(el("h3", "", "먼저 할 일"));
+    body.appendChild(el(
+      "div",
+      currentStartNextCommand ? "result-proof-ok" : "result-hint",
+      currentStartNextCommand
+        ? "현재 판의 실제 시드로 다음 필요 수동 세션 시작 검증과 시작 마커를 바로 실행할 수 있습니다."
+        : "새 게임을 시작하기 전에 시작 전 점검을 먼저 실행하고, 출력된 다음 목표 난이도로 새 게임을 시작하세요.",
+    ));
+    body.appendChild(el("h3", "", "1. 시작 전 검증"));
+    body.appendChild(el("pre", "report", primaryStartCheckCommand));
+    body.appendChild(el("h3", "", "2. 시작 마커 저장"));
+    body.appendChild(el("pre", "report", primaryStartMarkerCommand));
     body.appendChild(el("h3", "", "현재 증거 버전"));
     body.appendChild(el("pre", "report", `DATA_VERSION ${dataVersion}`));
     body.appendChild(el("div", "modal-note", "결과 기록이나 --finish 명령의 --dataVersion, --stateChecksum, --endedAt은 결과 화면에 표시된 실제 값을 그대로 사용하세요."));
