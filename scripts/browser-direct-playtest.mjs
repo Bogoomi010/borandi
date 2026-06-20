@@ -13,7 +13,7 @@ const args = Object.fromEntries(
 );
 
 const url = String(args.url ?? "http://127.0.0.1:1421/");
-const seeds = Math.max(1, Number(args.seeds ?? 2));
+const seeds = Math.max(1, Number(args.seeds ?? 6));
 const maxRound = Math.max(1, Number(args["max-round"] ?? 40));
 const stepMs = Math.max(250, Number(args["step-ms"] ?? 5000));
 const outPath = typeof args.json === "string" && args.json !== "true" ? args.json : "";
