@@ -56,6 +56,55 @@ function completeManualWithInvalidSession() {
   };
 }
 
+const livePreflightArtifact = {
+  logPath: "MANUAL",
+  currentDataVersion: "0.8.4",
+  logExists: false,
+  canStart: true,
+  blocking: false,
+  invalidSessionCount: 0,
+  pendingCount: 0,
+  totalMinutes: 0,
+  remainingMinutes: 120,
+  targetRowsPassed: 0,
+  targetRowsTotal: 6,
+  next: { label: "입문자 무전설 40R 클리어" },
+};
+
+const livePlanArtifact = {
+  passed: false,
+  steps: [{ label: "입문자 무전설 40R 클리어" }],
+  current: {
+    remainingMinutes: 120,
+    targetRowsPassed: 0,
+    targetRowsTotal: 6,
+    next: { label: "입문자 무전설 40R 클리어" },
+  },
+};
+
+function writeManualArtifactCheckFakeYarn(logPath) {
+  const fakeYarn = join(tempDir, "yarn");
+  writeFileSync(fakeYarn, `#!/bin/sh
+printf '%s\\n' "$*" >> "$FAKE_YARN_LOG"
+if [ "$1" = "--silent" ] && [ "$2" = "manual-playlog" ]; then
+  for arg in "$@"; do
+    if [ "$arg" = "--preflight-json" ]; then
+      printf '%s\\n' '${JSON.stringify(livePreflightArtifact)}'
+    fi
+    if [ "$arg" = "--plan-json" ]; then
+      printf '%s\\n' '${JSON.stringify(livePlanArtifact)}'
+    fi
+  done
+fi
+exit 0
+`, "utf8");
+  chmodSync(fakeYarn, 0o755);
+  return {
+    PATH: `${tempDir}:${process.env.PATH}`,
+    FAKE_YARN_LOG: logPath,
+  };
+}
+
 describe("balance-proof require-complete", () => {
   it("증거 갱신은 browser-direct 스크린샷과 Codex 보조 로그 경로를 전달한다", () => {
     const port = 59597;
@@ -141,6 +190,81 @@ exit 0
     expect(result.stdout).toContain(`수동 플레이 preflight JSON 저장: ${manualPreflight}`);
     expect(result.stdout).toContain(`수동 플레이 시트 저장: ${manualSheet}`);
     expect(result.stdout).toContain(`수동 플레이 계획 JSON 저장: ${manualPlan}`);
+  });
+
+  it("수동 proof artifact check는 현재 preflight/plan과 파일이 일치하는지 검증한다", () => {
+    const logPath = join(tempDir, "fake-yarn.log");
+    const manualPath = join(tempDir, "manual.json");
+    const manualPreflight = join(tempDir, "manual-preflight.json");
+    const manualPlan = join(tempDir, "manual-plan.json");
+    const manualSheet = join(tempDir, "manual-sheet.md");
+    writeFileSync(manualPreflight, JSON.stringify(livePreflightArtifact, null, 2), "utf8");
+    writeFileSync(manualPlan, JSON.stringify(livePlanArtifact, null, 2), "utf8");
+    writeFileSync(manualSheet, "# 수동 밸런스 플레이 시트\n\n다음: 입문자 무전설 40R 클리어\n", "utf8");
+
+    const result = spawnSync(process.execPath, [
+      "scripts/balance-proof.mjs",
+      "--check-manual-artifacts",
+      `--manual=${manualPath}`,
+      `--manual-preflight=${manualPreflight}`,
+      `--manual-sheet=${manualSheet}`,
+      `--manual-plan=${manualPlan}`,
+      `--balance=${join(tempDir, "balance.json")}`,
+    ], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        ...writeManualArtifactCheckFakeYarn(logPath),
+      },
+    });
+
+    expect(result.status).toBe(0);
+    const calls = readFileSync(logPath, "utf8");
+    expect(calls).toContain(`--silent manual-playlog --out=${manualPath} --preflight-json`);
+    expect(calls).toContain(`--silent manual-playlog --out=${manualPath} --plan-json`);
+    expect(calls).not.toContain("balance --");
+    expect(result.stdout).toContain("수동 proof artifact 최신");
+  });
+
+  it("수동 proof artifact check는 stale preflight 파일을 실패시킨다", () => {
+    const logPath = join(tempDir, "fake-yarn.log");
+    const manualPath = join(tempDir, "manual.json");
+    const manualPreflight = join(tempDir, "manual-preflight.json");
+    const manualPlan = join(tempDir, "manual-plan.json");
+    const manualSheet = join(tempDir, "manual-sheet.md");
+    writeFileSync(manualPreflight, JSON.stringify({
+      ...livePreflightArtifact,
+      logExists: true,
+      remainingMinutes: 0,
+      targetRowsPassed: 6,
+      next: null,
+    }, null, 2), "utf8");
+    writeFileSync(manualPlan, JSON.stringify(livePlanArtifact, null, 2), "utf8");
+    writeFileSync(manualSheet, "# 수동 밸런스 플레이 시트\n\n다음: 입문자 무전설 40R 클리어\n", "utf8");
+
+    const result = spawnSync(process.execPath, [
+      "scripts/balance-proof.mjs",
+      "--check-manual-artifacts",
+      `--manual=${manualPath}`,
+      `--manual-preflight=${manualPreflight}`,
+      `--manual-sheet=${manualSheet}`,
+      `--manual-plan=${manualPlan}`,
+      `--balance=${join(tempDir, "balance.json")}`,
+    ], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        ...writeManualArtifactCheckFakeYarn(logPath),
+      },
+    });
+
+    expect(result.status).toBe(1);
+    const calls = readFileSync(logPath, "utf8");
+    expect(calls).not.toContain("balance --");
+    expect(result.stderr).toContain("manual preflight artifact mismatch");
+    expect(result.stderr).toContain("remainingMinutes live=120 file=0");
   });
 
   it("수동 증거가 없으면 자동 게이트를 시작하기 전에 실패한다", () => {

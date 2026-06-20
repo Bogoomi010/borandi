@@ -2,7 +2,7 @@
 // Runs the CLI gate, browser runtime gates, direct-input browser sampler, then audit.
 
 import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 const args = Object.fromEntries(
@@ -29,6 +29,8 @@ const directCodexLog = String(args["direct-codex-log"] ?? "output/codex-direct-p
 const balanceSeeds = Number(args.seeds ?? 30);
 const directSeeds = Number(args["direct-seeds"] ?? 6);
 const requireComplete = args["require-complete"] === "true" || args.assert === "true";
+const checkManualArtifacts =
+  args["check-manual-artifacts"] === "true" || args["manual-artifacts-check"] === "true";
 
 function run(command, commandArgs, options = {}) {
   return new Promise((resolve, reject) => {
@@ -96,6 +98,85 @@ async function writeManualGuidanceArtifacts() {
   ], { allowFailure: true });
   writeTextFile(manualPlanPath, manualPlan);
   console.log(`수동 플레이 계획 JSON 저장: ${manualPlanPath}`);
+}
+
+function readJsonFile(path) {
+  return JSON.parse(readFileSync(path, "utf8"));
+}
+
+function preflightSummary(payload) {
+  return {
+    logPath: payload.logPath ?? "",
+    currentDataVersion: payload.currentDataVersion ?? "",
+    logExists: Boolean(payload.logExists),
+    canStart: Boolean(payload.canStart),
+    blocking: Boolean(payload.blocking),
+    invalidSessionCount: Number(payload.invalidSessionCount ?? 0),
+    pendingCount: Number(payload.pendingCount ?? 0),
+    totalMinutes: Number(payload.totalMinutes ?? 0),
+    remainingMinutes: Number(payload.remainingMinutes ?? 0),
+    targetRowsPassed: Number(payload.targetRowsPassed ?? 0),
+    targetRowsTotal: Number(payload.targetRowsTotal ?? 0),
+    nextLabel: payload.next?.label ?? "",
+  };
+}
+
+function planSummary(payload) {
+  const current = payload.current ?? {};
+  return {
+    passed: Boolean(payload.passed),
+    steps: Array.isArray(payload.steps) ? payload.steps.length : 0,
+    remainingMinutes: Number(current.remainingMinutes ?? 0),
+    targetRowsPassed: Number(current.targetRowsPassed ?? 0),
+    targetRowsTotal: Number(current.targetRowsTotal ?? 0),
+    nextLabel: current.next?.label ?? "",
+  };
+}
+
+function assertSameSummary(name, expected, actual) {
+  const mismatches = Object.keys(expected).filter((key) => expected[key] !== actual[key]);
+  if (mismatches.length) {
+    throw new Error(`${name} artifact mismatch: ${mismatches
+      .map((key) => `${key} live=${expected[key]} file=${actual[key]}`)
+      .join(", ")}`);
+  }
+}
+
+async function checkManualGuidanceArtifacts() {
+  const missing = [manualPreflightPath, manualSheetPath, manualPlanPath]
+    .filter((path) => !existsSync(path));
+  if (missing.length) throw new Error(`수동 proof artifact 누락: ${missing.join(", ")}`);
+
+  const livePreflightText = await runCapture("yarn", [
+    "--silent",
+    "manual-playlog",
+    `--out=${manualPath}`,
+    "--preflight-json",
+  ], { allowFailure: true });
+  const livePlanText = await runCapture("yarn", [
+    "--silent",
+    "manual-playlog",
+    `--out=${manualPath}`,
+    "--plan-json",
+  ], { allowFailure: true });
+
+  const livePreflight = preflightSummary(JSON.parse(livePreflightText));
+  const filePreflight = preflightSummary(readJsonFile(manualPreflightPath));
+  assertSameSummary("manual preflight", livePreflight, filePreflight);
+
+  const livePlan = planSummary(JSON.parse(livePlanText));
+  const filePlan = planSummary(readJsonFile(manualPlanPath));
+  assertSameSummary("manual plan", livePlan, filePlan);
+
+  const sheet = readFileSync(manualSheetPath, "utf8");
+  if (!sheet.includes("# 수동 밸런스 플레이 시트")) {
+    throw new Error(`manual sheet artifact mismatch: missing sheet title in ${manualSheetPath}`);
+  }
+  if (livePreflight.nextLabel && !sheet.includes(livePreflight.nextLabel)) {
+    throw new Error(`manual sheet artifact mismatch: missing next target "${livePreflight.nextLabel}" in ${manualSheetPath}`);
+  }
+
+  console.log(`\n수동 proof artifact 최신: ${manualPreflightPath}, ${manualSheetPath}, ${manualPlanPath}`);
 }
 
 async function canReachServer() {
@@ -173,50 +254,54 @@ async function stopDevServer(child) {
 
 let devServer = null;
 try {
-  if (requireComplete) {
-    await writeManualGuidanceArtifacts();
-    await run("yarn", ["manual-playlog", `--out=${manualPath}`, "--assert"]);
-  }
-
-  await run("yarn", ["balance", `--seeds=${balanceSeeds}`, `--json=${balancePath}`]);
-
-  if (await canReachServer()) {
-    console.log(`\n이미 실행 중인 개발 서버 사용: ${url}`);
+  if (checkManualArtifacts) {
+    await checkManualGuidanceArtifacts();
   } else {
-    devServer = startDevServer();
-    await waitForServer(devServer);
+    if (requireComplete) {
+      await writeManualGuidanceArtifacts();
+      await run("yarn", ["manual-playlog", `--out=${manualPath}`, "--assert"]);
+    }
+
+    await run("yarn", ["balance", `--seeds=${balanceSeeds}`, `--json=${balancePath}`]);
+
+    if (await canReachServer()) {
+      console.log(`\n이미 실행 중인 개발 서버 사용: ${url}`);
+    } else {
+      devServer = startDevServer();
+      await waitForServer(devServer);
+    }
+
+    await run("yarn", [
+      "browser-balance",
+      `--url=${url}`,
+      `--json=${browserPath}`,
+      `--screenshots=${browserScreenshots}`,
+    ]);
+    await run("yarn", [
+      "browser-direct",
+      `--url=${url}`,
+      `--seeds=${directSeeds}`,
+      "--strict",
+      `--json=${directPath}`,
+      `--screenshots=${directScreenshots}`,
+      `--codex-log=${directCodexLog}`,
+    ]);
+    await run("yarn", [
+      "balance-audit",
+      `--balance=${balancePath}`,
+      `--browser=${browserPath}`,
+      `--direct=${directPath}`,
+      `--manual=${manualPath}`,
+      `--codex=${directCodexLog}`,
+      `--out=${auditPath}`,
+      ...(requireComplete ? ["--assert"] : []),
+    ]);
+    if (!requireComplete) await writeManualGuidanceArtifacts();
+
+    console.log(requireComplete
+      ? `\n밸런스 완료 증거 검증 완료: ${auditPath}`
+      : `\n밸런스 증거 갱신 완료: ${auditPath}`);
   }
-
-  await run("yarn", [
-    "browser-balance",
-    `--url=${url}`,
-    `--json=${browserPath}`,
-    `--screenshots=${browserScreenshots}`,
-  ]);
-  await run("yarn", [
-    "browser-direct",
-    `--url=${url}`,
-    `--seeds=${directSeeds}`,
-    "--strict",
-    `--json=${directPath}`,
-    `--screenshots=${directScreenshots}`,
-    `--codex-log=${directCodexLog}`,
-  ]);
-  await run("yarn", [
-    "balance-audit",
-    `--balance=${balancePath}`,
-    `--browser=${browserPath}`,
-    `--direct=${directPath}`,
-    `--manual=${manualPath}`,
-    `--codex=${directCodexLog}`,
-    `--out=${auditPath}`,
-    ...(requireComplete ? ["--assert"] : []),
-  ]);
-  if (!requireComplete) await writeManualGuidanceArtifacts();
-
-  console.log(requireComplete
-    ? `\n밸런스 완료 증거 검증 완료: ${auditPath}`
-    : `\n밸런스 증거 갱신 완료: ${auditPath}`);
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
