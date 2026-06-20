@@ -678,6 +678,10 @@ function printSummary() {
   const next = buildNext();
   if (next.next?.startNextCommandTemplate) {
     console.log("");
+    console.log("시작 전 점검:");
+    console.log(manualPreflightCommandTemplate());
+    console.log("전체 수집 계획:");
+    console.log(manualPlanCommandTemplate());
     if (next.next.startNextDryRunCommandTemplate) {
       console.log("추천 시작 검증:");
       console.log(next.next.startNextDryRunCommandTemplate);
@@ -826,6 +830,14 @@ function manualStartWorkflow() {
   ];
 }
 
+function manualPreflightCommandTemplate() {
+  return `yarn manual-playlog --preflight${outPathArg()}`;
+}
+
+function manualPlanCommandTemplate() {
+  return `yarn manual-playlog --plan${outPathArg()}`;
+}
+
 function printPreflight() {
   const preflight = buildPreflight();
   const { summary, blocking } = preflight;
@@ -931,7 +943,7 @@ function buildPreflight() {
     next: summary.next,
     nextStartCommandTemplate: summary.next?.startNextCommandTemplate ?? "",
     nextStartDryRunCommandTemplate: summary.next?.startNextDryRunCommandTemplate ?? "",
-    planCommandTemplate: `yarn manual-playlog --plan${outPathArg()}`,
+    planCommandTemplate: manualPlanCommandTemplate(),
     remainingPlanStepCount: plan.steps.length,
     remainingPlanPreview: plan.steps.slice(0, 3),
     startWorkflow: manualStartWorkflow(),
@@ -1085,6 +1097,8 @@ function assertManualProof() {
     console.error("");
     console.error(`다음 필요 세션: ${next.next.label} (${next.next.minutes.toFixed(1)}분 이상)`);
     console.error(`목표: ${next.next.goal}`);
+    console.error(`시작 전 점검: ${manualPreflightCommandTemplate()}`);
+    console.error(`전체 수집 계획: ${manualPlanCommandTemplate()}`);
     if (next.next.startNextDryRunCommandTemplate) {
       console.error(`추천 시작 검증: ${next.next.startNextDryRunCommandTemplate}`);
     }

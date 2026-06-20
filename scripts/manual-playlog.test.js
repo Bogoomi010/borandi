@@ -923,6 +923,8 @@ describe("manual-playlog plan", () => {
     expect(failed.status).toBe(1);
     expect(failed.stdout).toContain("수동 증거 미충족");
     expect(failed.stderr).toContain("다음 필요 세션: 입문자 무전설 40R 클리어");
+    expect(failed.stderr).toContain(`시작 전 점검: yarn manual-playlog --preflight --out=${shellArg(out)}`);
+    expect(failed.stderr).toContain(`전체 수집 계획: yarn manual-playlog --plan --out=${shellArg(out)}`);
     expect(failed.stderr).toContain("추천 시작 검증: yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
     expect(failed.stderr).toContain("--dry-run");
     expect(failed.stderr).toContain("추천 시작 마커: yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");

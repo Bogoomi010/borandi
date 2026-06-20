@@ -130,6 +130,8 @@ exit 0
     expect(result.status).toBe(1);
     expect(result.stdout).toContain("$ yarn manual-playlog");
     expect(result.stdout).not.toContain("$ yarn balance ");
+    expect(result.stderr).toContain(`시작 전 점검: yarn manual-playlog --preflight --out='${manualPath}'`);
+    expect(result.stderr).toContain(`전체 수집 계획: yarn manual-playlog --plan --out='${manualPath}'`);
     expect(result.stderr).toContain("추천 시작 검증: yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
     expect(result.stderr).toContain("--dry-run");
     expect(result.stderr).toContain("추천 시작 마커: yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
