@@ -264,6 +264,15 @@ function realManualSessions(log) {
     .map((entry) => entry.session);
 }
 
+function isHumanPlaytestSession(session) {
+  const source = String(session.source ?? "human-playtest");
+  return source === "human-playtest";
+}
+
+function humanManualSessions(log) {
+  return realManualSessions(log).filter(isHumanPlaytestSession);
+}
+
 function invalidManualSessions(log) {
   return sessionValidationEntries(log)
     .filter((entry) => entry.issues.length > 0)
@@ -403,10 +412,15 @@ function buildSummary() {
   const allSessions = isExampleManualLog(log) ? [] : (log.sessions ?? []).filter((session) => !isExampleManualSession(session));
   const pending = isExampleManualLog(log) ? [] : pendingSessions(log).map(pendingSessionWithCommands);
   const validSessions = realManualSessions(log);
+  const validHumanSessions = validSessions.filter(isHumanPlaytestSession);
   const invalidSessions = invalidManualSessions(log);
-  const totalMinutes = validSessions.reduce((sum, session) => sum + sessionMinutes(session), 0);
+  const totalMinutes = validHumanSessions.reduce((sum, session) => sum + sessionMinutes(session), 0);
+  const directSessionCount = validSessions.length - validHumanSessions.length;
+  const directMinutes = validSessions
+    .filter((session) => !isHumanPlaytestSession(session))
+    .reduce((sum, session) => sum + sessionMinutes(session), 0);
   const minutesByDifficulty = new Map();
-  for (const session of validSessions) {
+  for (const session of validHumanSessions) {
     minutesByDifficulty.set(session.difficulty, (minutesByDifficulty.get(session.difficulty) ?? 0) + sessionMinutes(session));
   }
 
@@ -420,43 +434,43 @@ function buildSummary() {
     {
       label: "사람이 직접 2시간 플레이",
       pass: totalMinutes >= 120 && difficulties.every((id) => (minutesByDifficulty.get(id) ?? 0) >= 12),
-      evidence: `${validSessions.length}/${allSessions.length}세션, ${totalMinutes.toFixed(1)}/120.0분, ${difficulties.map((id) => `${id} ${(minutesByDifficulty.get(id) ?? 0).toFixed(1)}분`).join(", ")}`,
+      evidence: `human ${validHumanSessions.length}/${allSessions.length}세션, ${totalMinutes.toFixed(1)}/120.0분, codex-direct ${directSessionCount}세션 ${directMinutes.toFixed(1)}분, ${difficulties.map((id) => `${id} ${(minutesByDifficulty.get(id) ?? 0).toFixed(1)}분`).join(", ")}`,
       next: "총 120분 이상과 각 난이도 12분 이상을 채우세요.",
     },
     {
       label: "입문자 무전설 40R 클리어",
-      pass: hasTargetSession(validSessions, "novice", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) === 0),
-      evidence: targetEvidence(validSessions, "novice", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) === 0),
+      pass: hasTargetSession(validHumanSessions, "novice", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) === 0),
+      evidence: targetEvidence(validHumanSessions, "novice", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) === 0),
       next: "novice clear 40R legends=0 maxGrade=hero 이하 세션 12분 이상",
     },
     {
       label: "일반 1~2전설 40R 클리어",
-      pass: hasTargetSession(validSessions, "normal", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 1 && legendCount(session) <= 2),
-      evidence: targetEvidence(validSessions, "normal", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 1 && legendCount(session) <= 2),
+      pass: hasTargetSession(validHumanSessions, "normal", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 1 && legendCount(session) <= 2),
+      evidence: targetEvidence(validHumanSessions, "normal", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 1 && legendCount(session) <= 2),
       next: "normal clear 40R legends=1~2 세션 12분 이상",
     },
     {
       label: "중급자 5전설 이상 40R 클리어",
-      pass: hasTargetSession(validSessions, "intermediate", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 5),
-      evidence: targetEvidence(validSessions, "intermediate", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 5),
+      pass: hasTargetSession(validHumanSessions, "intermediate", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 5),
+      evidence: targetEvidence(validHumanSessions, "intermediate", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 5),
       next: "intermediate clear 40R legends>=5 세션 12분 이상",
     },
     {
       label: "고수 5전설 이하 40R 실패",
-      pass: hasTargetSession(validSessions, "expert", (session) => isTargetLength(session) && isLoss(session) && reachedFinalRound(session) && legendCount(session) <= 5),
-      evidence: targetEvidence(validSessions, "expert", (session) => isTargetLength(session) && isLoss(session) && reachedFinalRound(session) && legendCount(session) <= 5),
+      pass: hasTargetSession(validHumanSessions, "expert", (session) => isTargetLength(session) && isLoss(session) && reachedFinalRound(session) && legendCount(session) <= 5),
+      evidence: targetEvidence(validHumanSessions, "expert", (session) => isTargetLength(session) && isLoss(session) && reachedFinalRound(session) && legendCount(session) <= 5),
       next: "expert loss 40R legends<=5 세션 12분 이상",
     },
     {
       label: "고수 6전설 이상 40R 클리어",
-      pass: hasTargetSession(validSessions, "expert", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 6),
-      evidence: targetEvidence(validSessions, "expert", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 6),
+      pass: hasTargetSession(validHumanSessions, "expert", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 6),
+      evidence: targetEvidence(validHumanSessions, "expert", (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 6),
       next: "expert clear 40R legends>=6 세션 12분 이상",
     },
     {
       label: "초고수 실패 기록",
-      pass: hasTargetSession(validSessions, "master", (session) => isTargetLength(session) && isLoss(session)),
-      evidence: targetEvidence(validSessions, "master", (session) => isTargetLength(session) && isLoss(session)),
+      pass: hasTargetSession(validHumanSessions, "master", (session) => isTargetLength(session) && isLoss(session)),
+      evidence: targetEvidence(validHumanSessions, "master", (session) => isTargetLength(session) && isLoss(session)),
       next: "master loss 세션 12분 이상",
     },
   ];
@@ -471,6 +485,9 @@ function buildSummary() {
     exampleExcluded: isExampleManualLog(log),
     nonExampleSessionCount: allSessions.length,
     validSessionCount: validSessions.length,
+    validHumanSessionCount: validHumanSessions.length,
+    codexDirectSessionCount: directSessionCount,
+    codexDirectMinutes: directMinutes,
     invalidSessionCount: invalidSessions.length,
     invalidSessions,
     pendingCount: pending.length,

@@ -96,7 +96,7 @@ function manualMinutes(manual) {
   if (!manual) return 0;
   if (isExampleManualLog(manual)) return 0;
   if (Array.isArray(manual.sessions)) {
-    return realManualSessions(manual).reduce((sum, s) => {
+    return humanManualSessions(manual).reduce((sum, s) => {
       if (typeof s.minutes === "number") return sum + s.minutes;
       if (typeof s.seconds === "number") return sum + (s.seconds / 60);
       return sum;
@@ -108,19 +108,19 @@ function manualMinutes(manual) {
 }
 
 function manualDifficulties(manual) {
-  return new Set(realManualSessions(manual).map((s) => s.difficulty).filter(Boolean));
+  return new Set(humanManualSessions(manual).map((s) => s.difficulty).filter(Boolean));
 }
 
 function manualMinutesByDifficulty(manual) {
   const result = new Map();
-  for (const session of realManualSessions(manual)) {
+  for (const session of humanManualSessions(manual)) {
     result.set(session.difficulty, (result.get(session.difficulty) ?? 0) + sessionMinutes(session));
   }
   return result;
 }
 
 function manualSessions(manual, difficulty) {
-  return realManualSessions(manual).filter((s) => s.difficulty === difficulty);
+  return humanManualSessions(manual).filter((s) => s.difficulty === difficulty);
 }
 
 function isExampleManualLog(manual) {
@@ -135,6 +135,19 @@ function realManualSessions(manual) {
   return sessionValidationEntries(manual)
     .filter((entry) => entry.issues.length === 0)
     .map((entry) => entry.session);
+}
+
+function isHumanPlaytestSession(session) {
+  const source = String(session.source ?? "human-playtest");
+  return source === "human-playtest";
+}
+
+function humanManualSessions(manual) {
+  return realManualSessions(manual).filter(isHumanPlaytestSession);
+}
+
+function codexDirectManualSessions(manual) {
+  return realManualSessions(manual).filter((session) => !isHumanPlaytestSession(session));
 }
 
 function sessionValidationEntries(manual) {
@@ -632,7 +645,9 @@ function buildRows(balance, browser, direct, manual) {
   const manualCoversAll = REQUIRED_DIFFICULTIES.every((d) => manualDiffs.has(d));
   const manualCoversMinimumMinutes = REQUIRED_DIFFICULTIES.every((d) => (manualMinutesByDiff.get(d) ?? 0) >= MIN_MANUAL_MINUTES_PER_DIFFICULTY);
   const manualSessionCount = countNonExampleManualSessions(manual);
-  const validManualSessionCount = realManualSessions(manual).length;
+  const validManualSessionCount = humanManualSessions(manual).length;
+  const codexDirectSessions = codexDirectManualSessions(manual);
+  const codexDirectMinutes = codexDirectSessions.reduce((sum, session) => sum + sessionMinutes(session), 0);
   const invalidManual = invalidManualSessions(manual);
   const pendingManual = pendingManualSessions(manual);
   const pendingManualText = `pending ${pendingManual.length}개`;
@@ -663,7 +678,7 @@ function buildRows(balance, browser, direct, manual) {
   rows.push({
     req: "사람이 직접 2시간 플레이",
     evidence: manual
-      ? `${isExampleManualLog(manual) ? "예시 로그 제외, " : ""}증거검증 ${validManualSessionCount}/${manualSessionCount}세션, 무효 ${invalidManual.length}개, ${manualTotalMinutes.toFixed(1)}/${MIN_MANUAL_TOTAL_MINUTES.toFixed(1)}분, ${manualProgressText}, 난이도별 ${manualDifficultyMinutesText}, ${pendingManualText}`
+      ? `${isExampleManualLog(manual) ? "예시 로그 제외, " : ""}human ${validManualSessionCount}/${manualSessionCount}세션, codex-direct ${codexDirectSessions.length}세션 ${codexDirectMinutes.toFixed(1)}분, 무효 ${invalidManual.length}개, ${manualTotalMinutes.toFixed(1)}/${MIN_MANUAL_TOTAL_MINUTES.toFixed(1)}분, ${manualProgressText}, 난이도별 ${manualDifficultyMinutesText}, ${pendingManualText}`
       : `아직 실제 수동 플레이 기록 없음, ${manualProgressText}`,
     pass: !!manual && manualTotalMinutes >= 120 && manualCoversAll && manualCoversMinimumMinutes,
     missing: !manual || manualTotalMinutes < 120 || !manualCoversAll || !manualCoversMinimumMinutes,

@@ -171,6 +171,19 @@ describe("manual-playlog plan", () => {
       legends: 0,
       stateChecksum: "2000abcd",
     });
+
+    const summary = JSON.parse(runManualPlaylog([`--out=${out}`, "--summary-json"]));
+    expect(summary.validSessionCount).toBe(1);
+    expect(summary.validHumanSessionCount).toBe(0);
+    expect(summary.codexDirectSessionCount).toBe(1);
+    expect(summary.totalMinutes).toBe(0);
+    expect(summary.rows.find((row) => row.label === "사람이 직접 2시간 플레이")).toMatchObject({
+      pass: false,
+    });
+    expect(summary.rows.find((row) => row.label === "입문자 무전설 40R 클리어")).toMatchObject({
+      pass: false,
+      evidence: "증거 없음",
+    });
   });
 
   it("preflight는 미완료 시작 마커가 있으면 먼저 finish하도록 실패한다", () => {
