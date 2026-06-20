@@ -300,6 +300,7 @@ describe("manual-playlog plan", () => {
     expect(failed.status).toBe(1);
     expect(failed.stdout).toContain("수동 증거 미충족");
     expect(failed.stderr).toContain("다음 필요 세션: 입문자 무전설 40R 클리어");
+    expect(failed.stderr).toContain("추천 시작 마커: yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
   });
 
   it("시작 마커를 저장한 뒤 finish로 실제 세션을 완성할 수 있다", () => {

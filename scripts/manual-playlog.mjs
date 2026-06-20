@@ -613,6 +613,9 @@ function assertManualProof() {
     console.error("");
     console.error(`다음 필요 세션: ${next.next.label} (${next.next.minutes.toFixed(1)}분 이상)`);
     console.error(`목표: ${next.next.goal}`);
+    if (next.next.startNextCommandTemplate) {
+      console.error(`추천 시작 마커: ${next.next.startNextCommandTemplate}`);
+    }
   }
   process.exit(1);
 }
