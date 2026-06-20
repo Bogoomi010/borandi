@@ -95,6 +95,14 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("--source=human-playtest|codex-direct-playtest");
   });
 
+  it("README는 고수 약한 증거를 40R 고정 실패로 안내하지 않는다", () => {
+    const readme = readFileSync("README.md", "utf8");
+
+    expect(readme).toContain("고수 5전설 이하 실패 + 고수 6전설 이상 40R 클리어");
+    expect(readme).toContain("고수 5전설 이하 실패는 현재 조정된 밸런스처럼 40R 이전에 무너진 기록도 목표 증거로 인정한다.");
+    expect(readme).not.toContain("고수 40R 5전설 이하 실패");
+  });
+
   it("preflight는 정리할 마커가 없으면 다음 시작 마커를 보여주고 성공한다", () => {
     const out = makeTempPath("preflight-empty.json");
     const output = runManualPlaylog([`--out=${out}`, "--preflight"]);
