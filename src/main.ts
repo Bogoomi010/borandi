@@ -9,7 +9,7 @@ import type { AppCtx } from "./ui/ctx";
 import { renderTopbar, renderLeftPanel, renderRightPanel, renderActionbar, renderUnitDetail } from "./ui/panels";
 import { renderMenubar } from "./ui/menu";
 import { toast, anyModalOpen, closeTopModal, confirmModal } from "./ui/widgets";
-import { maybeShowResult, openSelectorModal, resetResultShown } from "./ui/modals";
+import { manualPlaylogCommand, maybeShowResult, openSelectorModal, resetResultShown } from "./ui/modals";
 import { loadSlot, makeSaveRecord, saveSlot } from "./save/saveApi";
 import { loadProfile, loadSettings, playableStageId, profileMarkSeen, profileRecordRun } from "./ui/settings";
 import { GameAudio } from "./ui/audio";
@@ -71,6 +71,14 @@ let endedHandled = false;
 function markRunStarted() {
   ctx.runStartedAt = new Date().toISOString();
   ctx.runStartedAtMs = performance.now();
+  ctx.runEndedAt = null;
+  ctx.runEndedAtMs = null;
+}
+
+function markRunEnded() {
+  if (ctx.runEndedAt) return;
+  ctx.runEndedAt = new Date().toISOString();
+  ctx.runEndedAtMs = performance.now();
 }
 
 const ctx: AppCtx = {
@@ -85,6 +93,8 @@ const ctx: AppCtx = {
   saveStatus: "idle",
   runStartedAt: new Date().toISOString(),
   runStartedAtMs: performance.now(),
+  runEndedAt: null,
+  runEndedAtMs: null,
   lastRunUnlockedNext: false,
   refresh: () => { panelsDirty = true; },
   newRun: (seed, difficulty, stageId = 1) => {
@@ -124,6 +134,7 @@ const ctx: AppCtx = {
     ctx.lastRunUnlockedNext = false;
     resetResultShown();
     endedHandled = game.state.phase === "ended";
+    if (endedHandled) markRunEnded();
     lastPhase = game.state.phase;
     lastRound = game.state.round;
     lastSelectorCount = game.state.pendingSelectors.length;
@@ -272,6 +283,7 @@ function loop(now: number) {
     // 종료 처리 (1회)
     if (game.state.phase === "ended" && !endedHandled) {
       endedHandled = true;
+      markRunEnded();
       profileMarkSeen(game.state.units.map((u) => u.defId), game.state.discoveredRecipeIds);
       const finalBossCleared = game.state.cleared && game.state.bossKillSeconds[FINAL_ROUND] !== undefined;
       const unlockedNext = profileRecordRun(
@@ -536,8 +548,19 @@ function renderGameToText(): string {
     ? {
         start: buildManualStartCommand(manualStartInput),
         startNext: buildManualStartNextCommand(manualStartInput),
+        result: null as string | null,
       }
     : null;
+  if (manualProofCommands && s.phase === "ended") {
+    const endedAt = ctx.runEndedAt ?? new Date().toISOString();
+    const endedAtMs = ctx.runEndedAtMs ?? performance.now();
+    const summary = game.resultSummary();
+    summary.playedAt = endedAt;
+    summary.manualStartedAt = ctx.runStartedAt;
+    summary.unlockedNextStage = ctx.lastRunUnlockedNext;
+    summary.wallSeconds = Math.max(1, Math.round((endedAtMs - ctx.runStartedAtMs) / 1000));
+    manualProofCommands.result = manualPlaylogCommand(summary);
+  }
   return JSON.stringify({
     coordinateSystem: "board origin top-left, x right, y down, logical size 960x560",
     scene: ctx.scene,
@@ -631,6 +654,7 @@ function advanceTimeForTest(ms: number) {
   for (let i = 0; i < steps; i++) {
     if (ctx.scene === "game" && game.state.phase === "wave") game.advanceTick();
   }
+  if (ctx.scene === "game" && game.state.phase === "ended") markRunEnded();
   renderer.autoStartIn = game.state.breakTicks > 0 ? game.state.breakTicks * DT : null;
   renderer.draw(game.state);
   renderTopbar(ctx);

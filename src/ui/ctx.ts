@@ -19,6 +19,8 @@ export interface AppCtx {
   saveStatus: "idle" | "saving" | "saved" | "failed";
   runStartedAt: string;
   runStartedAtMs: number;
+  runEndedAt: string | null;
+  runEndedAtMs: number | null;
   /** 방금 끝난 판이 다음 맵 선택 권한을 새로 열었는지 */
   lastRunUnlockedNext: boolean;
   /** 패널 다시 그리기 요청 */

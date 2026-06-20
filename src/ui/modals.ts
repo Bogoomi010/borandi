@@ -112,7 +112,7 @@ function manualStartNextCommand(ctx: AppCtx): string {
   });
 }
 
-function manualPlaylogCommand(r: ResultSummary): string {
+export function manualPlaylogCommand(r: ResultSummary): string {
   const seconds = Math.max(1, Math.round(r.wallSeconds ?? 0));
   const result = r.cleared ? "clear" : "loss";
   const args = [
@@ -286,10 +286,11 @@ export function maybeShowResult(ctx: AppCtx) {
   resultShown = true;
 
   const summary = ctx.game.resultSummary();
-  summary.playedAt = new Date().toISOString();
+  summary.playedAt = ctx.runEndedAt ?? new Date().toISOString();
   summary.manualStartedAt = ctx.runStartedAt;
   summary.unlockedNextStage = ctx.lastRunUnlockedNext;
-  const wallSeconds = Math.max(1, Math.round((performance.now() - ctx.runStartedAtMs) / 1000));
+  const endedAtMs = ctx.runEndedAtMs ?? performance.now();
+  const wallSeconds = Math.max(1, Math.round((endedAtMs - ctx.runStartedAtMs) / 1000));
   summary.wallSeconds = wallSeconds;
   ctx.audio.sfx(summary.cleared ? "victory" : "defeat");
   void recordResult(summary).catch(() => toast("결과 저장 실패", "danger"));
