@@ -19,6 +19,7 @@ const sessionSources = ["human-playtest", "codex-direct-playtest"];
 const FINAL_ROUND = 40;
 const PENDING_TARGET_MINUTES = 12;
 const CURRENT_DATA_VERSION = readCurrentDataVersion();
+const VALID_STAGE_IDS = readValidStageIds();
 
 function usage() {
   return [
@@ -100,6 +101,30 @@ function readCurrentDataVersion() {
   } catch {
     return "";
   }
+}
+
+function readValidStageIds() {
+  try {
+    const source = readFileSync("src/data/stages.ts", "utf8");
+    return Array.from(source.matchAll(/\bid:\s*(\d+)/g), (match) => Number(match[1]))
+      .filter((stageId) => Number.isInteger(stageId) && stageId > 0);
+  } catch {
+    return [];
+  }
+}
+
+function isValidStageId(stage) {
+  return Number.isInteger(stage) &&
+    stage >= 1 &&
+    (VALID_STAGE_IDS.length === 0 || VALID_STAGE_IDS.includes(stage));
+}
+
+function validStageLabel() {
+  if (VALID_STAGE_IDS.length === 0) return "정수 맵 번호";
+  const sorted = [...VALID_STAGE_IDS].sort((a, b) => a - b);
+  return sorted.length > 5
+    ? `${sorted[0]}~${sorted[sorted.length - 1]}`
+    : sorted.join("|");
 }
 
 function asNumber(name) {
@@ -218,7 +243,7 @@ function hasCompleteManualMetadata(session) {
   const checksumValue = String(session.stateChecksum ?? "");
   return difficulties.includes(difficulty) &&
     ["clear", "cleared", "win", "won", "victory", "loss", "lose", "lost", "fail", "failed", "defeat", "quit"].includes(result) &&
-    Number.isFinite(stageValue) && stageValue >= 1 &&
+    isValidStageId(stageValue) &&
     Number.isFinite(roundValue) && roundValue >= 1 && roundValue <= FINAL_ROUND &&
     (!isClear(session) || roundValue >= FINAL_ROUND) &&
     Number.isFinite(legendsValue) && legendsValue >= 0 &&
@@ -1216,6 +1241,9 @@ function startManualSession() {
     fail(`지원하지 않는 난이도입니다: ${difficulty || "(없음)"}`);
   }
   const stage = requireNumber("stage");
+  if (!isValidStageId(stage)) {
+    fail(`--stage는 실제 맵 번호 ${validStageLabel()} 중 하나여야 합니다. 결과 화면의 실제 맵 번호를 입력하세요.`);
+  }
   const seed = requireStartSeed();
   const startedAt = parseDate("startedAt", args.startedAt) ?? new Date();
   const id = String(args.id ?? makePendingId({ difficulty, stage, seed, startedAt: startedAt.toISOString() }));
@@ -1261,6 +1289,9 @@ function startNextManualSession() {
     fail(`다음 필요 세션은 ${next.difficulty} 난이도입니다. --difficulty=${requestedDifficulty}로 시작할 수 없습니다.`);
   }
   const stage = optionalNumber("stage", 1);
+  if (!isValidStageId(stage)) {
+    fail(`--stage는 실제 맵 번호 ${validStageLabel()} 중 하나여야 합니다. 결과 화면의 실제 맵 번호를 입력하세요.`);
+  }
   const seed = requireStartSeed();
   const startedAt = parseDate("startedAt", args.startedAt) ?? new Date();
   const id = String(args.id ?? makePendingId({ difficulty, stage, seed, startedAt: startedAt.toISOString() }));
@@ -1399,8 +1430,11 @@ failIfPlaceholderValue("stateChecksum", stateChecksum, "RESULT_CHECKSUM", "결�
 if (!/^[0-9a-f]{8}$/i.test(stateChecksum)) {
   fail("--stateChecksum 값은 결과 리포트의 8자리 16진 체크섬이어야 합니다.");
 }
-if (stage < 1 || round < 1 || legends < 0) {
-  fail("--stage/--round는 1 이상, --legends는 0 이상이어야 합니다.");
+if (!isValidStageId(stage)) {
+  fail(`--stage는 실제 맵 번호 ${validStageLabel()} 중 하나여야 합니다. 결과 화면의 실제 맵 번호를 입력하세요.`);
+}
+if (round < 1 || legends < 0) {
+  fail("--round는 1 이상, --legends는 0 이상이어야 합니다.");
 }
 if (round > FINAL_ROUND) {
   fail(`--round는 최종 라운드 ${FINAL_ROUND}을 넘을 수 없습니다. 결과 화면의 실제 라운드를 입력하세요.`);

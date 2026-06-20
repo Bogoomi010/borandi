@@ -1090,6 +1090,54 @@ describe("manual-playlog plan", () => {
     expect(overRound.stderr).toContain("--round는 최종 라운드 40을 넘을 수 없습니다");
   });
 
+  it("시작 마커와 직접 저장은 실제 맵 번호 범위 밖 stage를 거부한다", () => {
+    const startOut = makeTempPath("start-invalid-stage.json");
+    const saveOut = makeTempPath("save-invalid-stage.json");
+    const startNextOut = makeTempPath("start-next-invalid-stage.json");
+
+    const startFailed = runManualPlaylogFailure([
+      `--out=${startOut}`,
+      "--start",
+      "--id=invalid-stage-start",
+      "--difficulty=novice",
+      "--stage=16",
+      "--seed=BAD-STAGE-START",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+    ]);
+    const startNextFailed = runManualPlaylogFailure([
+      `--out=${startNextOut}`,
+      "--start-next",
+      "--stage=1.5",
+      "--seed=BAD-STAGE-START-NEXT",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+    ]);
+    const saveFailed = runManualPlaylogFailure([
+      `--out=${saveOut}`,
+      "--difficulty=novice",
+      "--seconds=900",
+      "--result=clear",
+      "--stage=16",
+      "--round=40",
+      "--seed=BAD-STAGE-SAVE",
+      "--legends=0",
+      "--maxGrade=hero",
+      `--dataVersion=${CURRENT_DATA_VERSION}`,
+      "--stateChecksum=20000035",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+      "--endedAt=2026-06-20T02:15:00.000Z",
+    ]);
+
+    expect(startFailed.status).toBe(1);
+    expect(startFailed.stderr).toContain("--stage는 실제 맵 번호 1~15 중 하나여야 합니다");
+    expect(startNextFailed.status).toBe(1);
+    expect(startNextFailed.stderr).toContain("--stage는 실제 맵 번호 1~15 중 하나여야 합니다");
+    expect(saveFailed.status).toBe(1);
+    expect(saveFailed.stderr).toContain("--stage는 실제 맵 번호 1~15 중 하나여야 합니다");
+    expect(JSON.parse(runManualPlaylog([`--out=${startOut}`, "--pending-json"])).pending).toHaveLength(0);
+    expect(JSON.parse(runManualPlaylog([`--out=${startNextOut}`, "--pending-json"])).pending).toHaveLength(0);
+    expect(existsSync(saveOut)).toBe(false);
+  });
+
   it("summary는 외부에서 들어온 불가능한 clear 라운드를 무효 처리한다", () => {
     const out = makeTempPath("summary-impossible-round.json");
     writeFileSync(out, JSON.stringify({
@@ -1121,6 +1169,40 @@ describe("manual-playlog plan", () => {
     expect(summary.invalidSessions[0]).toMatchObject({
       seed: "EARLY-CLEAR",
       round: 39,
+      issues: ["필수 결과 메타데이터 누락 또는 모순"],
+    });
+  });
+
+  it("summary는 외부에서 들어온 실제 맵 범위 밖 stage를 무효 처리한다", () => {
+    const out = makeTempPath("summary-invalid-stage.json");
+    writeFileSync(out, JSON.stringify({
+      schemaVersion: 1,
+      source: "manual-playlog",
+      sessions: [
+        {
+          source: "human-playtest",
+          difficulty: "novice",
+          minutes: 12,
+          startedAt: "2026-06-20T00:00:00.000Z",
+          endedAt: "2026-06-20T00:12:00.000Z",
+          result: "clear",
+          stage: 16,
+          round: 40,
+          seed: "INVALID-STAGE",
+          legends: 0,
+          maxGrade: "hero",
+          dataVersion: CURRENT_DATA_VERSION,
+          stateChecksum: "bad00006",
+        },
+      ],
+    }, null, 2), "utf8");
+
+    const summary = JSON.parse(runManualPlaylog([`--out=${out}`, "--summary-json"]));
+
+    expect(summary.validSessionCount).toBe(0);
+    expect(summary.invalidSessionCount).toBe(1);
+    expect(summary.invalidSessions[0]).toMatchObject({
+      seed: "INVALID-STAGE",
       issues: ["필수 결과 메타데이터 누락 또는 모순"],
     });
   });
