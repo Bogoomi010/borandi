@@ -535,6 +535,14 @@ const MANUAL_BALANCE_TARGETS: Array<{
   { difficultyId: "master", difficulty: "초고수", target: "실패 기록", length: "12분 이상" },
 ];
 
+const MANUAL_START_WORKFLOW = [
+  "다음 목표 난이도로 새 게임을 시작하고 상단의 실제 시드를 확인",
+  "시작 검증 명령의 GAME_SEED_HERE를 실제 시드로 바꿔 --dry-run 실행",
+  "검증이 통과하면 같은 명령에서 --dry-run을 빼고 시작 마커 저장",
+  "12분 이상 실제로 플레이하고 목표 결과 조건 확인",
+  "결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 실행 후 실제 finish 저장",
+];
+
 function manualTargetHint(difficultyId: DifficultyId): string {
   return MANUAL_BALANCE_TARGETS
     .filter((target) => target.difficultyId === difficultyId)
@@ -665,6 +673,12 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       body.appendChild(el("pre", "report", currentStartCommand));
       body.appendChild(el("div", "modal-note", "플레이 시작 직후 한 번 실행해두면 결과 화면을 놓쳐도 --finish 명령으로 같은 시작 시각을 재사용할 수 있습니다."));
     }
+    body.appendChild(el("h3", "", "실제 세션 기록 순서"));
+    const workflow = el("ol", "modal-note");
+    for (const step of MANUAL_START_WORKFLOW) {
+      workflow.appendChild(el("li", "", step));
+    }
+    body.appendChild(workflow);
     body.appendChild(el("h3", "", "상태 확인"));
     body.appendChild(el("pre", "report", preflightCommand));
     body.appendChild(el("pre", "report", preflightJsonCommand));
