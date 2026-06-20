@@ -22,6 +22,7 @@ const MIN_MANUAL_TARGET_SESSION_MINUTES = 12;
 const MIN_MANUAL_TOTAL_MINUTES = 120;
 const MIN_BROWSER_DIRECT_SEEDS = 6;
 const REQUIRED_DIFFICULTIES = ["novice", "normal", "intermediate", "expert", "master"];
+const FINAL_ROUND = 40;
 const CURRENT_DATA_VERSION = readCurrentDataVersion();
 
 function readJson(path) {
@@ -307,7 +308,8 @@ function hasCompleteManualMetadata(session) {
   return ["novice", "normal", "intermediate", "expert", "master"].includes(difficulty) &&
     ["clear", "cleared", "win", "won", "victory", "loss", "lose", "lost", "fail", "failed", "defeat", "quit"].includes(result) &&
     Number.isFinite(stage) && stage >= 1 &&
-    Number.isFinite(round) && round >= 1 &&
+    Number.isFinite(round) && round >= 1 && round <= FINAL_ROUND &&
+    (!isClear(session) || round >= FINAL_ROUND) &&
     Number.isFinite(legends) && legends >= 0 &&
     isLegendMetadataConsistent(maxGrade, legends) &&
     ["common", "rare", "hero", "legend", "hidden"].includes(maxGrade) &&

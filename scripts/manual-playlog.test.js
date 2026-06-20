@@ -626,6 +626,81 @@ describe("manual-playlog plan", () => {
     expect(pending.pending).toHaveLength(1);
   });
 
+  it("직접 저장은 40R 미만 clear와 40R 초과 round를 거부한다", () => {
+    const out = makeTempPath("save-impossible-round.json");
+
+    const earlyClear = runManualPlaylogFailure([
+      `--out=${out}`,
+      "--difficulty=novice",
+      "--seconds=900",
+      "--result=clear",
+      "--stage=1",
+      "--round=39",
+      "--seed=EARLY-CLEAR",
+      "--legends=0",
+      "--maxGrade=hero",
+      `--dataVersion=${CURRENT_DATA_VERSION}`,
+      "--stateChecksum=20000033",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+      "--endedAt=2026-06-20T02:15:00.000Z",
+    ]);
+    const overRound = runManualPlaylogFailure([
+      `--out=${out}`,
+      "--difficulty=master",
+      "--seconds=900",
+      "--result=loss",
+      "--stage=1",
+      "--round=41",
+      "--seed=OVER-ROUND",
+      "--legends=0",
+      "--maxGrade=hero",
+      `--dataVersion=${CURRENT_DATA_VERSION}`,
+      "--stateChecksum=20000034",
+      "--startedAt=2026-06-20T03:00:00.000Z",
+      "--endedAt=2026-06-20T03:15:00.000Z",
+    ]);
+
+    expect(earlyClear.status).toBe(1);
+    expect(earlyClear.stderr).toContain("--result=clear는 40R 최종 보스 클리어 결과에서만 사용할 수 있습니다");
+    expect(overRound.status).toBe(1);
+    expect(overRound.stderr).toContain("--round는 최종 라운드 40을 넘을 수 없습니다");
+  });
+
+  it("summary는 외부에서 들어온 불가능한 clear 라운드를 무효 처리한다", () => {
+    const out = makeTempPath("summary-impossible-round.json");
+    writeFileSync(out, JSON.stringify({
+      schemaVersion: 1,
+      source: "manual-playlog",
+      sessions: [
+        {
+          source: "human-playtest",
+          difficulty: "novice",
+          minutes: 12,
+          startedAt: "2026-06-20T00:00:00.000Z",
+          endedAt: "2026-06-20T00:12:00.000Z",
+          result: "clear",
+          stage: 1,
+          round: 39,
+          seed: "EARLY-CLEAR",
+          legends: 0,
+          maxGrade: "hero",
+          dataVersion: CURRENT_DATA_VERSION,
+          stateChecksum: "bad00004",
+        },
+      ],
+    }, null, 2), "utf8");
+
+    const summary = JSON.parse(runManualPlaylog([`--out=${out}`, "--summary-json"]));
+
+    expect(summary.validSessionCount).toBe(0);
+    expect(summary.invalidSessionCount).toBe(1);
+    expect(summary.invalidSessions[0]).toMatchObject({
+      seed: "EARLY-CLEAR",
+      round: 39,
+      issues: ["필수 결과 메타데이터 누락 또는 모순"],
+    });
+  });
+
   it("시작 마커를 저장한 뒤 finish로 실제 세션을 완성할 수 있다", () => {
     const out = makeTempPath("pending-finish.json");
     runManualPlaylog([

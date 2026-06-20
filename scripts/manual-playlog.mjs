@@ -15,6 +15,7 @@ const outPath = String(args.out ?? DEFAULT_MANUAL_LOG_PATH);
 const difficulties = ["novice", "normal", "intermediate", "expert", "master"];
 const results = ["clear", "loss", "quit"];
 const grades = ["common", "rare", "hero", "legend", "hidden"];
+const FINAL_ROUND = 40;
 const CURRENT_DATA_VERSION = readCurrentDataVersion();
 
 function usage() {
@@ -211,7 +212,8 @@ function hasCompleteManualMetadata(session) {
   return difficulties.includes(difficulty) &&
     ["clear", "cleared", "win", "won", "victory", "loss", "lose", "lost", "fail", "failed", "defeat", "quit"].includes(result) &&
     Number.isFinite(stageValue) && stageValue >= 1 &&
-    Number.isFinite(roundValue) && roundValue >= 1 &&
+    Number.isFinite(roundValue) && roundValue >= 1 && roundValue <= FINAL_ROUND &&
+    (!isClear(session) || roundValue >= FINAL_ROUND) &&
     Number.isFinite(legendsValue) && legendsValue >= 0 &&
     grades.includes(maxGradeValue) &&
     isLegendMetadataConsistent(maxGradeValue, legendsValue) &&
@@ -1152,6 +1154,12 @@ if (!/^[0-9a-f]{8}$/i.test(stateChecksum)) {
 }
 if (stage < 1 || round < 1 || legends < 0) {
   fail("--stage/--round는 1 이상, --legends는 0 이상이어야 합니다.");
+}
+if (round > FINAL_ROUND) {
+  fail(`--round는 최종 라운드 ${FINAL_ROUND}을 넘을 수 없습니다. 결과 화면의 실제 라운드를 입력하세요.`);
+}
+if (result === "clear" && round < FINAL_ROUND) {
+  fail(`--result=clear는 ${FINAL_ROUND}R 최종 보스 클리어 결과에서만 사용할 수 있습니다. 결과 화면의 실제 result/round 값을 입력하세요.`);
 }
 if (!isLegendMetadataConsistent(maxGrade, legends)) {
   fail("--legends와 --maxGrade가 모순됩니다. 전설 이상 보유 수와 최고 등급을 결과 리포트 그대로 입력하세요.");
