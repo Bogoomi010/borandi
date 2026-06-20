@@ -38,7 +38,7 @@ export function renderTopbar(ctx: AppCtx) {
 
   const stage = stageById(s.stageId);
   root.appendChild(stat("맵", `${stage.id}. ${stage.name}`));
-  root.appendChild(stat("맵 목표", "1~40R 고정", "mapgoal"));
+  root.appendChild(stat("현재 판", "1~40R 같은 맵", "mapgoal"));
   root.appendChild(stat("라운드", `${Math.min(s.round, FINAL_ROUND)}/${FINAL_ROUND}`));
   root.appendChild(stat("적 누적", `${s.enemies.length}/${diff.enemyLimit}`, "life"));
   root.appendChild(stat("골드", String(s.gold), "gold"));

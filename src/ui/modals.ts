@@ -253,15 +253,15 @@ function mapPermissionMessage(r: ResultSummary): string {
   const finalBossCleared = r.cleared && r.reachedRound >= FINAL_ROUND;
   if (r.unlockedNextStage && r.stageId < STAGES.length) {
     const next = stageById(r.stageId + 1);
-    return `다음 맵 선택 권한 획득: ${next.id}. ${next.name}`;
+    return `다음 새 게임부터 선택 가능: ${next.id}. ${next.name}`;
   }
   if (finalBossCleared && r.stageId >= STAGES.length) {
     return "최종 맵 40R 보스를 클리어했습니다. 더 열릴 맵은 없습니다.";
   }
   if (finalBossCleared) {
-    return "이미 선택 권한이 열린 맵입니다. 다음 권한은 현재 해금 진행 맵의 40R 최종 보스를 클리어해야 열립니다.";
+    return "이미 선택 가능한 맵입니다. 다음 맵 권한은 현재 해금 진행 맵을 새 게임에서 선택해 40R 보스를 클리어해야 열립니다.";
   }
-  return `다음 맵 선택 권한은 이 맵의 ${FINAL_ROUND}R 최종 보스를 클리어해야 열립니다.`;
+  return `이 판의 맵은 끝까지 고정됩니다. 다음 맵 선택 권한은 ${FINAL_ROUND}R 최종 보스 클리어 후 열립니다.`;
 }
 
 function newlyUnlockedNextStage(r: ResultSummary) {
@@ -277,7 +277,7 @@ export function buildReportMarkdown(r: ResultSummary): string {
     ``,
     `- 결과: ${r.cleared ? "클리어" : "패배"}`,
     `- 맵: ${r.stageId}. ${r.stageName}`,
-    `- 맵 권한: ${mapPermissionMessage(r)}`,
+    `- 선택 가능 맵: ${mapPermissionMessage(r)}`,
     `- 도달 라운드: ${r.reachedRound}`,
     `- 시드: \`${r.seed}\` / 난이도: ${r.difficulty} / 데이터 버전: ${r.dataVersion}`,
     `- 상태 체크섬: \`${r.stateChecksum}\``,
@@ -366,7 +366,7 @@ export function maybeShowResult(ctx: AppCtx) {
   openModal((body, close) => {
     const proofTarget = manualProofTarget(summary);
     const proofChecks = manualProofChecklist(summary);
-    body.appendChild(el("h2", "", summary.cleared ? `${summary.stageName} 40라운드 클리어!` : `${summary.reachedRound}라운드에서 패배`));
+    body.appendChild(el("h2", "", summary.cleared ? `선택한 맵 40라운드 보스 클리어!` : `${summary.reachedRound}라운드에서 패배`));
 
     const grid = el("div", "result-stats");
     const kv = (k: string, v: string) => {
@@ -375,7 +375,7 @@ export function maybeShowResult(ctx: AppCtx) {
     };
     kv("시드", summary.seed);
     kv("맵", `${summary.stageId}. ${summary.stageName}`);
-    kv("맵 권한", mapPermissionMessage(summary));
+    kv("선택 가능 맵", mapPermissionMessage(summary));
     kv("난이도", summary.difficulty);
     kv("최고 등급", GRADE_LABEL[summary.maxGrade]);
     kv("전설/히든", `${summary.legendCount} / ${summary.hiddenCount}`);
@@ -510,17 +510,16 @@ export function maybeShowResult(ctx: AppCtx) {
 
     const nextStage = newlyUnlockedNextStage(summary);
     if (nextStage) {
-      const nextMapBtn = el("button", "primary", `다음 맵 시작: ${nextStage.id}. ${nextStage.name}`);
+      const nextMapBtn = el("button", "primary", `새 게임에서 해금된 맵 선택`);
       nextMapBtn.onclick = () => {
-        resultShown = false;
         close();
-        ctx.newRun(randomSeed(), ctx.game.state.difficulty, nextStage.id);
+        openNewRunModal(ctx);
       };
       row.appendChild(nextMapBtn);
     }
 
     const newBtn = el("button", nextStage ? "" : "primary", "새 게임");
-    newBtn.onclick = () => { resultShown = false; close(); openNewRunModal(ctx); };
+    newBtn.onclick = () => { close(); openNewRunModal(ctx); };
     row.appendChild(newBtn);
 
     body.appendChild(row);
@@ -579,16 +578,16 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
     }
     body.appendChild(diffRow);
 
-    body.appendChild(el("h3", "", "맵 선택 권한"));
-    body.appendChild(el("div", "modal-note map-rule-note", "게임 시작 때 맵을 하나 정하면 40R 최종 보스까지 그 맵으로만 진행합니다. 현재 해금 진행 맵의 40R 보스를 클리어하면 다음 맵을 선택할 권한이 열립니다."));
+    body.appendChild(el("h3", "", "맵 선택"));
+    body.appendChild(el("div", "modal-note map-rule-note", "새 게임을 시작할 때 맵을 하나 정합니다. 이 판은 1R부터 40R 최종 보스까지 같은 맵으로 진행하며, 클리어 후 다음 새 게임에서 선택 가능한 맵이 하나 늘어납니다."));
     const stageRow = el("div", "choice-grid stage-choice-grid");
     const stageBtns: HTMLButtonElement[] = [];
     for (const stage of STAGES) {
       const b = el("button", "choice-btn stage-choice") as HTMLButtonElement;
       b.appendChild(el("span", "cname", `${stage.id}. ${stage.name}`));
-      b.appendChild(el("span", "cdesc", `${stage.subtitle} · 선택하면 40R까지 이 맵 고정`));
+      b.appendChild(el("span", "cdesc", `${stage.subtitle} · 이 판은 1~40R 이 맵 고정`));
       b.disabled = stage.id > unlockedStage;
-      if (b.disabled) b.appendChild(el("span", "cdesc", `잠김: ${stage.id - 1}번 맵 40R 최종 보스 클리어 후 선택 가능`));
+      if (b.disabled) b.appendChild(el("span", "cdesc", `잠김: ${stage.id - 1}번 맵 40R 보스 클리어 후 새 게임에서 선택 가능`));
       if (stage.id === chosenStage) b.style.borderColor = "var(--accent)";
       b.onclick = () => {
         chosenStage = stage.id;

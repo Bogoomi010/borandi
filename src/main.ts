@@ -105,8 +105,8 @@ const ctx: AppCtx = {
     showGame(ctx);
     audio.sfx("waveStart");
     const stage = stageById(game.state.stageId);
-    const lockNote = allowedStage !== requestedStage ? " · 잠긴 맵 요청은 현재 권한으로 조정됨" : "";
-    toast(`새 게임: ${stage.id}. ${stage.name} · 시드 ${game.state.seed}${lockNote}`, "ok");
+    const lockNote = allowedStage !== requestedStage ? " · 잠긴 맵 요청은 현재 선택 가능 맵으로 조정됨" : "";
+    toast(`새 게임: ${stage.id}. ${stage.name} · 40R까지 맵 고정 · 시드 ${game.state.seed}${lockNote}`, "ok");
   },
   adoptGame: (g) => {
     game = g;
@@ -271,7 +271,7 @@ function loop(now: number) {
       profileMarkSeen(game.state.units.map((u) => u.defId), game.state.discoveredRecipeIds);
       const unlockedNext = profileRecordRun(game.state.cleared, game.state.difficulty, game.state.round, game.state.stageId);
       ctx.lastRunUnlockedNext = unlockedNext;
-      if (unlockedNext) toast(`다음 맵 선택 권한 획득: ${stageById(game.state.stageId + 1).name}`, "ok", 3200);
+      if (unlockedNext) toast(`다음 새 게임부터 선택 가능: ${stageById(game.state.stageId + 1).name}`, "ok", 3200);
     }
 
     // 라운드 사이 휴식 카운트다운 표시 (엔진 breakTicks 기반)

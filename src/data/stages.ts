@@ -57,7 +57,7 @@ export const STAGES: StageDef[] = [
     ],
   },
   {
-    id: 5, name: "Forge Bend", subtitle: "first guardian stage", ground: "stone",
+    id: 5, name: "Forge Bend", subtitle: "first guardian map", ground: "stone",
     waypoints: [[82, 102], [842, 102], [842, 278], [666, 278], [666, 470], [250, 470], [250, 266], [82, 266]],
     decorations: [
       { kind: "forge", x: 364, y: 188, scale: 0.82 }, { kind: "fenceIron", x: 736, y: 374, scale: 0.95 },
@@ -97,7 +97,7 @@ export const STAGES: StageDef[] = [
     ],
   },
   {
-    id: 10, name: "Noble Ruin", subtitle: "second guardian stage", ground: "stone",
+    id: 10, name: "Noble Ruin", subtitle: "second guardian map", ground: "stone",
     waypoints: [[98, 94], [850, 94], [850, 190], [650, 190], [650, 364], [850, 364], [850, 468], [98, 468], [98, 364], [300, 364], [300, 190], [98, 190]],
     decorations: [
       { kind: "manor", x: 390, y: 206, scale: 0.95 }, { kind: "fenceIron", x: 190, y: 412, scale: 0.92 },
@@ -137,7 +137,7 @@ export const STAGES: StageDef[] = [
     ],
   },
   {
-    id: 15, name: "Ancient Cursed Tree", subtitle: "final guardian stage", ground: "corrupt",
+    id: 15, name: "Ancient Cursed Tree", subtitle: "final guardian map", ground: "corrupt",
     waypoints: [[92, 102], [868, 102], [868, 458], [92, 458], [92, 188], [760, 188], [760, 372], [214, 372], [214, 280], [612, 280]],
     decorations: [
       { kind: "specialTree", x: 402, y: 152, scale: 1.05 }, { kind: "gate", x: 118, y: 390, scale: 0.95 },

@@ -49,7 +49,7 @@ function buildTitle(ctx: AppCtx) {
   const h1 = el("h1");
   h1.innerHTML = "차원 균열<br>랜덤 디펜스";
   logo.appendChild(h1);
-  logo.appendChild(el("div", "title-sub", "맵 선택 · 1~40R 고정 진행 · 40R 보스 클리어 시 다음 맵 권한"));
+  logo.appendChild(el("div", "title-sub", "새 게임에서 맵 선택 · 1~40R 같은 맵 · 클리어 후 다음 맵 선택 가능"));
   inner.appendChild(logo);
 
   const menu = el("div", "title-menu");
@@ -324,7 +324,7 @@ export function openCollection(ctx: AppCtx) {
     };
     kv("플레이 횟수", String(profile.runs));
     kv("최고 도달", profile.bestRound > 0 ? `${profile.bestRound}R` : "-");
-    kv("맵 선택 권한", `${Math.max(1, Math.min(profile.unlockedStage, STAGES.length))}/${STAGES.length}`);
+    kv("선택 가능한 맵", `${Math.max(1, Math.min(profile.unlockedStage, STAGES.length))}/${STAGES.length}`);
     for (const d of DIFFICULTIES) kv(`${d.name} 클리어`, String(profile.clears[d.id] ?? 0));
     kv("유닛 수집", `${profile.seenUnits.length}/${UNITS.length}`);
     kv("히든 조합 발견", `${profile.foundHiddenRecipes.length}/${RECIPES.filter((r) => r.visibility === "hidden").length}`);
