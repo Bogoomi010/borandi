@@ -1062,6 +1062,12 @@ function requireStartSeed() {
   return seed;
 }
 
+function failIfPlaceholderValue(name, value, placeholder, replacement) {
+  if (String(value ?? "") === placeholder) {
+    fail(`--${name}=${placeholder}는 템플릿 placeholder입니다. ${replacement} 값을 사용하세요.`);
+  }
+}
+
 function startManualSession() {
   failIfInvalidManualSessionsExist();
   const difficulty = String(args.difficulty ?? "");
@@ -1222,6 +1228,7 @@ const round = requireNumber("round");
 const legends = requireNumber("legends");
 const seed = String(args.seed ?? requestedPendingFinish?.seed ?? "");
 if (!seed) fail("--seed 값이 필요합니다.");
+failIfPlaceholderValue("seed", seed, "GAME_SEED_HERE", "게임 화면의 실제 시드");
 
 const maxGrade = String(args.maxGrade ?? "");
 if (!grades.includes(maxGrade)) {
@@ -1229,10 +1236,12 @@ if (!grades.includes(maxGrade)) {
 }
 const dataVersion = String(args.dataVersion ?? "");
 if (!dataVersion) fail("--dataVersion 값이 필요합니다.");
+failIfPlaceholderValue("dataVersion", dataVersion, "RESULT_DATA_VERSION", "결과 화면의 실제 데이터 버전");
 if (CURRENT_DATA_VERSION && dataVersion !== CURRENT_DATA_VERSION) {
   fail(`--dataVersion ${dataVersion}은 현재 DATA_VERSION ${CURRENT_DATA_VERSION}와 다릅니다. 결과 화면의 실제 데이터 버전을 사용하세요.`);
 }
 const stateChecksum = String(args.stateChecksum ?? "");
+failIfPlaceholderValue("stateChecksum", stateChecksum, "RESULT_CHECKSUM", "결과 화면의 실제 상태 체크섬");
 if (!/^[0-9a-f]{8}$/i.test(stateChecksum)) {
   fail("--stateChecksum 값은 결과 리포트의 8자리 16진 체크섬이어야 합니다.");
 }
@@ -1252,6 +1261,7 @@ if (!isLegendMetadataConsistent(maxGrade, legends)) {
 const minutes = asNumber("minutes");
 const seconds = asNumber("seconds");
 const now = new Date();
+failIfPlaceholderValue("endedAt", args.endedAt, "RESULT_ENDED_AT", "결과 화면의 실제 종료 시각");
 let endedAt = parseDate("endedAt", args.endedAt) ?? now;
 let startedAt = parseDate("startedAt", args.startedAt ?? requestedPendingFinish?.startedAt);
 let computedSeconds = seconds;

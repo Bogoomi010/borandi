@@ -726,6 +726,51 @@ describe("manual-playlog plan", () => {
     expect(existsSync(out)).toBe(false);
   });
 
+  it("결과 저장은 RESULT_* 및 GAME_SEED_HERE placeholder 값을 저장하지 않는다", () => {
+    const cases = [
+      {
+        out: makeTempPath("placeholder-result-seed.json"),
+        args: ["--seed=GAME_SEED_HERE", `--dataVersion=${CURRENT_DATA_VERSION}`, "--stateChecksum=20000024", "--endedAt=2026-06-20T02:15:00.000Z"],
+        message: "--seed=GAME_SEED_HERE는 템플릿 placeholder입니다.",
+      },
+      {
+        out: makeTempPath("placeholder-result-data-version.json"),
+        args: ["--seed=REAL-SEED", "--dataVersion=RESULT_DATA_VERSION", "--stateChecksum=20000025", "--endedAt=2026-06-20T02:15:00.000Z"],
+        message: "--dataVersion=RESULT_DATA_VERSION는 템플릿 placeholder입니다.",
+      },
+      {
+        out: makeTempPath("placeholder-result-checksum.json"),
+        args: ["--seed=REAL-SEED", `--dataVersion=${CURRENT_DATA_VERSION}`, "--stateChecksum=RESULT_CHECKSUM", "--endedAt=2026-06-20T02:15:00.000Z"],
+        message: "--stateChecksum=RESULT_CHECKSUM는 템플릿 placeholder입니다.",
+      },
+      {
+        out: makeTempPath("placeholder-result-ended-at.json"),
+        args: ["--seed=REAL-SEED", `--dataVersion=${CURRENT_DATA_VERSION}`, "--stateChecksum=20000026", "--endedAt=RESULT_ENDED_AT"],
+        message: "--endedAt=RESULT_ENDED_AT는 템플릿 placeholder입니다.",
+      },
+    ];
+
+    for (const { out, args, message } of cases) {
+      const failed = runManualPlaylogFailure([
+        `--out=${out}`,
+        "--dry-run",
+        "--difficulty=novice",
+        "--seconds=900",
+        "--result=clear",
+        "--stage=1",
+        "--round=40",
+        "--legends=0",
+        "--maxGrade=hero",
+        "--startedAt=2026-06-20T02:00:00.000Z",
+        ...args,
+      ]);
+
+      expect(failed.status).toBe(1);
+      expect(failed.stderr).toContain(message);
+      expect(existsSync(out)).toBe(false);
+    }
+  });
+
   it("dry-run finish는 시작 마커를 닫지 않고 세션도 저장하지 않는다", () => {
     const out = makeTempPath("dry-run-finish.json");
     runManualPlaylog([
