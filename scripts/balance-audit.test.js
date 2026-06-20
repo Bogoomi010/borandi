@@ -57,6 +57,16 @@ function completeBalance() {
   };
 }
 
+function boundaryNormalBalance() {
+  const balance = completeBalance();
+  for (const item of balance.scenarios) {
+    if (item.id === "normalNoLegend") item.report.clearRate = 0.13;
+    if (item.id === "normalOneLegend") item.report.clearRate = 0.2;
+    if (item.id === "normalTwoLegend") item.report.clearRate = 0.53;
+  }
+  return balance;
+}
+
 function completeBrowser() {
   return { passed: true, gates: [{ pass: true }, { pass: true }] };
 }
@@ -162,6 +172,25 @@ describe("balance-audit assert", () => {
 
     expect(output).toContain("목표 완료 여부: 감사표 기준으로 모든 항목이 충족되었다.");
     expect(output).toContain("다음 수동 플레이 세션 | PASS | 필요 없음 - 수동 플레이 증거 목표 충족");
+  });
+
+  it("일반 1전설 최소 클리어권과 2전설 개선 기준이면 assert가 성공한다", () => {
+    const paths = {
+      balance: writeJson("balance.json", boundaryNormalBalance()),
+      browser: writeJson("browser.json", completeBrowser()),
+      direct: writeJson("direct.json", completeDirect()),
+      manual: writeJson("manual.json", completeManual()),
+    };
+
+    const output = runAudit([
+      `--balance=${paths.balance}`,
+      `--browser=${paths.browser}`,
+      `--direct=${paths.direct}`,
+      `--manual=${paths.manual}`,
+      "--assert",
+    ]);
+
+    expect(output).toContain("일반: 전설 1~2개부터 클리어권 | PASS");
   });
 
   it("수동 2시간 증거가 없으면 assert가 실패한다", () => {
