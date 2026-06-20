@@ -35,6 +35,7 @@ import { FINAL_ROUND, waveForRound } from "./data/waves";
 import { UPGRADES, upgradeCost } from "./data/upgrades";
 import { GRADE_ORDER, type DifficultyId, type Grade } from "./core/types";
 import { MANUAL_PROOF_TARGET_SECONDS, manualProofReadyAt, manualProofRemainingSeconds, manualProofTargetFor } from "./core/manualProof";
+import { manualProofResultChecklist, manualProofResultTarget } from "./core/manualProofResult";
 import {
   manualDryRunCommand,
   manualNextCommand,
@@ -594,6 +595,9 @@ function renderGameToText(): string {
   const manualStartCommand = buildManualStartCommand(manualStartInput);
   const manualStartNextCommand = buildManualStartNextCommand(manualStartInput);
   const manualPendingIdCommand = buildManualPendingIdCommand(manualStartInput);
+  let manualResultTarget: string | null = null;
+  let manualResultChecks: ReturnType<typeof manualProofResultChecklist> | null = null;
+  let manualResultPassed: boolean | null = null;
   const manualProofCommands = ctx.scene === "game"
     ? {
         start: manualStartCommand,
@@ -648,6 +652,9 @@ function renderGameToText(): string {
     manualProofCommands.finishLatest = manualPlaylogFinishLatestCommand(summary);
     manualProofCommands.finishLatestDryRun = manualPlaylogFinishLatestDryRunCommand(summary);
     manualProofCommands.finishLatestThenNext = manualPlaylogFinishLatestThenNextCommand(summary);
+    manualResultTarget = manualProofResultTarget(summary);
+    manualResultChecks = manualProofResultChecklist(summary);
+    manualResultPassed = manualResultChecks.every((check) => check.ok);
   }
   return JSON.stringify({
     coordinateSystem: "board origin top-left, x right, y down, logical size 960x560",
@@ -693,6 +700,9 @@ function renderGameToText(): string {
       targetLabel: manualProofTarget.label,
       conditionStatus: manualProofTarget.status,
       conditionState: manualProofTarget.state,
+      resultTarget: manualResultTarget,
+      resultChecks: manualResultChecks,
+      resultPassed: manualResultPassed,
       readyNotified: manualProofReadyNotified,
       startedAt: ctx.scene === "game" ? ctx.runStartedAt : null,
       commands: manualProofCommands,
