@@ -299,23 +299,29 @@ function manualNextEvidence(manual) {
   const minutesByDifficulty = manualMinutesByDifficulty(manual);
   for (const target of MANUAL_TARGETS) {
     if (!hasManual(manual, target.difficulty, target.predicate)) {
-      return `${target.label} (${target.minutes.toFixed(1)}분 이상) - ${target.goal}; 기록 힌트: ${target.logHint}`;
+      return `${target.label} (${target.minutes.toFixed(1)}분 이상) - ${target.goal}; 기록 힌트: ${target.logHint}; 추천 시작 마커: ${startNextCommandTemplate(target)}`;
     }
   }
   for (const difficulty of REQUIRED_DIFFICULTIES) {
     const current = minutesByDifficulty.get(difficulty) ?? 0;
     if (current < MIN_MANUAL_MINUTES_PER_DIFFICULTY) {
-      return `${difficulty} 추가 ${(MIN_MANUAL_MINUTES_PER_DIFFICULTY - current).toFixed(1)}분 이상 - 난이도별 최소 ${MIN_MANUAL_MINUTES_PER_DIFFICULTY}분 보충`;
+      return `${difficulty} 추가 ${(MIN_MANUAL_MINUTES_PER_DIFFICULTY - current).toFixed(1)}분 이상 - 난이도별 최소 ${MIN_MANUAL_MINUTES_PER_DIFFICULTY}분 보충; 추천 시작 마커: ${startNextCommandTemplate({ difficulty })}`;
     }
   }
   if (totalMinutes < MIN_MANUAL_TOTAL_MINUTES) {
-    return `자유 난이도 추가 ${(MIN_MANUAL_TOTAL_MINUTES - totalMinutes).toFixed(1)}분 이상 - 총 ${MIN_MANUAL_TOTAL_MINUTES}분 보충`;
+    return `자유 난이도 추가 ${(MIN_MANUAL_TOTAL_MINUTES - totalMinutes).toFixed(1)}분 이상 - 총 ${MIN_MANUAL_TOTAL_MINUTES}분 보충; 추천 시작 마커: ${startNextCommandTemplate({ difficulty: "any" })}`;
   }
   return "필요 없음 - 수동 플레이 증거 목표 충족";
 }
 
 function manualNextMissing(manual) {
   return manualNextEvidence(manual) !== "필요 없음 - 수동 플레이 증거 목표 충족";
+}
+
+function startNextCommandTemplate(step) {
+  if (!step) return "";
+  const difficultyArg = step.difficulty === "any" ? " --difficulty=DIFFICULTY" : "";
+  return `yarn manual-playlog --start-next${difficultyArg} --seed=GAME_SEED_HERE`;
 }
 
 function buildRows(balance, browser, direct, manual) {
