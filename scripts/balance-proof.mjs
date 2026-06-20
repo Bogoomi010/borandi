@@ -23,6 +23,8 @@ const auditPath = String(args.out ?? "output/balance-audit.md");
 const manualSheetPath = String(args["manual-sheet"] ?? "output/manual-balance-play-sheet.md");
 const manualPlanPath = String(args["manual-plan"] ?? "output/manual-balance-play-plan.json");
 const manualPreflightPath = String(args["manual-preflight"] ?? "output/manual-balance-preflight.json");
+const manualNextPath = String(args["manual-next"] ?? "output/manual-balance-next.txt");
+const manualNextJsonPath = String(args["manual-next-json"] ?? "output/manual-balance-next.json");
 const browserScreenshots = String(args.screenshots ?? "output/browser-balance-shots");
 const directScreenshots = String(args["direct-screenshots"] ?? "output/browser-direct-shots");
 const directCodexLog = String(args["direct-codex-log"] ?? "output/codex-direct-playlog.json");
@@ -83,6 +85,21 @@ async function writeManualGuidanceArtifacts() {
   ], { allowFailure: true });
   writeTextFile(manualPreflightPath, manualPreflight);
   console.log(`\n수동 플레이 preflight JSON 저장: ${manualPreflightPath}`);
+  const manualNext = await runCapture("yarn", [
+    "manual-playlog",
+    `--out=${manualPath}`,
+    "--next",
+  ], { allowFailure: true });
+  writeTextFile(manualNextPath, manualNext);
+  console.log(`수동 플레이 다음 세션 저장: ${manualNextPath}`);
+  const manualNextJson = await runCapture("yarn", [
+    "--silent",
+    "manual-playlog",
+    `--out=${manualPath}`,
+    "--next-json",
+  ], { allowFailure: true });
+  writeTextFile(manualNextJsonPath, manualNextJson);
+  console.log(`수동 플레이 다음 세션 JSON 저장: ${manualNextJsonPath}`);
   const manualSheet = await runCapture("yarn", [
     "manual-playlog",
     `--out=${manualPath}`,
@@ -133,6 +150,21 @@ function planSummary(payload) {
   };
 }
 
+function nextSummary(payload) {
+  const current = payload.current ?? {};
+  return {
+    passed: Boolean(payload.passed),
+    blockedByPendingStartMarkers: Boolean(payload.blockedByPendingStartMarkers),
+    validSessionCount: Number(current.validSessionCount ?? 0),
+    totalMinutes: Number(current.totalMinutes ?? 0),
+    remainingMinutes: Number(current.remainingMinutes ?? 0),
+    targetRowsPassed: Number(current.targetRowsPassed ?? 0),
+    targetRowsTotal: Number(current.targetRowsTotal ?? 0),
+    nextLabel: payload.next?.label ?? "",
+    checklistCount: Array.isArray(payload.resultFieldChecklist) ? payload.resultFieldChecklist.length : 0,
+  };
+}
+
 function assertSameSummary(name, expected, actual) {
   const mismatches = Object.keys(expected).filter((key) => expected[key] !== actual[key]);
   if (mismatches.length) {
@@ -143,7 +175,7 @@ function assertSameSummary(name, expected, actual) {
 }
 
 async function checkManualGuidanceArtifacts() {
-  const missing = [manualPreflightPath, manualSheetPath, manualPlanPath]
+  const missing = [manualPreflightPath, manualNextPath, manualNextJsonPath, manualSheetPath, manualPlanPath]
     .filter((path) => !existsSync(path));
   if (missing.length) throw new Error(`수동 proof artifact 누락: ${missing.join(", ")}`);
 
@@ -152,6 +184,12 @@ async function checkManualGuidanceArtifacts() {
     "manual-playlog",
     `--out=${manualPath}`,
     "--preflight-json",
+  ], { allowFailure: true });
+  const liveNextJsonText = await runCapture("yarn", [
+    "--silent",
+    "manual-playlog",
+    `--out=${manualPath}`,
+    "--next-json",
   ], { allowFailure: true });
   const livePlanText = await runCapture("yarn", [
     "--silent",
@@ -164,9 +202,21 @@ async function checkManualGuidanceArtifacts() {
   const filePreflight = preflightSummary(readJsonFile(manualPreflightPath));
   assertSameSummary("manual preflight", livePreflight, filePreflight);
 
+  const liveNext = nextSummary(JSON.parse(liveNextJsonText));
+  const fileNext = nextSummary(readJsonFile(manualNextJsonPath));
+  assertSameSummary("manual next", liveNext, fileNext);
+
   const livePlan = planSummary(JSON.parse(livePlanText));
   const filePlan = planSummary(readJsonFile(manualPlanPath));
   assertSameSummary("manual plan", livePlan, filePlan);
+
+  const nextText = readFileSync(manualNextPath, "utf8");
+  if (!nextText.includes("# 다음 수동 플레이 세션")) {
+    throw new Error(`manual next artifact mismatch: missing next title in ${manualNextPath}`);
+  }
+  if (livePreflight.nextLabel && !nextText.includes(livePreflight.nextLabel)) {
+    throw new Error(`manual next artifact mismatch: missing next target "${livePreflight.nextLabel}" in ${manualNextPath}`);
+  }
 
   const sheet = readFileSync(manualSheetPath, "utf8");
   if (!sheet.includes("# 수동 밸런스 플레이 시트")) {
@@ -176,7 +226,7 @@ async function checkManualGuidanceArtifacts() {
     throw new Error(`manual sheet artifact mismatch: missing next target "${livePreflight.nextLabel}" in ${manualSheetPath}`);
   }
 
-  console.log(`\n수동 proof artifact 최신: ${manualPreflightPath}, ${manualSheetPath}, ${manualPlanPath}`);
+  console.log(`\n수동 proof artifact 최신: ${manualPreflightPath}, ${manualNextPath}, ${manualNextJsonPath}, ${manualSheetPath}, ${manualPlanPath}`);
 }
 
 async function canReachServer() {

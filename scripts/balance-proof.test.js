@@ -82,14 +82,39 @@ const livePlanArtifact = {
   },
 };
 
+const liveNextArtifact = {
+  passed: false,
+  blockedByPendingStartMarkers: false,
+  current: {
+    validSessionCount: 0,
+    totalMinutes: 0,
+    remainingMinutes: 120,
+    targetRowsPassed: 0,
+    targetRowsTotal: 6,
+  },
+  next: { label: "입문자 무전설 40R 클리어" },
+  resultFieldChecklist: Array.from({ length: 10 }, (_, index) => ({ field: `field${index}` })),
+};
+
 function writeManualArtifactCheckFakeYarn(logPath) {
   const fakeYarn = join(tempDir, "yarn");
   writeFileSync(fakeYarn, `#!/bin/sh
 printf '%s\\n' "$*" >> "$FAKE_YARN_LOG"
+if [ "$1" = "manual-playlog" ]; then
+  for arg in "$@"; do
+    if [ "$arg" = "--next" ]; then
+      printf '%s\\n' '# 다음 수동 플레이 세션'
+      printf '%s\\n' '입문자 무전설 40R 클리어'
+    fi
+  done
+fi
 if [ "$1" = "--silent" ] && [ "$2" = "manual-playlog" ]; then
   for arg in "$@"; do
     if [ "$arg" = "--preflight-json" ]; then
       printf '%s\\n' '${JSON.stringify(livePreflightArtifact)}'
+    fi
+    if [ "$arg" = "--next-json" ]; then
+      printf '%s\\n' '${JSON.stringify(liveNextArtifact)}'
     fi
     if [ "$arg" = "--plan-json" ]; then
       printf '%s\\n' '${JSON.stringify(livePlanArtifact)}'
@@ -123,6 +148,10 @@ if [ "$1" = "dev" ]; then
 fi
 if [ "$1" = "manual-playlog" ]; then
   for arg in "$@"; do
+    if [ "$arg" = "--next" ]; then
+      printf '%s\\n' '# 다음 수동 플레이 세션'
+      printf '%s\\n' '입문자 무전설 40R 클리어'
+    fi
     if [ "$arg" = "--sheet" ]; then
       printf '%s\\n' '# 수동 밸런스 플레이 시트'
       printf '%s\\n' '| 목표 세션 | 0/6개 완료 |'
@@ -133,6 +162,9 @@ if [ "$1" = "--silent" ] && [ "$2" = "manual-playlog" ]; then
   for arg in "$@"; do
     if [ "$arg" = "--preflight-json" ]; then
       printf '%s\\n' '{"canStart":true,"remainingMinutes":120,"targetRowsPassed":0,"targetRowsTotal":6}'
+    fi
+    if [ "$arg" = "--next-json" ]; then
+      printf '%s\\n' '{"passed":false,"current":{"validSessionCount":0,"totalMinutes":0,"remainingMinutes":120,"targetRowsPassed":0,"targetRowsTotal":6},"next":{"label":"입문자 무전설 40R 클리어"},"resultFieldChecklist":[{},{},{},{},{},{},{},{},{},{}]}'
     fi
     if [ "$arg" = "--plan-json" ]; then
       printf '%s\\n' '{"passed":false,"steps":[{"label":"입문자 무전설 40R 클리어"}]}'
@@ -149,6 +181,8 @@ exit 0
     const manualSheet = join(tempDir, "manual-sheet.md");
     const manualPlan = join(tempDir, "manual-plan.json");
     const manualPreflight = join(tempDir, "manual-preflight.json");
+    const manualNext = join(tempDir, "manual-next.txt");
+    const manualNextJson = join(tempDir, "manual-next.json");
     const result = spawnSync(process.execPath, [
       "scripts/balance-proof.mjs",
       "--host=127.0.0.1",
@@ -164,6 +198,8 @@ exit 0
       `--manual-sheet=${manualSheet}`,
       `--manual-plan=${manualPlan}`,
       `--manual-preflight=${manualPreflight}`,
+      `--manual-next=${manualNext}`,
+      `--manual-next-json=${manualNextJson}`,
       "--seeds=1",
       "--direct-seeds=1",
     ], {
@@ -182,12 +218,18 @@ exit 0
     expect(calls).toContain(`browser-direct --url=http://127.0.0.1:${port}/ --seeds=1 --strict --json=${join(tempDir, "direct.json")} --screenshots=${directShots} --codex-log=${directCodexLog}`);
     expect(calls).toContain(`balance-audit --balance=${join(tempDir, "balance.json")} --browser=${join(tempDir, "browser.json")} --direct=${join(tempDir, "direct.json")} --manual=${join(tempDir, "manual.json")} --codex=${directCodexLog} --out=${join(tempDir, "audit.md")}`);
     expect(calls).toContain(`--silent manual-playlog --out=${join(tempDir, "manual.json")} --preflight-json`);
+    expect(calls).toContain(`manual-playlog --out=${join(tempDir, "manual.json")} --next`);
+    expect(calls).toContain(`--silent manual-playlog --out=${join(tempDir, "manual.json")} --next-json`);
     expect(calls).toContain(`manual-playlog --out=${join(tempDir, "manual.json")} --sheet`);
     expect(calls).toContain(`--silent manual-playlog --out=${join(tempDir, "manual.json")} --plan-json`);
     expect(JSON.parse(readFileSync(manualPreflight, "utf8"))).toMatchObject({ remainingMinutes: 120 });
+    expect(readFileSync(manualNext, "utf8")).toContain("# 다음 수동 플레이 세션");
+    expect(JSON.parse(readFileSync(manualNextJson, "utf8"))).toMatchObject({ passed: false });
     expect(readFileSync(manualSheet, "utf8")).toContain("# 수동 밸런스 플레이 시트");
     expect(JSON.parse(readFileSync(manualPlan, "utf8"))).toMatchObject({ passed: false });
     expect(result.stdout).toContain(`수동 플레이 preflight JSON 저장: ${manualPreflight}`);
+    expect(result.stdout).toContain(`수동 플레이 다음 세션 저장: ${manualNext}`);
+    expect(result.stdout).toContain(`수동 플레이 다음 세션 JSON 저장: ${manualNextJson}`);
     expect(result.stdout).toContain(`수동 플레이 시트 저장: ${manualSheet}`);
     expect(result.stdout).toContain(`수동 플레이 계획 JSON 저장: ${manualPlan}`);
   });
@@ -198,7 +240,11 @@ exit 0
     const manualPreflight = join(tempDir, "manual-preflight.json");
     const manualPlan = join(tempDir, "manual-plan.json");
     const manualSheet = join(tempDir, "manual-sheet.md");
+    const manualNext = join(tempDir, "manual-next.txt");
+    const manualNextJson = join(tempDir, "manual-next.json");
     writeFileSync(manualPreflight, JSON.stringify(livePreflightArtifact, null, 2), "utf8");
+    writeFileSync(manualNext, "# 다음 수동 플레이 세션\n\n입문자 무전설 40R 클리어\n", "utf8");
+    writeFileSync(manualNextJson, JSON.stringify(liveNextArtifact, null, 2), "utf8");
     writeFileSync(manualPlan, JSON.stringify(livePlanArtifact, null, 2), "utf8");
     writeFileSync(manualSheet, "# 수동 밸런스 플레이 시트\n\n다음: 입문자 무전설 40R 클리어\n", "utf8");
 
@@ -207,6 +253,8 @@ exit 0
       "--check-manual-artifacts",
       `--manual=${manualPath}`,
       `--manual-preflight=${manualPreflight}`,
+      `--manual-next=${manualNext}`,
+      `--manual-next-json=${manualNextJson}`,
       `--manual-sheet=${manualSheet}`,
       `--manual-plan=${manualPlan}`,
       `--balance=${join(tempDir, "balance.json")}`,
@@ -222,6 +270,7 @@ exit 0
     expect(result.status).toBe(0);
     const calls = readFileSync(logPath, "utf8");
     expect(calls).toContain(`--silent manual-playlog --out=${manualPath} --preflight-json`);
+    expect(calls).toContain(`--silent manual-playlog --out=${manualPath} --next-json`);
     expect(calls).toContain(`--silent manual-playlog --out=${manualPath} --plan-json`);
     expect(calls).not.toContain("balance --");
     expect(result.stdout).toContain("수동 proof artifact 최신");
@@ -233,6 +282,8 @@ exit 0
     const manualPreflight = join(tempDir, "manual-preflight.json");
     const manualPlan = join(tempDir, "manual-plan.json");
     const manualSheet = join(tempDir, "manual-sheet.md");
+    const manualNext = join(tempDir, "manual-next.txt");
+    const manualNextJson = join(tempDir, "manual-next.json");
     writeFileSync(manualPreflight, JSON.stringify({
       ...livePreflightArtifact,
       logExists: true,
@@ -240,6 +291,8 @@ exit 0
       targetRowsPassed: 6,
       next: null,
     }, null, 2), "utf8");
+    writeFileSync(manualNext, "# 다음 수동 플레이 세션\n\n입문자 무전설 40R 클리어\n", "utf8");
+    writeFileSync(manualNextJson, JSON.stringify(liveNextArtifact, null, 2), "utf8");
     writeFileSync(manualPlan, JSON.stringify(livePlanArtifact, null, 2), "utf8");
     writeFileSync(manualSheet, "# 수동 밸런스 플레이 시트\n\n다음: 입문자 무전설 40R 클리어\n", "utf8");
 
@@ -248,6 +301,8 @@ exit 0
       "--check-manual-artifacts",
       `--manual=${manualPath}`,
       `--manual-preflight=${manualPreflight}`,
+      `--manual-next=${manualNext}`,
+      `--manual-next-json=${manualNextJson}`,
       `--manual-sheet=${manualSheet}`,
       `--manual-plan=${manualPlan}`,
       `--balance=${join(tempDir, "balance.json")}`,
@@ -272,6 +327,8 @@ exit 0
     const manualSheet = join(tempDir, "missing-manual-sheet.md");
     const manualPlan = join(tempDir, "missing-manual-plan.json");
     const manualPreflight = join(tempDir, "missing-manual-preflight.json");
+    const manualNext = join(tempDir, "missing-manual-next.txt");
+    const manualNextJson = join(tempDir, "missing-manual-next.json");
     writeFileSync(manualPreflight, JSON.stringify({
       remainingMinutes: 0,
       targetRowsPassed: 6,
@@ -291,6 +348,8 @@ exit 0
       `--manual-sheet=${manualSheet}`,
       `--manual-plan=${manualPlan}`,
       `--manual-preflight=${manualPreflight}`,
+      `--manual-next=${manualNext}`,
+      `--manual-next-json=${manualNextJson}`,
       "--port=59999",
     ], {
       cwd: process.cwd(),
@@ -305,9 +364,13 @@ exit 0
       targetRowsPassed: 0,
       targetRowsTotal: 6,
     });
+    expect(readFileSync(manualNext, "utf8")).toContain("# 다음 수동 플레이 세션");
+    expect(JSON.parse(readFileSync(manualNextJson, "utf8"))).toMatchObject({ passed: false });
     expect(readFileSync(manualSheet, "utf8")).toContain("# 수동 밸런스 플레이 시트");
     expect(JSON.parse(readFileSync(manualPlan, "utf8"))).toMatchObject({ passed: false });
     expect(result.stdout).toContain(`수동 플레이 preflight JSON 저장: ${manualPreflight}`);
+    expect(result.stdout).toContain(`수동 플레이 다음 세션 저장: ${manualNext}`);
+    expect(result.stdout).toContain(`수동 플레이 다음 세션 JSON 저장: ${manualNextJson}`);
     expect(result.stdout).toContain(`수동 플레이 시트 저장: ${manualSheet}`);
     expect(result.stdout).toContain(`수동 플레이 계획 JSON 저장: ${manualPlan}`);
     expect(result.stderr).toContain(`시작 전 점검: yarn manual-playlog --preflight --out='${manualPath}'`);
@@ -323,6 +386,8 @@ exit 0
     const manualSheet = join(tempDir, "pending-manual-sheet.md");
     const manualPlan = join(tempDir, "pending-manual-plan.json");
     const manualPreflight = join(tempDir, "pending-manual-preflight.json");
+    const manualNext = join(tempDir, "pending-manual-next.txt");
+    const manualNextJson = join(tempDir, "pending-manual-next.json");
     writeFileSync(manualPath, JSON.stringify({
       sessions: [],
       schemaVersion: 1,
@@ -352,6 +417,8 @@ exit 0
       `--manual-sheet=${manualSheet}`,
       `--manual-plan=${manualPlan}`,
       `--manual-preflight=${manualPreflight}`,
+      `--manual-next=${manualNext}`,
+      `--manual-next-json=${manualNextJson}`,
       "--port=59999",
     ], {
       cwd: process.cwd(),
@@ -374,6 +441,8 @@ exit 0
     const manualSheet = join(tempDir, "invalid-manual-sheet.md");
     const manualPlan = join(tempDir, "invalid-manual-plan.json");
     const manualPreflight = join(tempDir, "invalid-manual-preflight.json");
+    const manualNext = join(tempDir, "invalid-manual-next.txt");
+    const manualNextJson = join(tempDir, "invalid-manual-next.json");
     writeFileSync(manualPath, JSON.stringify(completeManualWithInvalidSession(), null, 2), "utf8");
 
     const result = spawnSync(process.execPath, [
@@ -388,6 +457,8 @@ exit 0
       `--manual-sheet=${manualSheet}`,
       `--manual-plan=${manualPlan}`,
       `--manual-preflight=${manualPreflight}`,
+      `--manual-next=${manualNext}`,
+      `--manual-next-json=${manualNextJson}`,
       "--port=59999",
     ], {
       cwd: process.cwd(),
