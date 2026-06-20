@@ -59,7 +59,7 @@ describe("데이터 무결성 (QA 체크리스트)", () => {
     const bossRounds = WAVES.filter((w) => w.type === "boss").map((w) => w.round);
     expect(bossRounds).toEqual(BOSS_ROUND_LIST);
   });
-  it("서로 다른 15개 스테이지 맵이 있다", () => {
+  it("새 게임에서 선택할 수 있는 서로 다른 15개 맵이 있다", () => {
     expect(STAGES.length).toBe(15);
     const shapes = new Set(STAGES.map((s) => JSON.stringify(s.waypoints)));
     expect(shapes.size).toBe(15);
@@ -199,7 +199,7 @@ describe("조합", () => {
 });
 
 describe("전투/리플레이 재현성", () => {
-  it("선택한 맵은 라운드/보스 진행 중 바뀌지 않고 리플레이에도 유지된다", () => {
+  it("새 게임에서 선택한 맵은 40라운드 보스까지 바뀌지 않고 리플레이에도 유지된다", () => {
     const stageId = 4;
     const game = new Game("STAGE-STAYS", "novice", stageId);
     const observedStageIds = [game.state.stageId];

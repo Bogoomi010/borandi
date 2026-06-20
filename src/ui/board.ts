@@ -193,7 +193,7 @@ export class BoardRenderer {
     this.drawGroundTexture(stage.ground, state.stageId);
     this.drawDecorations(stage.decorations.filter((d) => d.y < 250));
 
-    // 경로 (스테이지별 닫힌 루프)
+    // 경로 (새 게임에서 선택한 맵의 닫힌 루프)
     ctx.lineWidth = 34;
     ctx.strokeStyle = "#1d2230";
     ctx.lineJoin = "round";

@@ -90,6 +90,8 @@ export function canUnlockNextStage(
   unlockedStage: number,
   finalBossCleared: boolean,
 ): boolean {
+  // 맵은 라운드 사이에 전환되지 않는다. 현재 선택 가능 맵을 새 게임에서 골라
+  // 40R 최종 보스까지 클리어했을 때만 다음 새 게임의 맵 선택 권한이 열린다.
   return cleared && round >= FINAL_ROUND && finalBossCleared && stageId === unlockedStage && unlockedStage < FINAL_STAGE;
 }
 

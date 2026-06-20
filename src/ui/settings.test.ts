@@ -63,7 +63,7 @@ describe("프로필 맵 해금", () => {
     expect(loadProfile().unlockedStage).toBe(1);
   });
 
-  it("게임 시작 때 선택한 맵의 40라운드 최종 보스 클리어 후 다음 맵을 해금한다", () => {
+  it("게임 시작 때 선택한 맵의 40라운드 최종 보스 클리어 후 다음 맵 선택 권한을 추가한다", () => {
     const unlocked = profileRecordRun(true, "novice", FINAL_ROUND, 1, true);
 
     expect(unlocked).toBe(true);
@@ -100,7 +100,7 @@ describe("프로필 맵 해금", () => {
     expect(loadProfile().unlockedStage).toBe(2);
   });
 
-  it("현재 열린 맵을 40라운드까지 깨야 순서대로 다음 맵을 해금한다", () => {
+  it("현재 선택 가능 맵을 새 게임에서 골라 40라운드까지 깨야 순서대로 다음 맵 권한이 추가된다", () => {
     expect(profileRecordRun(true, "novice", FINAL_ROUND, 1, true)).toBe(true);
     expect(profileRecordRun(true, "novice", FINAL_ROUND, 2, true)).toBe(true);
 
