@@ -525,6 +525,7 @@ function renderGameToText(): string {
     scene: ctx.scene,
     paused: ctx.paused,
     mode: s.phase,
+    dataVersion: s.dataVersion,
     difficulty: { id: s.difficulty, name: game.diff.name },
     stage: {
       current: s.stageId,

@@ -6,6 +6,7 @@ import { GRADE_LABEL, FAMILY_LABEL, ROLE_LABEL, type DifficultyId, type ResultSu
 import { UNIT_BY_ID } from "../data/units";
 import { DIFFICULTIES } from "../data/difficulty";
 import { STAGES, stageById } from "../data/stages";
+import { DATA_VERSION } from "../data/version";
 import { randomSeed } from "../core/rng";
 import { stateChecksum } from "../core/checksum";
 import {
@@ -554,6 +555,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     body.appendChild(el("h2", "", "수동 밸런스 증거"));
     body.appendChild(el("div", "modal-note", "결과 화면의 로그 명령을 실행한 뒤, 아래 요약 명령으로 남은 증거를 확인합니다."));
 
+    const dataVersion = ctx?.game.state.dataVersion ?? DATA_VERSION;
     const currentStartCommand = ctx?.scene === "game" ? manualStartCommand(ctx) : "";
     const currentStartNextCommand = ctx?.scene === "game" ? manualStartNextCommand(ctx) : "";
     const summaryCommand = "yarn manual-playlog --summary";
@@ -564,6 +566,9 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const preflightCommand = "yarn manual-playlog --preflight";
     const preflightJsonCommand = "yarn --silent manual-playlog --preflight-json";
     const summaryJsonCommand = "yarn --silent manual-playlog --summary-json";
+    body.appendChild(el("h3", "", "현재 증거 버전"));
+    body.appendChild(el("pre", "report", `DATA_VERSION ${dataVersion}`));
+    body.appendChild(el("div", "modal-note", "결과 기록이나 --finish 명령의 --dataVersion, --stateChecksum, --endedAt은 결과 화면에 표시된 실제 값을 그대로 사용하세요."));
     if (currentStartCommand) {
       body.appendChild(el("h3", "", "현재 판 시작 마커"));
       if (currentStartNextCommand) {
