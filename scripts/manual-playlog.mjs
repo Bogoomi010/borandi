@@ -61,6 +61,8 @@ function usage() {
     "  --plan                # 남은 120분 수동 플레이 증거 수집 순서 출력",
     "  --plan --json         # 남은 수동 플레이 계획을 JSON으로 출력",
     "  --plan-json           # --plan --json과 동일",
+    "  --sheet               # 남은 수동 플레이 계획과 결과 필드를 Markdown 시트로 출력",
+    "  --sheet-md            # --sheet와 동일",
     "  --next                # 바로 다음에 필요한 수동 플레이 세션 1개만 출력",
     "  --next --json         # 다음 필요 세션을 JSON으로 출력",
     "  --next-json           # --next --json과 동일",
@@ -541,6 +543,7 @@ function manualProofCommandTemplates(next) {
     preflightJson: `yarn --silent manual-playlog --preflight-json${outPathArg()}`,
     plan: manualPlanCommandTemplate(),
     planJson: `yarn --silent manual-playlog --plan-json${outPathArg()}`,
+    sheet: manualSheetCommandTemplate(),
     summary: `yarn manual-playlog --summary${outPathArg()}`,
     summaryJson: `yarn --silent manual-playlog --summary-json${outPathArg()}`,
     next: `yarn manual-playlog --next${outPathArg()}`,
@@ -774,6 +777,130 @@ function printPlanJson() {
   console.log(`${JSON.stringify(buildPlan(), null, 2)}`);
 }
 
+function markdownCell(value) {
+  return String(value ?? "")
+    .replace(/\|/g, "\\|")
+    .replace(/\n/g, "<br>");
+}
+
+function codeBlock(command) {
+  if (!command) return "";
+  return ["```bash", command, "```"].join("\n");
+}
+
+function printManualSheet() {
+  const preflight = buildPreflight();
+  const { summary } = preflight;
+  const plan = buildPlanFromSummary(summary);
+  const next = buildNextFromSummary(summary);
+  const nextStep = next.next;
+  const rows = [
+    ["로그", summary.logPath + (summary.logExists ? "" : " (아직 없음)")],
+    ["데이터 버전", summary.currentDataVersion],
+    ["유효 사람 플레이 시간", `${summary.totalMinutes.toFixed(1)}/${summary.requiredMinutes.toFixed(1)}분`],
+    ["남은 시간", `${summary.remainingMinutes.toFixed(1)}분`],
+    ["목표 세션", `${summary.targetRowsPassed}/${summary.targetRowsTotal}개 완료`],
+    ["무효 세션", `${summary.invalidSessionCount}개`],
+    ["시작 마커 대기", `${summary.pendingCount}개`],
+  ];
+
+  console.log("# 수동 밸런스 플레이 시트");
+  console.log("");
+  console.log("## 현재 상태");
+  console.log("");
+  console.log("| 항목 | 값 |");
+  console.log("| --- | --- |");
+  for (const [label, value] of rows) {
+    console.log(`| ${markdownCell(label)} | ${markdownCell(value)} |`);
+  }
+  console.log("");
+  console.log("## 시작 전 명령");
+  console.log("");
+  console.log("### 1. 시작 전 점검");
+  console.log(codeBlock(manualPreflightCommandTemplate()));
+  console.log("");
+  console.log("### 2. 전체 계획 확인");
+  console.log(codeBlock(manualPlanCommandTemplate()));
+  if (next.blockedByPendingStartMarkers) {
+    console.log("");
+    console.log("## 먼저 닫아야 할 시작 마커");
+    console.log("");
+    console.log("| id | 난이도 | 시드 | 경과 | 저장 전 검증 |");
+    console.log("| --- | --- | --- | --- | --- |");
+    for (const pending of next.pending) {
+      console.log([
+        markdownCell(pending.id),
+        markdownCell(pending.difficulty),
+        markdownCell(pending.seed),
+        markdownCell(pendingTimingLabel(pending)),
+        markdownCell(pending.finishDryRunCommandTemplate ?? ""),
+      ].join(" | ").replace(/^/, "| ").replace(/$/, " |"));
+    }
+  } else if (nextStep) {
+    console.log("");
+    console.log("## 다음 세션");
+    console.log("");
+    console.log(`- 목표: ${nextStep.label}`);
+    console.log(`- 난이도: ${nextStep.difficulty}`);
+    console.log(`- 최소 시간: ${nextStep.minutes.toFixed(1)}분`);
+    console.log(`- 기록 힌트: ${nextStep.logHint}`);
+    if (nextStep.finishTemplate) {
+      console.log(`- 마무리 조건: result=${nextStep.finishTemplate.result}, round=${nextStep.finishTemplate.round}, legends=${nextStep.finishTemplate.legends}, maxGrade=${nextStep.finishTemplate.maxGrade}`);
+    }
+    if (nextStep.startNextDryRunCommandTemplate) {
+      console.log("");
+      console.log("### 3. 다음 세션 시작 검증");
+      console.log(codeBlock(nextStep.startNextDryRunCommandTemplate));
+    }
+    if (nextStep.startNextCommandTemplate) {
+      console.log("");
+      console.log("### 4. 다음 세션 시작 마커 저장");
+      console.log(codeBlock(nextStep.startNextCommandTemplate));
+      console.log("");
+      console.log("`GAME_SEED_HERE`는 새 게임 시작 후 상단에 표시된 실제 시드로 바꿉니다.");
+    }
+  } else {
+    console.log("");
+    console.log("## 다음 세션");
+    console.log("");
+    console.log("PASS 다음에 필요한 수동 플레이 세션이 없습니다.");
+  }
+
+  console.log("");
+  console.log("## 남은 수집 계획");
+  console.log("");
+  if (plan.steps.length === 0) {
+    console.log("PASS 남은 계획이 없습니다.");
+  } else {
+    console.log("| 순서 | 종류 | 난이도 | 목표 | 최소 시간 | 마무리 조건 |");
+    console.log("| ---: | --- | --- | --- | ---: | --- |");
+    plan.steps.forEach((step, index) => {
+      const finish = step.finishTemplate
+        ? `result=${step.finishTemplate.result}, round=${step.finishTemplate.round}, legends=${step.finishTemplate.legends}, maxGrade=${step.finishTemplate.maxGrade}`
+        : "";
+      console.log(`| ${index + 1} | ${markdownCell(step.kind)} | ${markdownCell(step.difficulty)} | ${markdownCell(step.label)} | ${step.minutes.toFixed(1)}분 | ${markdownCell(finish)} |`);
+    });
+  }
+
+  console.log("");
+  console.log("## 결과 기록 필드");
+  console.log("");
+  console.log("| 필드 | 결과 화면/출처 | 기대값 |");
+  console.log("| --- | --- | --- |");
+  for (const item of summary.resultFieldChecklist) {
+    console.log(`| ${markdownCell(item.field)} | ${markdownCell(item.source)} | ${markdownCell(item.expected)} |`);
+  }
+
+  console.log("");
+  console.log("## 실행 순서");
+  console.log("");
+  manualStartWorkflow().forEach((step, index) => {
+    console.log(`${index + 1}. ${step}`);
+  });
+  console.log("");
+  console.log(`판정: ${summary.passed ? "수동 증거 충족" : "수동 증거 미충족"}`);
+}
+
 function buildNext() {
   return buildNextFromSummary(buildSummary());
 }
@@ -869,6 +996,10 @@ function manualPreflightCommandTemplate() {
 
 function manualPlanCommandTemplate() {
   return `yarn manual-playlog --plan${outPathArg()}`;
+}
+
+function manualSheetCommandTemplate() {
+  return `yarn manual-playlog --sheet${outPathArg()}`;
 }
 
 function printPreflight() {
@@ -1438,6 +1569,11 @@ if (args["summary-json"] === "true") {
 
 if (args["plan-json"] === "true") {
   printPlanJson();
+  process.exit(0);
+}
+
+if (args.sheet === "true" || args["sheet-md"] === "true") {
+  printManualSheet();
   process.exit(0);
 }
 

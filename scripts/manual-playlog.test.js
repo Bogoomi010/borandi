@@ -86,6 +86,8 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("--preflight-json         # --preflight 결과를 JSON으로 출력");
     expect(output).toContain("--summary-json        # --summary --json과 동일");
     expect(output).toContain("--plan-json           # --plan --json과 동일");
+    expect(output).toContain("--sheet               # 남은 수동 플레이 계획과 결과 필드를 Markdown 시트로 출력");
+    expect(output).toContain("--sheet-md            # --sheet와 동일");
     expect(output).toContain("--next-json           # --next --json과 동일");
     expect(output).toContain("--pending-json        # --pending --json과 동일");
     expect(output).toContain("--pending-id=RUN1");
@@ -350,6 +352,25 @@ describe("manual-playlog plan", () => {
     ].map((difficulty) => `yarn manual-playlog --start-next --difficulty=${difficulty} --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`));
   });
 
+  it("sheet는 남은 수동 플레이 계획과 결과 기록 필드를 Markdown으로 출력한다", () => {
+    const out = makeTempPath("sheet-empty.json");
+    const sheet = runManualPlaylog([`--out=${out}`, "--sheet"]);
+
+    expect(sheet).toContain("# 수동 밸런스 플레이 시트");
+    expect(sheet).toContain("| 유효 사람 플레이 시간 | 0.0/120.0분 |");
+    expect(sheet).toContain("| 목표 세션 | 0/6개 완료 |");
+    expect(sheet).toContain("## 다음 세션");
+    expect(sheet).toContain("- 목표: 입문자 무전설 40R 클리어");
+    expect(sheet).toContain("```bash");
+    expect(sheet).toContain(`yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`);
+    expect(sheet).toContain(`yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)}`);
+    expect(sheet).toContain("| 7 | total-minutes | any | 총 120분 보충 | 48.0분 | result=loss, round=ROUND_REACHED, legends=FINAL_LEGENDS, maxGrade=MAX_GRADE |");
+    expect(sheet).toContain("| dataVersion | 결과 화면 RESULT_DATA_VERSION | 0.8.4 |");
+    expect(sheet).toContain("| stateChecksum | 결과 화면 RESULT_CHECKSUM | 8자리 checksum |");
+    expect(sheet).toContain("1. 게임에서 다음 목표 난이도로 새 게임을 시작하고 상단의 실제 시드를 확인");
+    expect(sheet).toContain("판정: 수동 증거 미충족");
+  });
+
   it("예시 로그는 실제 2시간 수동 증거 계획에서 제외된다", () => {
     const plan = JSON.parse(runManualPlaylog([
       "--out=docs/manual-balance-playlog.example.json",
@@ -411,6 +432,7 @@ describe("manual-playlog plan", () => {
       preflightJson: `yarn --silent manual-playlog --preflight-json --out=${shellArg(out)}`,
       plan: `yarn manual-playlog --plan --out=${shellArg(out)}`,
       planJson: `yarn --silent manual-playlog --plan-json --out=${shellArg(out)}`,
+      sheet: `yarn manual-playlog --sheet --out=${shellArg(out)}`,
       summary: `yarn manual-playlog --summary --out=${shellArg(out)}`,
       summaryJson: `yarn --silent manual-playlog --summary-json --out=${shellArg(out)}`,
       next: `yarn manual-playlog --next --out=${shellArg(out)}`,

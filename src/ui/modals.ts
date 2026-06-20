@@ -690,6 +690,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const currentStartNextDryRunCommand = currentStartNextCommand ? manualDryRunCommand(currentStartNextCommand) : "";
     const summaryCommand = "yarn manual-playlog --summary";
     const planCommand = "yarn manual-playlog --plan";
+    const sheetCommand = "yarn manual-playlog --sheet";
     const nextCommand = "yarn manual-playlog --next";
     const startNextCommand = currentStartNextCommand || "yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE";
     const startNextDryRunCommand = manualDryRunCommand(startNextCommand);
@@ -772,6 +773,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     body.appendChild(el("pre", "report", startNextCommand));
     body.appendChild(el("pre", "report", summaryCommand));
     body.appendChild(el("pre", "report", planCommand));
+    body.appendChild(el("pre", "report", sheetCommand));
     body.appendChild(el("pre", "report", summaryJsonCommand));
 
     body.appendChild(el("h3", "", "필수 목표 세션"));
@@ -937,6 +939,16 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       }
     };
     row.appendChild(copyPlan);
+    const copySheet = el("button", "", "시트 명령 복사");
+    copySheet.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(sheetCommand);
+        toast("수동 증거 플레이 시트 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copySheet);
     const copyJsonSummary = el("button", "", "JSON 명령 복사");
     copyJsonSummary.onclick = async () => {
       try {
