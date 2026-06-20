@@ -101,6 +101,12 @@ export function playableStageId(requestedStageId: number, unlockedStage: number)
   return Math.min(requested, maxPlayable);
 }
 
+export function defaultNewRunStageId(currentStageId: number, unlockedStage: number): number {
+  // 해금은 다음 새 게임의 선택 권한일 뿐이다. 모달을 열 때 자동으로
+  // 가장 뒤 해금 맵을 고르지 않고, 현재/이전 선택 맵을 유지한다.
+  return playableStageId(currentStageId, unlockedStage);
+}
+
 export function profileRecordRun(
   cleared: boolean,
   difficulty: string,

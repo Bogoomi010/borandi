@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { FINAL_STAGE } from "../data/stages";
 import { FINAL_ROUND } from "../data/waves";
-import { canUnlockNextStage, loadProfile, playableStageId, profileRecordRun } from "./settings";
+import { canUnlockNextStage, defaultNewRunStageId, loadProfile, playableStageId, profileRecordRun } from "./settings";
 
 class MemoryStorage implements Storage {
   private data = new Map<string, string>();
@@ -77,6 +77,13 @@ describe("프로필 맵 해금", () => {
     expect(profile.unlockedStage).toBe(2);
     expect(playableStageId(1, profile.unlockedStage)).toBe(1);
     expect(playableStageId(2, profile.unlockedStage)).toBe(2);
+  });
+
+  it("새 게임 모달 기본 선택은 새로 해금된 다음 맵으로 자동 이동하지 않는다", () => {
+    expect(defaultNewRunStageId(1, 2)).toBe(1);
+    expect(defaultNewRunStageId(2, 2)).toBe(2);
+    expect(defaultNewRunStageId(7, 3)).toBe(3);
+    expect(defaultNewRunStageId(0, 4)).toBe(1);
   });
 
   it("40라운드에 도달해도 패배한 판이면 다음 맵을 해금하지 않는다", () => {
