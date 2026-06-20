@@ -90,6 +90,21 @@ function rateText(balance, id) {
   return typeof rate === "number" ? pct(rate) : "n/a";
 }
 
+function reportNumber(balance, id, key) {
+  const value = scenario(balance, id)?.report?.[key];
+  return typeof value === "number" ? value : null;
+}
+
+function balanceText(balance, id) {
+  const item = scenario(balance, id);
+  if (!item) return "n/a";
+  const report = item.report ?? {};
+  const clear = typeof report.clearRate === "number" ? pct(report.clearRate) : "n/a";
+  const round = typeof report.avgReachedRound === "number" ? `${report.avgReachedRound.toFixed(1)}R` : "n/a";
+  const legends = typeof report.avgLegendCount === "number" ? `${report.avgLegendCount.toFixed(1)}전설` : "n/a";
+  return `${clear}, 평균 ${round}, 평균 ${legends}`;
+}
+
 function directScenario(direct, id) {
   return direct?.scenarios?.find((s) => s.id === id) ?? null;
 }
@@ -578,11 +593,17 @@ function buildRows(balance, browser, direct, manual, codex) {
 
   const expertFive = clearRate(balance, "expertFiveLegend");
   const expertOpen = clearRate(balance, "expertOpen");
+  const intermediateFiveAvgLegend = reportNumber(balance, "intermediateFiveLegend", "avgLegendCount");
+  const expertOpenAvgLegend = reportNumber(balance, "expertOpen", "avgLegendCount");
+  const expertAutoGrowthPass = typeof intermediateFiveAvgLegend === "number" &&
+    typeof expertOpenAvgLegend === "number" &&
+    expertOpenAvgLegend >= Math.max(6, intermediateFiveAvgLegend + 1);
   rows.push({
     req: "고수: 중급 예산보다 더 높은 성장 필요",
-    evidence: `5전설 ${rateText(balance, "expertFiveLegend")}, 제한 없음 ${rateText(balance, "expertOpen")}`,
+    evidence: `중급 5전설 ${balanceText(balance, "intermediateFiveLegend")}, 고수 5전설 ${balanceText(balance, "expertFiveLegend")}, 고수 제한 없음 ${balanceText(balance, "expertOpen")}`,
     pass: typeof expertFive === "number" && typeof expertOpen === "number" &&
-      expertFive <= 0.1 && expertOpen >= 0.4 && expertOpen >= expertFive + 0.3,
+      expertFive <= 0.1 && expertOpen >= 0.4 && expertOpen >= expertFive + 0.3 &&
+      expertAutoGrowthPass,
   });
 
   const masterOpen = clearRate(balance, "masterOpen");

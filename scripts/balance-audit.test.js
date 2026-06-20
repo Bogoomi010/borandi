@@ -48,8 +48,8 @@ function runAuditFailure(args) {
   return result;
 }
 
-function scenario(id, difficulty, clearRate) {
-  return { id, difficulty, report: { clearRate } };
+function scenario(id, difficulty, clearRate, avgLegendCount = 0, avgReachedRound = 40) {
+  return { id, difficulty, report: { clearRate, avgLegendCount, avgReachedRound } };
 }
 
 function completeBalance() {
@@ -57,16 +57,16 @@ function completeBalance() {
     dataVersion: CURRENT_DATA_VERSION,
     seeds: 50,
     scenarios: [
-      scenario("noviceHero", "novice", 1),
-      scenario("normalNoLegend", "normal", 0.05),
-      scenario("normalOneLegend", "normal", 0.35),
-      scenario("normalTwoLegend", "normal", 0.55),
-      scenario("intermediateTwoLegend", "intermediate", 0.1),
-      scenario("intermediateFiveLegend", "intermediate", 0.5),
-      scenario("intermediateOpen", "intermediate", 0.95),
-      scenario("expertFiveLegend", "expert", 0),
-      scenario("expertOpen", "expert", 0.6),
-      scenario("masterOpen", "master", 0),
+      scenario("noviceHero", "novice", 1, 0),
+      scenario("normalNoLegend", "normal", 0.05, 0, 37),
+      scenario("normalOneLegend", "normal", 0.35, 1),
+      scenario("normalTwoLegend", "normal", 0.55, 2),
+      scenario("intermediateTwoLegend", "intermediate", 0.1, 2, 37),
+      scenario("intermediateFiveLegend", "intermediate", 0.5, 5),
+      scenario("intermediateOpen", "intermediate", 0.95, 8),
+      scenario("expertFiveLegend", "expert", 0, 5, 33),
+      scenario("expertOpen", "expert", 0.6, 8),
+      scenario("masterOpen", "master", 0, 8, 16),
     ],
   };
 }
@@ -328,6 +328,34 @@ describe("balance-audit assert", () => {
     expect(failed.stdout).toContain("브라우저 직접: 고수는 5전설보다 높은 성장 필요 | FAIL");
     expect(failed.stdout).toContain("클리어런 평균 전설 5.4");
     expect(failed.stderr).toContain("브라우저 직접: 고수는 5전설보다 높은 성장 필요");
+  });
+
+  it("자동 밸런스 고수 증거도 중급자 5전설보다 높은 평균 성장치를 요구한다", () => {
+    const balance = completeBalance();
+    for (const item of balance.scenarios) {
+      if (item.id === "expertOpen") {
+        item.report.avgLegendCount = 5.4;
+      }
+    }
+    const paths = {
+      balance: writeJson("balance.json", balance),
+      browser: writeJson("browser.json", completeBrowser()),
+      direct: writeJson("direct.json", completeDirect()),
+      manual: writeJson("manual.json", completeManual()),
+    };
+
+    const failed = runAuditFailure([
+      `--balance=${paths.balance}`,
+      `--browser=${paths.browser}`,
+      `--direct=${paths.direct}`,
+      `--manual=${paths.manual}`,
+      "--assert",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stdout).toContain("고수: 중급 예산보다 더 높은 성장 필요 | FAIL");
+    expect(failed.stdout).toContain("고수 제한 없음 60.0%, 평균 40.0R, 평균 5.4전설");
+    expect(failed.stderr).toContain("고수: 중급 예산보다 더 높은 성장 필요");
   });
 
   it("관찰 배열이 없는 직접 입력 증거도 중급자 5전설 클리어권 기준을 요구한다", () => {
