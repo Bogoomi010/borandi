@@ -18,6 +18,7 @@ import {
   manualPlaylogFinishLatestDryRunCommand,
   manualPlaylogFinishLatestThenNextCommand,
   manualPlaylogThenNextCommand,
+  currentManualProofSummary,
   maybeShowResult,
   openSelectorModal,
   resetResultShown,
@@ -599,8 +600,19 @@ function renderGameToText(): string {
         finishLatest: null as string | null,
         finishLatestDryRun: null as string | null,
         finishLatestThenNext: null as string | null,
+        currentFinish: null as string | null,
+        currentFinishDryRun: null as string | null,
+        currentFinishLatest: null as string | null,
+        currentFinishLatestDryRun: null as string | null,
       }
     : null;
+  if (manualProofCommands && s.phase !== "ended") {
+    const currentSummary = currentManualProofSummary(ctx);
+    manualProofCommands.currentFinish = manualPlaylogFinishCommand(currentSummary);
+    manualProofCommands.currentFinishDryRun = manualPlaylogFinishDryRunCommand(currentSummary);
+    manualProofCommands.currentFinishLatest = manualPlaylogFinishLatestCommand(currentSummary);
+    manualProofCommands.currentFinishLatestDryRun = manualPlaylogFinishLatestDryRunCommand(currentSummary);
+  }
   if (manualProofCommands && s.phase === "ended") {
     const endedAt = ctx.runEndedAt ?? new Date().toISOString();
     const endedAtMs = ctx.runEndedAtMs ?? performance.now();

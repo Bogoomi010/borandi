@@ -126,6 +126,15 @@ function manualStartNextCommand(ctx: AppCtx): string {
   });
 }
 
+export function currentManualProofSummary(ctx: AppCtx, nowIso = new Date().toISOString(), nowMs = performance.now()): ResultSummary {
+  const summary = ctx.game.resultSummary();
+  summary.playedAt = nowIso;
+  summary.manualStartedAt = ctx.runStartedAt;
+  summary.unlockedNextStage = ctx.lastRunUnlockedNext;
+  summary.wallSeconds = Math.max(1, Math.round((nowMs - ctx.runStartedAtMs) / 1000));
+  return summary;
+}
+
 function currentRunManualProofNote(target: ManualProofTargetStatus): string {
   if (target.state === "ok") {
     return "현재 보유 조건은 목표에 맞습니다. 12분 이상 실제 플레이 후 결과 화면의 기록 명령으로 저장하세요.";
@@ -688,6 +697,11 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const currentPendingIdJsonCommand = currentPendingIdCommand ? `${currentPendingIdCommand} --json` : "";
     const currentStartDryRunCommand = currentStartCommand ? manualDryRunCommand(currentStartCommand) : "";
     const currentStartNextDryRunCommand = currentStartNextCommand ? manualDryRunCommand(currentStartNextCommand) : "";
+    const currentCheckpointSummary = ctx?.scene === "game" ? currentManualProofSummary(ctx) : null;
+    const currentFinishCheckpointCommand = currentCheckpointSummary ? manualPlaylogFinishCommand(currentCheckpointSummary) : "";
+    const currentFinishCheckpointDryRunCommand = currentCheckpointSummary ? manualPlaylogFinishDryRunCommand(currentCheckpointSummary) : "";
+    const currentFinishLatestCheckpointCommand = currentCheckpointSummary ? manualPlaylogFinishLatestCommand(currentCheckpointSummary) : "";
+    const currentFinishLatestCheckpointDryRunCommand = currentCheckpointSummary ? manualPlaylogFinishLatestDryRunCommand(currentCheckpointSummary) : "";
     const summaryCommand = "yarn manual-playlog --summary";
     const planCommand = "yarn manual-playlog --plan";
     const sheetCommand = "yarn manual-playlog --sheet";
@@ -756,6 +770,14 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       body.appendChild(el("pre", "report", currentPendingIdCommand));
       body.appendChild(el("div", "modal-note", "직접 시작 마커에는 현재 목표 라벨이 함께 저장됩니다. 검증 출력의 finish 템플릿이 목표 조건과 맞는지 확인한 뒤 저장하세요."));
       body.appendChild(el("div", "modal-note", "플레이 시작 직후 한 번 실행해두면 결과 화면을 놓쳐도 --finish 명령으로 같은 시작 시각을 재사용할 수 있습니다."));
+    }
+    if (currentFinishCheckpointCommand) {
+      body.appendChild(el("h3", "", "현재 상태 finish 점검"));
+      body.appendChild(el("pre", "report", currentFinishCheckpointDryRunCommand));
+      body.appendChild(el("pre", "report", currentFinishCheckpointCommand));
+      body.appendChild(el("pre", "report", currentFinishLatestCheckpointDryRunCommand));
+      body.appendChild(el("pre", "report", currentFinishLatestCheckpointCommand));
+      body.appendChild(el("div", "modal-note", "진행 중인 판의 현재 라운드/전설/체크섬 기준 명령입니다. 결과 화면이 나오면 결과 화면의 endedAt/stateChecksum 값으로 다시 검증한 뒤 저장하세요."));
     }
     body.appendChild(el("h3", "", "실제 세션 기록 순서"));
     const workflow = el("ol", "modal-note");
@@ -858,6 +880,28 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
         }
       };
       row.appendChild(copyPendingIdJson);
+      if (currentFinishCheckpointCommand) {
+        const copyFinishCheckpointDryRun = el("button", "", "현재 finish검증 복사");
+        copyFinishCheckpointDryRun.onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(currentFinishCheckpointDryRunCommand);
+            toast("현재 상태 기준 finish 검증 명령을 복사했습니다", "ok");
+          } catch {
+            toast("복사 실패: 명령을 직접 선택하세요", "warn");
+          }
+        };
+        row.appendChild(copyFinishCheckpointDryRun);
+        const copyFinishCheckpoint = el("button", "", "현재 finish 복사");
+        copyFinishCheckpoint.onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(currentFinishCheckpointCommand);
+            toast("현재 상태 기준 finish 명령을 복사했습니다", "ok");
+          } catch {
+            toast("복사 실패: 명령을 직접 선택하세요", "warn");
+          }
+        };
+        row.appendChild(copyFinishCheckpoint);
+      }
     }
     const copyPending = el("button", "", "대기목록 복사");
     copyPending.onclick = async () => {
