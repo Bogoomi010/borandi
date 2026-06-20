@@ -20,6 +20,7 @@ const manualPath = String(args.manual ?? "output/manual-balance-playlog.json");
 const auditPath = String(args.out ?? "output/balance-audit.md");
 const browserScreenshots = String(args.screenshots ?? "output/browser-balance-shots");
 const directScreenshots = String(args["direct-screenshots"] ?? "output/browser-direct-shots");
+const directCodexLog = String(args["direct-codex-log"] ?? "output/codex-direct-playlog.json");
 const balanceSeeds = Number(args.seeds ?? 30);
 const directSeeds = Number(args["direct-seeds"] ?? 6);
 const requireComplete = args["require-complete"] === "true" || args.assert === "true";
@@ -141,6 +142,7 @@ try {
     "--strict",
     `--json=${directPath}`,
     `--screenshots=${directScreenshots}`,
+    `--codex-log=${directCodexLog}`,
   ]);
   await run("yarn", [
     "balance-audit",

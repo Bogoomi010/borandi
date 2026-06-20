@@ -57,7 +57,7 @@ function completeManualWithInvalidSession() {
 }
 
 describe("balance-proof require-complete", () => {
-  it("증거 갱신은 browser-direct 스크린샷 경로를 전달한다", () => {
+  it("증거 갱신은 browser-direct 스크린샷과 Codex 보조 로그 경로를 전달한다", () => {
     const port = 59597;
     const fakeYarn = join(tempDir, "yarn");
     const logPath = join(tempDir, "fake-yarn.log");
@@ -78,6 +78,7 @@ exit 0
 
     const browserShots = join(tempDir, "browser-shots");
     const directShots = join(tempDir, "direct-shots");
+    const directCodexLog = join(tempDir, "codex-direct.json");
     const result = spawnSync(process.execPath, [
       "scripts/balance-proof.mjs",
       "--host=127.0.0.1",
@@ -89,6 +90,7 @@ exit 0
       `--out=${join(tempDir, "audit.md")}`,
       `--screenshots=${browserShots}`,
       `--direct-screenshots=${directShots}`,
+      `--direct-codex-log=${directCodexLog}`,
       "--seeds=1",
       "--direct-seeds=1",
     ], {
@@ -104,7 +106,7 @@ exit 0
     expect(result.status).toBe(0);
     const calls = readFileSync(logPath, "utf8");
     expect(calls).toContain(`browser-balance --url=http://127.0.0.1:${port}/ --json=${join(tempDir, "browser.json")} --screenshots=${browserShots}`);
-    expect(calls).toContain(`browser-direct --url=http://127.0.0.1:${port}/ --seeds=1 --strict --json=${join(tempDir, "direct.json")} --screenshots=${directShots}`);
+    expect(calls).toContain(`browser-direct --url=http://127.0.0.1:${port}/ --seeds=1 --strict --json=${join(tempDir, "direct.json")} --screenshots=${directShots} --codex-log=${directCodexLog}`);
   });
 
   it("수동 증거가 없으면 자동 게이트를 시작하기 전에 실패한다", () => {
