@@ -108,8 +108,10 @@ function manualStartCommand(ctx: AppCtx): string {
 
 function manualStartNextCommand(ctx: AppCtx): string {
   const s = ctx.game.state;
+  const id = manualStartId(s.difficulty, s.stageId, s.seed, ctx.runStartedAt);
   return [
     "yarn manual-playlog --start-next",
+    `--id=${shellArg(id)}`,
     `--difficulty=${s.difficulty}`,
     `--stage=${s.stageId}`,
     `--seed=${shellArg(s.seed)}`,
