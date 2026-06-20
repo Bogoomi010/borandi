@@ -141,6 +141,36 @@ function countLegends(snap) {
   return snap.units.filter((u) => u.grade === "legend").length;
 }
 
+function shellArg(value) {
+  const text = String(value);
+  if (/^[A-Za-z0-9_./:=@%+-]+$/.test(text)) return text;
+  return `'${text.replace(/'/g, `'\\''`)}'`;
+}
+
+function manualPlaylogCommand({ scenario, seed, simulatedSeconds, final, endedAt }) {
+  const result = final.cleared ? "clear" : "loss";
+  const stage = final.stage?.current ?? 1;
+  const legends = final.unitSummary.legendOrBetter;
+  const maxGrade = final.unitSummary.maxGrade ?? "common";
+  const notes = `Codex browser-direct ${scenario.id}: ${scenario.expectation}`;
+  return [
+    "yarn manual-playlog",
+    "--source=codex-direct-playtest",
+    `--difficulty=${shellArg(final.difficulty?.id ?? scenario.difficulty)}`,
+    `--seconds=${Math.round(simulatedSeconds)}`,
+    `--result=${result}`,
+    `--stage=${stage}`,
+    `--round=${final.round}`,
+    `--seed=${shellArg(seed)}`,
+    `--legends=${legends}`,
+    `--maxGrade=${shellArg(maxGrade)}`,
+    `--dataVersion=${shellArg(final.dataVersion)}`,
+    `--stateChecksum=${shellArg(final.stateChecksum)}`,
+    `--endedAt=${shellArg(endedAt)}`,
+    `--notes=${shellArg(notes)}`,
+  ].join(" ");
+}
+
 function hasRole(unit, role) {
   return Array.isArray(unit.roles) && unit.roles.includes(role);
 }
@@ -356,19 +386,33 @@ async function playScenarioSeed(page, scenario, seedIndex) {
   }
 
   const finalState = await readState(page);
+  const endedAt = new Date().toISOString();
+  const final = {
+    dataVersion: finalState.dataVersion,
+    stateChecksum: finalState.stateChecksum,
+    difficulty: finalState.difficulty,
+    stage: finalState.stage,
+    round: finalState.round,
+    mode: finalState.mode,
+    cleared: finalState.cleared,
+    pressure: `${finalState.resources.enemyPressure}/${finalState.resources.enemyLimit}`,
+    gold: finalState.resources.gold,
+    unitSummary: finalState.unitSummary,
+    boss: finalState.boss,
+  };
   return {
     seed,
     steps,
     simulatedSeconds: steps * (stepMs / 1000),
-    final: {
-      round: finalState.round,
-      mode: finalState.mode,
-      cleared: finalState.cleared,
-      pressure: `${finalState.resources.enemyPressure}/${finalState.resources.enemyLimit}`,
-      gold: finalState.resources.gold,
-      unitSummary: finalState.unitSummary,
-      boss: finalState.boss,
-    },
+    endedAt,
+    final,
+    codexDirectPlaylogCommand: manualPlaylogCommand({
+      scenario,
+      seed,
+      simulatedSeconds: steps * (stepMs / 1000),
+      final,
+      endedAt,
+    }),
     samples,
   };
 }
