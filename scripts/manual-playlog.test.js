@@ -82,6 +82,7 @@ describe("manual-playlog plan", () => {
 
     expect(output).toContain("사용법:");
     expect(output).toContain("--preflight              # 새 수동 세션 시작 전 무효/미완료 마커 점검");
+    expect(output).toContain("--start-next --difficulty=normal --seed=RUN123");
     expect(output).toContain("--preflight-json         # --preflight 결과를 JSON으로 출력");
     expect(output).toContain("--summary-json        # --summary --json과 동일");
     expect(output).toContain("--plan-json           # --plan --json과 동일");
