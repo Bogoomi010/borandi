@@ -41,9 +41,9 @@ function usage() {
     "  --pending                # 아직 finish되지 않은 시작 마커 목록 출력",
     "  --preflight              # 새 수동 세션 시작 전 무효/미완료 마커 점검",
     "  --preflight-json         # --preflight 결과를 JSON으로 출력",
-    "  --finish=RUN1 --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM",
+    "  --finish=RUN1 --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT",
     "                          # 시작 마커의 startedAt/difficulty/stage/seed를 사용해 결과 세션 저장",
-    "  --finish-latest --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM",
+    "  --finish-latest --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT",
     "                          # 가장 최근 시작 마커를 자동 선택해 결과 세션 저장",
     "  --finish                 # --finish-latest와 동일",
     "  --summary             # 현재 수동 로그 충족/미충족 항목만 출력",
@@ -1143,6 +1143,9 @@ if (!grades.includes(maxGrade)) {
 }
 const dataVersion = String(args.dataVersion ?? "");
 if (!dataVersion) fail("--dataVersion 값이 필요합니다.");
+if (CURRENT_DATA_VERSION && dataVersion !== CURRENT_DATA_VERSION) {
+  fail(`--dataVersion ${dataVersion}은 현재 DATA_VERSION ${CURRENT_DATA_VERSION}와 다릅니다. 결과 화면의 실제 데이터 버전을 사용하세요.`);
+}
 const stateChecksum = String(args.stateChecksum ?? "");
 if (!/^[0-9a-f]{8}$/i.test(stateChecksum)) {
   fail("--stateChecksum 값은 결과 리포트의 8자리 16진 체크섬이어야 합니다.");

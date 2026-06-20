@@ -573,6 +573,59 @@ describe("manual-playlog plan", () => {
     expect(failed.stderr).toContain("추천 시작 마커: yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
   });
 
+  it("직접 저장은 현재 데이터 버전이 아닌 결과를 즉시 거부한다", () => {
+    const out = makeTempPath("save-stale-data-version.json");
+
+    const failed = runManualPlaylogFailure([
+      `--out=${out}`,
+      "--difficulty=novice",
+      "--seconds=900",
+      "--result=clear",
+      "--stage=1",
+      "--round=40",
+      "--seed=STALE-SAVE",
+      "--legends=0",
+      "--maxGrade=hero",
+      "--dataVersion=0.0.0",
+      "--stateChecksum=20000030",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+      "--endedAt=2026-06-20T02:15:00.000Z",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stderr).toContain(`--dataVersion 0.0.0은 현재 DATA_VERSION ${CURRENT_DATA_VERSION}와 다릅니다`);
+  });
+
+  it("finish도 현재 데이터 버전이 아닌 결과를 저장하지 않는다", () => {
+    const out = makeTempPath("finish-stale-data-version.json");
+    runManualPlaylog([
+      `--out=${out}`,
+      "--start",
+      "--id=stale-finish",
+      "--difficulty=normal",
+      "--stage=1",
+      "--seed=STALE-FINISH",
+      "--startedAt=2026-06-20T00:00:00.000Z",
+    ]);
+
+    const failed = runManualPlaylogFailure([
+      `--out=${out}`,
+      "--finish=stale-finish",
+      "--result=clear",
+      "--round=40",
+      "--legends=1",
+      "--maxGrade=legend",
+      "--dataVersion=0.0.0",
+      "--stateChecksum=20000031",
+      "--endedAt=2026-06-20T00:15:00.000Z",
+    ]);
+    const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+
+    expect(failed.status).toBe(1);
+    expect(failed.stderr).toContain(`--dataVersion 0.0.0은 현재 DATA_VERSION ${CURRENT_DATA_VERSION}와 다릅니다`);
+    expect(pending.pending).toHaveLength(1);
+  });
+
   it("시작 마커를 저장한 뒤 finish로 실제 세션을 완성할 수 있다", () => {
     const out = makeTempPath("pending-finish.json");
     runManualPlaylog([

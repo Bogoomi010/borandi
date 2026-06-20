@@ -29,13 +29,13 @@ yarn browser-balance --json=output/browser-balance.json --screenshots=output/bro
                           # 실행 중인 yarn dev 서버를 대상으로 10R 전후 브라우저 플레이테스트 게이트 실행
 yarn browser-direct --json=output/browser-direct.json --screenshots=output/browser-direct-shots
                           # 실행 중인 yarn dev 서버에서 실제 소환/합성/조합/업그레이드 입력 흐름으로 2시드 이상 긴 밸런스 표본 수집
-yarn manual-playlog --difficulty=normal --minutes=24 --result=loss --stage=1 --round=39 --seed=RUN123 --legends=1 --maxGrade=legend --dataVersion=0.8.0 --stateChecksum=1234abcd --notes="후반 누적 압박"
+yarn manual-playlog --difficulty=normal --minutes=24 --result=loss --stage=1 --round=39 --seed=RUN123 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --notes="후반 누적 압박"
                           # 사람이 직접 플레이한 수동 밸런스 세션을 output/manual-balance-playlog.json에 누적
 yarn manual-playlog --start --id=RUN123 --difficulty=normal --stage=1 --seed=RUN123 --startedAt=2026-06-20T12:00:00.000Z
                           # 수동 플레이 시작 마커를 저장해 결과 화면을 놓쳐도 시작 시각 재사용
-yarn manual-playlog --finish=RUN123 --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=0.8.0 --stateChecksum=1234abcd
+yarn manual-playlog --finish=RUN123 --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT
                           # 시작 마커의 난이도/맵/시드/시작 시각으로 결과 세션 마무리
-yarn manual-playlog --finish-latest --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=0.8.0 --stateChecksum=1234abcd
+yarn manual-playlog --finish-latest --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT
                           # 가장 최근 시작 마커를 자동 선택해 결과 세션 마무리 (--finish도 동일)
 yarn manual-playlog --pending
                           # 아직 finish되지 않은 수동 플레이 시작 마커 확인
