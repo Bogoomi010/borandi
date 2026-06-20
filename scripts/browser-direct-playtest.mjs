@@ -1,7 +1,7 @@
 // Browser direct-play balance sampler.
 // Requires a running dev server: yarn dev --host 127.0.0.1 --port 1421
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { chromium } from "playwright";
 
@@ -19,6 +19,7 @@ const stepMs = Math.max(250, Number(args["step-ms"] ?? 5000));
 const outPath = typeof args.json === "string" && args.json !== "true" ? args.json : "";
 const screenshotDir = typeof args.screenshots === "string" && args.screenshots !== "true" ? args.screenshots : "";
 const strict = args.strict === "true";
+const CURRENT_DATA_VERSION = readCurrentDataVersion();
 const selectedScenarioIds = typeof args.scenarios === "string" && args.scenarios !== "true"
   ? new Set(args.scenarios.split(",").map((s) => s.trim()).filter(Boolean))
   : null;
@@ -31,6 +32,15 @@ const PLAYTEST_SCOPE = [
   "브라우저 런타임의 실제 Game, render_game_to_text, advanceTime, ctx.act 경로를 사용한다.",
   "자동으로 누적한 시뮬레이션 플레이 시간을 기록하되, 요청된 2시간 수동 플레이를 대체하지 않는 보조 증거로 취급한다.",
 ];
+
+function readCurrentDataVersion() {
+  try {
+    const source = readFileSync("src/data/version.ts", "utf8");
+    return source.match(/export const DATA_VERSION = "([^"]+)"/)?.[1] ?? "";
+  } catch {
+    return "";
+  }
+}
 
 const SCENARIOS = [
   {
@@ -499,6 +509,7 @@ try {
   const payload = {
     url,
     generatedAt: new Date().toISOString(),
+    dataVersion: CURRENT_DATA_VERSION,
     seeds,
     maxRound,
     stepMs,

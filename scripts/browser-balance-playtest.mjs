@@ -1,7 +1,7 @@
 // Browser balance playtest smoke.
 // Requires a running dev server: yarn dev --host 127.0.0.1 --port 1421
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { chromium } from "playwright";
 
@@ -15,6 +15,7 @@ const args = Object.fromEntries(
 const url = String(args.url ?? "http://127.0.0.1:1421/");
 const outPath = typeof args.json === "string" && args.json !== "true" ? args.json : "";
 const screenshotDir = typeof args.screenshots === "string" && args.screenshots !== "true" ? args.screenshots : "";
+const CURRENT_DATA_VERSION = readCurrentDataVersion();
 
 const LEGENDS = ["solar_avatar", "chrono_marshal", "titan_slayer", "ancient_world_tree"];
 const HEROES = ["phoenix_archmage", "glacier_warden", "tempest_blademaster", "fortress_breaker", "abyss_oracle", "world_tree_sage"];
@@ -24,6 +25,15 @@ const PLAYTEST_SCOPE = [
   "10R 첫 보스 전후의 실제 렌더/전투 상태를 수집한다.",
   "40R 전체 클리어율 판정은 yarn balance가 담당하고, 이 스크립트는 조작 가능한 브라우저 체감 게이트를 담당한다.",
 ];
+
+function readCurrentDataVersion() {
+  try {
+    const source = readFileSync("src/data/version.ts", "utf8");
+    return source.match(/export const DATA_VERSION = "([^"]+)"/)?.[1] ?? "";
+  } catch {
+    return "";
+  }
+}
 
 const scenarios = [
   {
@@ -290,6 +300,7 @@ try {
   const payload = {
     url,
     generatedAt: new Date().toISOString(),
+    dataVersion: CURRENT_DATA_VERSION,
     scope: PLAYTEST_SCOPE,
     scenarios: results,
     gates,

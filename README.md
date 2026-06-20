@@ -69,7 +69,7 @@ yarn check                # npm 의존성 없이 Node만으로 코어 스모크 
 40라운드 전체 클리어율 밴드는 `yarn balance`가 기준이고, `yarn browser-balance`는 실제 브라우저 런타임에서 난이도/전설 보유 조건과 10R 첫 보스 전후 체감 차이를 확인하는 보조 게이트다.
 `yarn browser-direct`는 DEV 스폰으로 유닛을 고정하지 않고 소환/선택권/합성/조합/업그레이드 입력을 반복해 긴 브라우저 표본을 모으는 보조 플레이테스트다. JSON에는 누적 시뮬레이션 플레이 시간도 함께 기록된다.
 `yarn manual-playlog`는 사람이 직접 플레이한 세션을 `output/manual-balance-playlog.json`에 누적한다.
-`yarn balance-audit`는 `browser-direct` JSON의 시나리오 범위, strict 통과 여부, 관찰 게이트도 확인해 실제 브라우저 입력 표본이 난이도별 목표와 같은 방향인지 검사한다.
+`yarn balance-audit`는 `balance`, `browser-balance`, `browser-direct` JSON의 `dataVersion`이 현재 `src/data/version.ts`의 `DATA_VERSION`과 같은지 확인한다. 또한 `browser-direct` JSON의 시나리오 범위, strict 통과 여부, 관찰 게이트도 확인해 실제 브라우저 입력 표본이 난이도별 목표와 같은 방향인지 검사한다.
 수동 플레이 로그는 `docs/manual-balance-playlog.example.json` 형식을 따른다. 예시 파일은 `example: true`로 표시되어 감사 증거에서 제외된다. `yarn balance-audit`는 시작/종료 시각, 결과, 맵, 라운드, 시드, 전설 수, 최고 등급, 데이터 버전, 상태 체크섬이 완전한 세션만 세며, 전설 수와 최고 등급이 서로 일치해야 한다. 수동 세션의 데이터 버전은 현재 `src/data/version.ts`의 `DATA_VERSION`과 같아야 하며, 예전 밸런스 버전의 플레이 로그는 무효 세션으로 표시된다. 중복 상태 체크섬은 한 번만 카운트한다. 총 120분 이상, 각 난이도 최소 12분 이상을 요구한다. 또한 입문자 40R 무전설 클리어, 일반 40R 1~2전설 클리어, 중급자 40R 5전설 이상 클리어, 고수 40R 5전설 이하 실패 + 40R 6전설 이상 클리어, 초고수 실패 기록은 각각 12분 이상 진행된 목표 결과 세션이어야 한다.
 게임 결과 화면과 결과 리포트에는 현재 세션의 실제 경과 시간을 넣은 `yarn manual-playlog` 명령이 함께 표시된다.
 결과 화면의 `기록+다음 복사` 버튼은 이번 결과를 기록한 뒤 바로 `yarn manual-playlog --next`까지 실행하는 명령을 복사한다. `yarn manual-playlog --next`와 `--plan`은 다음 세션의 시작 마커 명령 템플릿과 마감 조건을 보여주며, `--next-json`/`--plan-json`도 같은 `finishTemplate`을 제공한다. `yarn manual-playlog --start-next --seed=...`는 다음 필요 세션의 난이도와 목표 메모를 자동으로 채워 시작 마커를 저장하고, 목표 조건에 맞는 finish 명령 예시를 출력한다.

@@ -1,6 +1,7 @@
 import { runSimulation, type SimReport } from "./runner";
 import type { AutoPlayOptions } from "./autoPlayer";
 import type { DifficultyId, Grade } from "../core/types";
+import { DATA_VERSION } from "../data/version";
 
 export interface BalanceScenario {
   id: string;
@@ -154,6 +155,7 @@ export function balanceGateToMarkdown(result: BalanceGateResult): string {
 
 export function balanceGateToJson(result: BalanceGateResult): string {
   return JSON.stringify({
+    dataVersion: DATA_VERSION,
     seeds: result.seeds,
     strategy: result.strategy,
     scenarios: result.scenarios.map(({ scenario, report }) => ({

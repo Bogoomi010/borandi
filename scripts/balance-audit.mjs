@@ -47,6 +47,17 @@ function status(ok, missing = false) {
   return ok ? "PASS" : "FAIL";
 }
 
+function dataVersionEvidence(report) {
+  if (!report) return "missing JSON";
+  const value = String(report.dataVersion ?? "");
+  if (!value) return `dataVersion 없음, 현재 ${CURRENT_DATA_VERSION}`;
+  return `dataVersion ${value}, 현재 ${CURRENT_DATA_VERSION}`;
+}
+
+function dataVersionMatches(report) {
+  return !!report?.dataVersion && (!CURRENT_DATA_VERSION || report.dataVersion === CURRENT_DATA_VERSION);
+}
+
 function scenario(balance, id) {
   return balance?.scenarios?.find((s) => s.id === id) ?? null;
 }
@@ -445,6 +456,24 @@ function buildRows(balance, browser, direct, manual) {
     req: "난이도 5종",
     evidence: [...difficulties].join(", ") || "missing",
     pass: REQUIRED_DIFFICULTIES.every((d) => difficulties.has(d)),
+  });
+  rows.push({
+    req: "자동 밸런스 데이터 버전",
+    evidence: dataVersionEvidence(balance),
+    pass: dataVersionMatches(balance),
+    missing: !balance,
+  });
+  rows.push({
+    req: "브라우저 10R 데이터 버전",
+    evidence: dataVersionEvidence(browser),
+    pass: dataVersionMatches(browser),
+    missing: !browser,
+  });
+  rows.push({
+    req: "브라우저 직접 데이터 버전",
+    evidence: dataVersionEvidence(direct),
+    pass: dataVersionMatches(direct),
+    missing: !direct,
   });
 
   const novice = clearRate(balance, "noviceHero");

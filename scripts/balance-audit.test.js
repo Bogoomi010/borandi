@@ -54,6 +54,7 @@ function scenario(id, difficulty, clearRate) {
 
 function completeBalance() {
   return {
+    dataVersion: CURRENT_DATA_VERSION,
     seeds: 50,
     scenarios: [
       scenario("noviceHero", "novice", 1),
@@ -81,7 +82,7 @@ function boundaryNormalBalance() {
 }
 
 function completeBrowser() {
-  return { passed: true, gates: [{ pass: true }, { pass: true }] };
+  return { dataVersion: CURRENT_DATA_VERSION, passed: true, gates: [{ pass: true }, { pass: true }] };
 }
 
 function directScenario(id, clearRate, avgRound, avgPressureRatio, avgLegendOrBetter) {
@@ -90,6 +91,7 @@ function directScenario(id, clearRate, avgRound, avgPressureRatio, avgLegendOrBe
 
 function completeDirect({ seeds = 6 } = {}) {
   return {
+    dataVersion: CURRENT_DATA_VERSION,
     passed: true,
     seeds,
     totalSimulatedSeconds: 3600,
@@ -262,6 +264,37 @@ describe("balance-audit assert", () => {
     expect(failed.status).toBe(1);
     expect(failed.stdout).toContain("브라우저 직접 플레이형 자동 표본 범위 | FAIL | 9/9 target scenarios, 2/6 seeds");
     expect(failed.stderr).toContain("브라우저 직접 플레이형 자동 표본 범위");
+  });
+
+  it("현재 데이터 버전이 아닌 자동/브라우저 증거는 assert가 실패한다", () => {
+    const staleBalance = completeBalance();
+    const staleBrowser = completeBrowser();
+    const staleDirect = completeDirect();
+    staleBalance.dataVersion = "0.0.0";
+    staleBrowser.dataVersion = "0.0.0";
+    staleDirect.dataVersion = "0.0.0";
+    const paths = {
+      balance: writeJson("balance.json", staleBalance),
+      browser: writeJson("browser.json", staleBrowser),
+      direct: writeJson("direct.json", staleDirect),
+      manual: writeJson("manual.json", completeManual()),
+    };
+
+    const failed = runAuditFailure([
+      `--balance=${paths.balance}`,
+      `--browser=${paths.browser}`,
+      `--direct=${paths.direct}`,
+      `--manual=${paths.manual}`,
+      "--assert",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stdout).toContain(`자동 밸런스 데이터 버전 | FAIL | dataVersion 0.0.0, 현재 ${CURRENT_DATA_VERSION}`);
+    expect(failed.stdout).toContain(`브라우저 10R 데이터 버전 | FAIL | dataVersion 0.0.0, 현재 ${CURRENT_DATA_VERSION}`);
+    expect(failed.stdout).toContain(`브라우저 직접 데이터 버전 | FAIL | dataVersion 0.0.0, 현재 ${CURRENT_DATA_VERSION}`);
+    expect(failed.stderr).toContain("자동 밸런스 데이터 버전");
+    expect(failed.stderr).toContain("브라우저 10R 데이터 버전");
+    expect(failed.stderr).toContain("브라우저 직접 데이터 버전");
   });
 
   it("수동 2시간 증거가 없으면 assert가 실패한다", () => {
