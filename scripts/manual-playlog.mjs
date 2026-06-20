@@ -980,7 +980,31 @@ function failIfPendingStartExists() {
   fail(lines.join("\n"));
 }
 
+function failIfInvalidManualSessionsExist() {
+  const summary = buildSummary();
+  if (summary.invalidSessionCount === 0) return;
+  const first = summary.invalidSessions[0];
+  const label = first
+    ? [
+      `#${first.index + 1}`,
+      first.difficulty || "difficulty?",
+      first.result || "result?",
+      `${first.round || "?"}R`,
+      first.seed ? `seed=${first.seed}` : "",
+      first.checksum ? `#${first.checksum}` : "",
+    ].filter(Boolean).join(" ")
+    : "";
+  const lines = [
+    `수동 로그에 무효 세션이 ${summary.invalidSessionCount}개 있습니다.`,
+    "새 수동 시작 마커를 만들기 전에 기존 INVALID 세션을 고치거나 제거하세요.",
+  ];
+  if (label) lines.push(`첫 무효 세션: ${label}: ${first.issues.join(", ")}`);
+  lines.push(`확인 명령: yarn manual-playlog --summary${outPathArg()}`);
+  fail(lines.join("\n"));
+}
+
 function startManualSession() {
+  failIfInvalidManualSessionsExist();
   const difficulty = String(args.difficulty ?? "");
   if (!difficulties.includes(difficulty)) {
     fail(`지원하지 않는 난이도입니다: ${difficulty || "(없음)"}`);
@@ -1005,6 +1029,7 @@ function startManualSession() {
 }
 
 function startNextManualSession() {
+  failIfInvalidManualSessionsExist();
   failIfPendingStartExists();
   const next = buildNext().next;
   if (!next) {

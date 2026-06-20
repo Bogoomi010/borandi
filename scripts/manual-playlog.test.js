@@ -367,6 +367,61 @@ describe("manual-playlog plan", () => {
     expect(preflight.blockingReasons).toEqual(["invalidSessions"]);
   });
 
+  it("start와 start-next는 무효 수동 세션이 있으면 새 시작 마커를 만들지 않는다", () => {
+    const out = makeTempPath("start-blocked-by-invalid-session.json");
+    writeFileSync(out, JSON.stringify({
+      schemaVersion: 1,
+      source: "manual-playlog",
+      sessions: [
+        {
+          source: "human-playtest",
+          difficulty: "novice",
+          minutes: 12,
+          startedAt: "2026-06-20T00:00:00.000Z",
+          endedAt: "2026-06-20T00:01:00.000Z",
+          result: "clear",
+          stage: 1,
+          round: 40,
+          seed: "BAD-START-BLOCK",
+          legends: 0,
+          maxGrade: "hero",
+          dataVersion: CURRENT_DATA_VERSION,
+          stateChecksum: "bad00005",
+        },
+      ],
+    }, null, 2), "utf8");
+
+    const startNextFailed = runManualPlaylogFailure([
+      `--out=${out}`,
+      "--start-next",
+      "--seed=NEXT-SEED",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+    ]);
+    const startFailed = runManualPlaylogFailure([
+      `--out=${out}`,
+      "--start",
+      "--id=manual-start",
+      "--difficulty=novice",
+      "--stage=1",
+      "--seed=MANUAL-SEED",
+      "--startedAt=2026-06-20T03:00:00.000Z",
+    ]);
+
+    const log = readJson(out);
+    const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+    expect(startNextFailed.status).toBe(1);
+    expect(startNextFailed.stderr).toContain("수동 로그에 무효 세션이 1개 있습니다.");
+    expect(startNextFailed.stderr).toContain("새 수동 시작 마커를 만들기 전에 기존 INVALID 세션을 고치거나 제거하세요.");
+    expect(startNextFailed.stderr).toContain("#1 novice clear 40R seed=BAD-START-BLOCK #bad00005");
+    expect(startNextFailed.stderr).toContain("startedAt/endedAt와 기록 시간이 맞지 않음");
+    expect(startNextFailed.stderr).toContain(`확인 명령: yarn manual-playlog --summary --out=${shellArg(out)}`);
+    expect(startFailed.status).toBe(1);
+    expect(startFailed.stderr).toContain("수동 로그에 무효 세션이 1개 있습니다.");
+    expect(log.sessions).toHaveLength(1);
+    expect(log.pendingSessions ?? []).toEqual([]);
+    expect(pending.pending).toHaveLength(0);
+  });
+
   it("start-next는 다음 필요 세션의 시작 마커를 바로 저장한다", () => {
     const out = makeTempPath("start-next.json");
     const output = runManualPlaylog([
