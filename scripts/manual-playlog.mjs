@@ -348,7 +348,7 @@ function buildSummary() {
     },
   ];
 
-  return {
+  const summary = {
     schemaVersion: 1,
     logPath: outPath,
     logExists: existsSync(outPath),
@@ -363,10 +363,15 @@ function buildSummary() {
     rows,
     passed: rows.every((row) => row.pass),
   };
+  summary.next = buildNextFromSummary(summary).next;
+  return summary;
 }
 
 function buildPlan() {
-  const summary = buildSummary();
+  return buildPlanFromSummary(buildSummary());
+}
+
+function buildPlanFromSummary(summary) {
   const missingTargets = targetPlans.filter((target) => {
     const row = summary.rows.find((item) => item.label === target.label);
     return !row?.pass;
@@ -516,7 +521,11 @@ function printPlanJson() {
 }
 
 function buildNext() {
-  const plan = buildPlan();
+  return buildNextFromSummary(buildSummary());
+}
+
+function buildNextFromSummary(summary) {
+  const plan = buildPlanFromSummary(summary);
   const nextStep = plan.steps[0] ?? null;
   return {
     schemaVersion: 1,
