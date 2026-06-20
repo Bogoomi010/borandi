@@ -561,7 +561,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const nextCommand = "yarn manual-playlog --next";
     const startNextCommand = "yarn manual-playlog --start-next --seed=GAME_SEED_HERE";
     const pendingCommand = "yarn manual-playlog --pending";
-    const summaryJsonCommand = "yarn --silent manual-playlog --summary --json";
+    const summaryJsonCommand = "yarn --silent manual-playlog --summary-json";
     if (currentStartCommand) {
       body.appendChild(el("h3", "", "현재 판 시작 마커"));
       if (currentStartNextCommand) {

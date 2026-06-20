@@ -71,6 +71,16 @@ afterEach(() => {
 });
 
 describe("manual-playlog plan", () => {
+  it("help는 사용법과 JSON 단축 명령을 성공 코드로 출력한다", () => {
+    const output = runManualPlaylog(["--help"]);
+
+    expect(output).toContain("사용법:");
+    expect(output).toContain("--summary-json        # --summary --json과 동일");
+    expect(output).toContain("--plan-json           # --plan --json과 동일");
+    expect(output).toContain("--next-json           # --next --json과 동일");
+    expect(output).toContain("--pending-json        # --pending --json과 동일");
+  });
+
   it("빈 실제 로그에는 목표 세션 6개와 총 120분 보충 계획이 나온다", () => {
     const out = makeTempPath("empty.json");
     const plan = JSON.parse(runManualPlaylog([`--out=${out}`, "--plan-json"]));

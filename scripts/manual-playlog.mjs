@@ -45,10 +45,14 @@ function usage() {
     "  --finish                 # --finish-latest와 동일",
     "  --summary             # 현재 수동 로그 충족/미충족 항목만 출력",
     "  --summary --json      # 현재 수동 로그 상태를 JSON으로 출력",
+    "  --summary-json        # --summary --json과 동일",
     "  --plan                # 남은 120분 수동 플레이 증거 수집 순서 출력",
     "  --plan --json         # 남은 수동 플레이 계획을 JSON으로 출력",
+    "  --plan-json           # --plan --json과 동일",
     "  --next                # 바로 다음에 필요한 수동 플레이 세션 1개만 출력",
     "  --next --json         # 다음 필요 세션을 JSON으로 출력",
+    "  --next-json           # --next --json과 동일",
+    "  --pending-json        # --pending --json과 동일",
     "                        # --next/--plan 출력에는 다음 세션 시작 마커 명령 템플릿도 포함",
     "  --assert              # 수동 증거가 모두 충족되지 않으면 실패 코드로 종료",
     "  --notes=...",
@@ -61,6 +65,11 @@ function fail(message) {
   console.error("");
   console.error(usage());
   process.exit(1);
+}
+
+if (args.help === "true" || args.h === "true") {
+  console.log(usage());
+  process.exit(0);
 }
 
 function readJson(path) {

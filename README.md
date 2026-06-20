@@ -49,7 +49,7 @@ yarn manual-playlog --assert
                           # 120분 수동 증거가 완성되지 않았으면 실패 코드로 종료
 yarn manual-playlog --plan
                           # 남은 120분 수동 플레이 증거를 어떤 순서로 채울지 출력
-yarn --silent manual-playlog --summary --json
+yarn --silent manual-playlog --summary-json
                           # 같은 수동 로그 상태를 자동화 가능한 JSON으로 출력
 yarn balance-audit --manual=output/manual-balance-playlog.json --out=output/balance-audit.md
                           # balance/browser-balance/browser-direct/manual JSON을 모아 요구사항별 근거 감사표 생성
