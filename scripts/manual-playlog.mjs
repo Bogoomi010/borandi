@@ -602,6 +602,7 @@ function printSummary() {
         console.log(`    마무리 템플릿: ${session.finishCommandTemplate}`);
       }
     }
+    console.log("  새 시작 마커 추천은 pending 시작 마커를 finish한 뒤 다시 표시됩니다.");
     console.log("");
   }
   for (const row of summary.rows) {
@@ -676,13 +677,16 @@ function buildNext() {
 
 function buildNextFromSummary(summary) {
   const plan = buildPlanFromSummary(summary);
+  const blockedByPendingStartMarkers = summary.pendingCount > 0;
   const nextStep = plan.steps[0] ?? null;
   return {
     schemaVersion: 1,
     logPath: plan.logPath,
     passed: plan.passed,
     current: plan.current,
-    next: nextStep
+    blockedByPendingStartMarkers,
+    pending: summary.pending,
+    next: blockedByPendingStartMarkers ? null : nextStep
       ? {
         ...nextStep,
         startNextCommandTemplate: startNextCommandTemplate(nextStep),
@@ -698,7 +702,19 @@ function printNext() {
   console.log(`- 로그: ${next.logPath}`);
   console.log(`- 현재: ${next.current.validSessionCount}세션, ${next.current.totalMinutes.toFixed(1)}/${next.current.requiredMinutes.toFixed(1)}분`);
   console.log("");
-  if (!next.next) {
+  if (next.blockedByPendingStartMarkers) {
+    console.log("PENDING 먼저 finish해야 하는 시작 마커가 있습니다. 새 시작 마커는 pending 정리 후 만드세요.");
+    for (const session of next.pending) {
+      console.log(`  - ${session.id}: ${session.difficulty} stage=${session.stage} seed=${session.seed} startedAt=${session.startedAt}`);
+      console.log(`    경과: ${pendingTimingLabel(session)}`);
+      if (session.finishDryRunCommandTemplate) {
+        console.log(`    저장 전 검증 템플릿: ${session.finishDryRunCommandTemplate}`);
+      }
+      if (session.finishCommandTemplate) {
+        console.log(`    마무리 템플릿: ${session.finishCommandTemplate}`);
+      }
+    }
+  } else if (!next.next) {
     console.log("PASS 다음에 필요한 수동 플레이 세션이 없습니다.");
   } else {
     console.log(`${next.next.label} (${next.next.minutes.toFixed(1)}분 이상)`);
@@ -949,7 +965,10 @@ function assertManualProof() {
   }
   printSummary();
   const next = buildNext();
-  if (next.next) {
+  if (next.blockedByPendingStartMarkers) {
+    console.error("");
+    console.error("대기 중인 수동 시작 마커를 먼저 finish하세요. 새 시작 마커 추천은 pending 정리 후 표시됩니다.");
+  } else if (next.next) {
     console.error("");
     console.error(`다음 필요 세션: ${next.next.label} (${next.next.minutes.toFixed(1)}분 이상)`);
     console.error(`목표: ${next.next.goal}`);

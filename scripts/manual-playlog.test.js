@@ -156,6 +156,9 @@ describe("manual-playlog plan", () => {
       targetReady: true,
     });
     expect(preflight.pending[0].elapsedMinutes).toBeGreaterThanOrEqual(12);
+    expect(preflight.next).toBeNull();
+    expect(preflight.nextStartCommandTemplate).toBe("");
+    expect(preflight.nextStartDryRunCommandTemplate).toBe("");
   });
 
   it("pending은 시작 마커의 12분 목표까지 남은 시간을 보여준다", () => {
@@ -654,16 +657,16 @@ describe("manual-playlog plan", () => {
       "--startedAt=2026-06-20T02:45:00.000Z",
     ]);
     const next = JSON.parse(runManualPlaylog([`--out=${out}`, "--next-json"]));
+    const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
 
     expect(output).toContain("- 목표: 일반 1~2전설 40R 클리어");
     expect(output).toContain("- 기록 조건: result=clear round=40 legends=1~2 maxGrade=legend");
     expect(output).toContain("yarn manual-playlog --finish='normal-1-NORMAL-SEED-20260620T024500000Z' --result=clear --round=40 --legends=1 --maxGrade=legend");
-    expect(next.next.finishTemplate).toEqual({
-      result: "clear",
-      round: "40",
-      legends: "1",
-      maxGrade: "legend",
-    });
+    expect(next.blockedByPendingStartMarkers).toBe(true);
+    expect(next.next).toBeNull();
+    expect(pending.pending[0].finishCommandTemplate).toContain("--result=clear --round=40 --legends=1 --maxGrade=legend");
+    expect(pending.pending[0].finishDryRunCommandTemplate).toContain("--result=clear --round=40 --legends=1 --maxGrade=legend");
+    expect(pending.pending[0].finishDryRunCommandTemplate).toContain("--dry-run");
   });
 
   it("start-next는 초고수 실패 기록에 40R 고정 마감 템플릿을 쓰지 않는다", () => {
@@ -1031,6 +1034,16 @@ describe("manual-playlog plan", () => {
     expect(summaryText).toContain("경과: 12분 목표 충족");
     expect(summaryText).toContain("저장 전 검증 템플릿: yarn manual-playlog --finish='normal-run-1'");
     expect(summaryText).toContain("마무리 템플릿: yarn manual-playlog --finish='normal-run-1'");
+    expect(summaryText).toContain("새 시작 마커 추천은 pending 시작 마커를 finish한 뒤 다시 표시됩니다.");
+    expect(summaryText).not.toContain("추천 시작 마커:");
+    const nextBeforeFinish = runManualPlaylog([`--out=${out}`, "--next"]);
+    const nextJsonBeforeFinish = JSON.parse(runManualPlaylog([`--out=${out}`, "--next-json"]));
+    expect(nextBeforeFinish).toContain("PENDING 먼저 finish해야 하는 시작 마커가 있습니다.");
+    expect(nextBeforeFinish).toContain("저장 전 검증 템플릿: yarn manual-playlog --finish='normal-run-1'");
+    expect(nextBeforeFinish).not.toContain("추천 시작 마커:");
+    expect(nextJsonBeforeFinish.blockedByPendingStartMarkers).toBe(true);
+    expect(nextJsonBeforeFinish.next).toBeNull();
+    expect(nextJsonBeforeFinish.pending).toHaveLength(1);
 
     const finishOutput = runManualPlaylog([
       `--out=${out}`,
