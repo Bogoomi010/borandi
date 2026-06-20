@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 let tempDir = "";
+const CURRENT_DATA_VERSION = readCurrentDataVersion();
 
 function makeTempPath(name) {
   tempDir = mkdtempSync(join(tmpdir(), "borandi-manual-log-"));
@@ -29,6 +30,11 @@ function runManualPlaylogFailure(args) {
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
+}
+
+function readCurrentDataVersion() {
+  const source = readFileSync("src/data/version.ts", "utf8");
+  return source.match(/export const DATA_VERSION = "([^"]+)"/)?.[1] ?? "";
 }
 
 function shellArg(value) {
@@ -57,7 +63,7 @@ function appendSession(out, {
     `--seed=TEST-${checksum}`,
     `--legends=${legends}`,
     `--maxGrade=${maxGrade}`,
-    "--dataVersion=0.8.0",
+    `--dataVersion=${CURRENT_DATA_VERSION}`,
     `--stateChecksum=${checksum}`,
     `--startedAt=${startedAt}`,
     `--endedAt=${endedAt}`,
@@ -248,7 +254,7 @@ describe("manual-playlog plan", () => {
           seed: "BAD-TIME",
           legends: 0,
           maxGrade: "hero",
-          dataVersion: "0.8.0",
+          dataVersion: CURRENT_DATA_VERSION,
           stateChecksum: "bad00001",
         },
         {
@@ -263,7 +269,7 @@ describe("manual-playlog plan", () => {
           seed: "GOOD-SEED",
           legends: 0,
           maxGrade: "hero",
-          dataVersion: "0.8.0",
+          dataVersion: CURRENT_DATA_VERSION,
           stateChecksum: "bad00002",
         },
         {
@@ -278,7 +284,7 @@ describe("manual-playlog plan", () => {
           seed: "DUP-SEED",
           legends: 1,
           maxGrade: "legend",
-          dataVersion: "0.8.0",
+          dataVersion: CURRENT_DATA_VERSION,
           stateChecksum: "bad00002",
         },
       ],
@@ -320,6 +326,45 @@ describe("manual-playlog plan", () => {
     expect(text).toContain("MISSING 수동 로그 무효 세션 없음: 2개 무효 세션");
     expect(failed.stdout).toContain("MISSING 수동 로그 무효 세션 없음: 2개 무효 세션");
     expect(failed.status).toBe(1);
+  });
+
+  it("summary는 현재 데이터 버전이 아닌 수동 세션을 무효 처리한다", () => {
+    const out = makeTempPath("summary-stale-data-version.json");
+    writeFileSync(out, JSON.stringify({
+      schemaVersion: 1,
+      source: "manual-playlog",
+      sessions: [
+        {
+          source: "human-playtest",
+          difficulty: "novice",
+          minutes: 12,
+          startedAt: "2026-06-20T00:00:00.000Z",
+          endedAt: "2026-06-20T00:12:00.000Z",
+          result: "clear",
+          stage: 1,
+          round: 40,
+          seed: "STALE-VERSION",
+          legends: 0,
+          maxGrade: "hero",
+          dataVersion: "0.0.0",
+          stateChecksum: "bad00003",
+        },
+      ],
+    }, null, 2), "utf8");
+
+    const summary = JSON.parse(runManualPlaylog([`--out=${out}`, "--summary-json"]));
+    const preflight = JSON.parse(runManualPlaylogFailure([`--out=${out}`, "--preflight-json"]).stdout);
+
+    expect(summary.currentDataVersion).toBe(CURRENT_DATA_VERSION);
+    expect(summary.validSessionCount).toBe(0);
+    expect(summary.invalidSessionCount).toBe(1);
+    expect(summary.invalidSessions[0]).toMatchObject({
+      seed: "STALE-VERSION",
+      dataVersion: "0.0.0",
+      issues: [`dataVersion 0.0.0이 현재 ${CURRENT_DATA_VERSION}와 다름`],
+    });
+    expect(preflight.canStart).toBe(false);
+    expect(preflight.blockingReasons).toEqual(["invalidSessions"]);
   });
 
   it("start-next는 다음 필요 세션의 시작 마커를 바로 저장한다", () => {
@@ -566,7 +611,7 @@ describe("manual-playlog plan", () => {
       "--round=40",
       "--legends=1",
       "--maxGrade=legend",
-      "--dataVersion=0.8.0",
+      `--dataVersion=${CURRENT_DATA_VERSION}`,
       "--stateChecksum=20000010",
       "--endedAt=2026-06-20T00:15:00.000Z",
     ]);
@@ -607,7 +652,7 @@ describe("manual-playlog plan", () => {
       "--seed=DIRECT-SEED",
       "--legends=0",
       "--maxGrade=hero",
-      "--dataVersion=0.8.0",
+      `--dataVersion=${CURRENT_DATA_VERSION}`,
       "--stateChecksum=20000012",
       "--startedAt=2026-06-20T02:00:00.000Z",
       "--endedAt=2026-06-20T02:15:00.000Z",
@@ -648,7 +693,7 @@ describe("manual-playlog plan", () => {
       "--seed=MISS-SEED",
       "--legends=0",
       "--maxGrade=hero",
-      "--dataVersion=0.8.0",
+      `--dataVersion=${CURRENT_DATA_VERSION}`,
       "--stateChecksum=20000013",
       "--startedAt=2026-06-20T03:00:00.000Z",
       "--endedAt=2026-06-20T03:15:00.000Z",
@@ -702,7 +747,7 @@ describe("manual-playlog plan", () => {
       "--round=40",
       "--legends=5",
       "--maxGrade=legend",
-      "--dataVersion=0.8.0",
+      `--dataVersion=${CURRENT_DATA_VERSION}`,
       "--stateChecksum=20000011",
       "--endedAt=2026-06-20T01:13:00.000Z",
     ]);
@@ -765,7 +810,7 @@ describe("manual-playlog plan", () => {
       "--seed=AFTER-COMPLETE",
       "--legends=0",
       "--maxGrade=hero",
-      "--dataVersion=0.8.0",
+      `--dataVersion=${CURRENT_DATA_VERSION}`,
       "--stateChecksum=20000008",
       "--startedAt=2026-06-20T03:00:00.000Z",
       "--endedAt=2026-06-20T03:01:00.000Z",

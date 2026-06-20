@@ -22,10 +22,20 @@ const MIN_MANUAL_TARGET_SESSION_MINUTES = 12;
 const MIN_MANUAL_TOTAL_MINUTES = 120;
 const MIN_BROWSER_DIRECT_SEEDS = 6;
 const REQUIRED_DIFFICULTIES = ["novice", "normal", "intermediate", "expert", "master"];
+const CURRENT_DATA_VERSION = readCurrentDataVersion();
 
 function readJson(path) {
   if (!existsSync(path)) return null;
   return JSON.parse(readFileSync(path, "utf8"));
+}
+
+function readCurrentDataVersion() {
+  try {
+    const source = readFileSync("src/data/version.ts", "utf8");
+    return source.match(/export const DATA_VERSION = "([^"]+)"/)?.[1] ?? "";
+  } catch {
+    return "";
+  }
 }
 
 function pct(n) {
@@ -122,11 +132,15 @@ function sessionValidationEntries(manual) {
     .filter((s) => !isExampleManualSession(s))
     .map((session, index) => {
       const issues = [];
+      const dataVersion = String(session.dataVersion ?? "");
       if (!hasValidManualTiming(session)) {
         issues.push("startedAt/endedAt와 기록 시간이 맞지 않음");
       }
       if (!hasCompleteManualMetadata(session)) {
         issues.push("필수 결과 메타데이터 누락 또는 모순");
+      }
+      if (dataVersion && CURRENT_DATA_VERSION && dataVersion !== CURRENT_DATA_VERSION) {
+        issues.push(`dataVersion ${dataVersion}이 현재 ${CURRENT_DATA_VERSION}와 다름`);
       }
       const checksum = String(session.stateChecksum ?? "").toLowerCase();
       if (issues.length === 0) {

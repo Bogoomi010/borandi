@@ -15,6 +15,7 @@ const outPath = String(args.out ?? DEFAULT_MANUAL_LOG_PATH);
 const difficulties = ["novice", "normal", "intermediate", "expert", "master"];
 const results = ["clear", "loss", "quit"];
 const grades = ["common", "rare", "hero", "legend", "hidden"];
+const CURRENT_DATA_VERSION = readCurrentDataVersion();
 
 function usage() {
   return [
@@ -82,6 +83,15 @@ function readJson(path) {
   if (!Array.isArray(data.sessions)) data.sessions = [];
   if (!Array.isArray(data.pendingSessions)) data.pendingSessions = [];
   return data;
+}
+
+function readCurrentDataVersion() {
+  try {
+    const source = readFileSync("src/data/version.ts", "utf8");
+    return source.match(/export const DATA_VERSION = "([^"]+)"/)?.[1] ?? "";
+  } catch {
+    return "";
+  }
 }
 
 function asNumber(name) {
@@ -217,11 +227,15 @@ function sessionValidationEntries(log) {
     .filter((session) => !isExampleManualSession(session))
     .map((session, index) => {
       const issues = [];
+      const dataVersion = String(session.dataVersion ?? "");
       if (!hasValidManualTiming(session)) {
         issues.push("startedAt/endedAt와 기록 시간이 맞지 않음");
       }
       if (!hasCompleteManualMetadata(session)) {
         issues.push("필수 결과 메타데이터 누락 또는 모순");
+      }
+      if (dataVersion && CURRENT_DATA_VERSION && dataVersion !== CURRENT_DATA_VERSION) {
+        issues.push(`dataVersion ${dataVersion}이 현재 ${CURRENT_DATA_VERSION}와 다름`);
       }
       const checksum = String(session.stateChecksum ?? "").toLowerCase();
       if (issues.length === 0) {
@@ -253,6 +267,7 @@ function invalidManualSessions(log) {
         round: Number(session.round ?? 0),
         seed: String(session.seed ?? ""),
         checksum,
+        dataVersion: String(session.dataVersion ?? ""),
         minutes: sessionMinutes(session),
         issues,
       };
@@ -419,6 +434,7 @@ function buildSummary() {
   const summary = {
     schemaVersion: 1,
     logPath: outPath,
+    currentDataVersion: CURRENT_DATA_VERSION,
     logExists: existsSync(outPath),
     exampleExcluded: isExampleManualLog(log),
     nonExampleSessionCount: allSessions.length,
@@ -473,6 +489,7 @@ function buildPlanFromSummary(summary) {
   return {
     schemaVersion: 1,
     logPath: summary.logPath,
+    currentDataVersion: summary.currentDataVersion,
     passed: summary.passed,
     current: {
       totalMinutes: summary.totalMinutes,
@@ -735,6 +752,7 @@ function buildPreflight() {
   return {
     schemaVersion: 1,
     logPath: summary.logPath,
+    currentDataVersion: summary.currentDataVersion,
     logExists: summary.logExists,
     canStart: !blocking,
     blocking,

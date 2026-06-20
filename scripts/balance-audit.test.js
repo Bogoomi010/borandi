@@ -1,10 +1,11 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 let tempDir;
+const CURRENT_DATA_VERSION = readCurrentDataVersion();
 
 beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), "borandi-balance-audit-"));
@@ -18,6 +19,11 @@ function writeJson(name, data) {
   const path = join(tempDir, name);
   writeFileSync(path, JSON.stringify(data, null, 2), "utf8");
   return path;
+}
+
+function readCurrentDataVersion() {
+  const source = readFileSync("src/data/version.ts", "utf8");
+  return source.match(/export const DATA_VERSION = "([^"]+)"/)?.[1] ?? "";
 }
 
 function commandArg(value) {
@@ -121,7 +127,7 @@ function session(index, difficulty, result, legends, maxGrade, round = 40) {
     seed: `TEST-${index}`,
     legends,
     maxGrade,
-    dataVersion: "0.8.0",
+    dataVersion: CURRENT_DATA_VERSION,
     stateChecksum: `${index.toString(16).padStart(8, "0")}`,
     startedAt: start.toISOString(),
     endedAt: end.toISOString(),
@@ -169,7 +175,7 @@ function manualWithInvalidSessions() {
     seed: "BAD-TIME",
     legends: 1,
     maxGrade: "legend",
-    dataVersion: "0.8.0",
+    dataVersion: CURRENT_DATA_VERSION,
     stateChecksum: "bad00001",
     startedAt: "2026-01-01T07:00:00.000Z",
     endedAt: "2026-01-01T07:01:00.000Z",
@@ -184,7 +190,7 @@ function manualWithInvalidSessions() {
     seed: "DUP-SEED",
     legends: 6,
     maxGrade: "legend",
-    dataVersion: "0.8.0",
+    dataVersion: CURRENT_DATA_VERSION,
     stateChecksum: "00000001",
     startedAt: "2026-01-01T08:00:00.000Z",
     endedAt: "2026-01-01T08:20:00.000Z",
@@ -316,6 +322,40 @@ describe("balance-audit assert", () => {
     expect(failed.stdout).toContain("startedAt/endedAt와 기록 시간이 맞지 않음");
     expect(failed.stdout).toContain("#8 expert clear 40R seed=DUP-SEED #00000001");
     expect(failed.stdout).toContain("stateChecksum 중복");
+    expect(failed.stderr).toContain("수동: 무효 세션 없음");
+  });
+
+  it("현재 데이터 버전이 아닌 수동 세션은 감사에서 무효 처리한다", () => {
+    const manual = completeManual();
+    manual.sessions.push({
+      source: "human-playtest",
+      difficulty: "novice",
+      minutes: 20,
+      result: "clear",
+      stage: 1,
+      round: 40,
+      seed: "STALE-VERSION",
+      legends: 0,
+      maxGrade: "hero",
+      dataVersion: "0.0.0",
+      stateChecksum: "bad00002",
+      startedAt: "2026-01-01T10:00:00.000Z",
+      endedAt: "2026-01-01T10:20:00.000Z",
+    });
+    const paths = writeCompleteInputs({ manual });
+
+    const failed = runAuditFailure([
+      `--balance=${paths.balance}`,
+      `--browser=${paths.browser}`,
+      `--direct=${paths.direct}`,
+      `--manual=${paths.manual}`,
+      "--assert",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | 증거검증 6/7세션, 무효 1개");
+    expect(failed.stdout).toContain("#7 novice clear 40R seed=STALE-VERSION #bad00002");
+    expect(failed.stdout).toContain(`dataVersion 0.0.0이 현재 ${CURRENT_DATA_VERSION}와 다름`);
     expect(failed.stderr).toContain("수동: 무효 세션 없음");
   });
 });
