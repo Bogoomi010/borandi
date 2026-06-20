@@ -46,12 +46,20 @@ export function renderTopbar(ctx: AppCtx) {
   root.appendChild(stat("적 누적", `${s.enemies.length}/${ctx.game.enemyLimit()}`, "life"));
   root.appendChild(stat("골드", String(s.gold), "gold"));
   root.appendChild(stat("난이도", diff.name));
+  const legendOrBetter = s.units
+    .filter((u) => GRADE_ORDER.indexOf(UNIT_BY_ID[u.defId].grade) >= GRADE_ORDER.indexOf("legend"))
+    .length;
+  const proofTarget = manualProofTargetFor(s.difficulty, legendOrBetter);
+  const proofConditionClass = proofTarget.state === "ok"
+    ? "proof-ok"
+    : proofTarget.state === "warn" ? "proof-warn" : "proof-wait";
   const proofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
   const proofRemainingSeconds = manualProofRemainingSeconds(proofSeconds);
   const proofText = proofSeconds >= MANUAL_PROOF_TARGET_SECONDS
     ? "12:00+ 충족"
     : `${clockText(proofSeconds)}/12:00 · ${clockText(proofRemainingSeconds)} 남음`;
   root.appendChild(stat("수동증거", proofText, proofSeconds >= MANUAL_PROOF_TARGET_SECONDS ? "proof-ok" : "proof-wait"));
+  root.appendChild(stat("증거조건", proofTarget.status, proofConditionClass));
   root.appendChild(stat("시드", s.seed));
 
   const nextBoss = BOSS_ROUND_LIST.find((r) => r >= s.round);

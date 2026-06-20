@@ -189,6 +189,7 @@ button { font-family: inherit; }
 .stat .value.mapgoal { color: var(--ok); }
 .stat .value.proof-ok { color: var(--ok); }
 .stat .value.proof-wait { color: var(--warn); }
+.stat .value.proof-warn { color: var(--danger); }
 #topbar .spacer { flex: 1; }
 #save-status { font-size: 11px; color: var(--text-dim); }
 #save-status.failed { color: var(--danger); cursor: pointer; }
