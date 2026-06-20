@@ -93,7 +93,7 @@ export class Game {
       waveSpawned: 0, waveKilled: 0,
       speed: 1,
     };
-    this.log("system", `시드 ${seed} · 난이도 ${diff.name} · 맵 ${stage.name}로 시작`);
+    this.log("system", `시드 ${seed} · 난이도 ${diff.name} · 이번 판 고정 맵 ${stage.name}로 시작`);
   }
 
   get diff() { return DIFFICULTY_BY_ID[this.state.difficulty]; }
@@ -520,7 +520,12 @@ export class Game {
   private endGame(cleared: boolean) {
     this.state.cleared = cleared;
     this.state.phase = "ended";
-    this.log("system", cleared ? `${stageById(this.state.stageId).name} 40라운드 클리어!` : `${this.state.round}라운드에서 패배`);
+    this.log(
+      "system",
+      cleared
+        ? `${stageById(this.state.stageId).name} 40라운드 최종 보스 클리어! 다음 맵은 새 게임에서 선택권으로만 열립니다.`
+        : `${this.state.round}라운드에서 패배`,
+    );
   }
 
   // ===================== 전투 tick =====================

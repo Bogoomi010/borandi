@@ -203,13 +203,25 @@ describe("전투/리플레이 재현성", () => {
     const stageId = 4;
     const game = new Game("STAGE-STAYS", "novice", stageId);
     const observedStageIds = [game.state.stageId];
+    const bossCheckpointStages = new Map<number, number>();
     while (game.state.phase !== "ended") {
+      const roundBeforePlay = game.state.round;
       playOneRound(game);
       observedStageIds.push(game.state.stageId);
+      if (game.state.bossKillSeconds[roundBeforePlay] !== undefined) {
+        bossCheckpointStages.set(roundBeforePlay, game.state.stageId);
+      }
     }
     const replayed = replay("STAGE-STAYS", "novice", stageId, game.state.inputHistory);
 
     expect(new Set(observedStageIds)).toEqual(new Set([stageId]));
+    expect(Object.keys(game.state.bossKillSeconds).map(Number).sort((a, b) => a - b)).toEqual([10, 20, 30, 40]);
+    expect([...bossCheckpointStages.entries()]).toEqual([
+      [10, stageId],
+      [20, stageId],
+      [30, stageId],
+      [40, stageId],
+    ]);
     expect(game.state.stageId).toBe(stageId);
     expect(game.state.round).toBe(FINAL_ROUND);
     expect(game.state.bossKillSeconds[FINAL_ROUND]).toBeDefined();
