@@ -19,6 +19,7 @@ const outPath = typeof args.out === "string" && args.out !== "true" ? args.out :
 const MIN_MANUAL_MINUTES_PER_DIFFICULTY = 12;
 const MIN_MANUAL_TARGET_SESSION_MINUTES = 12;
 const MIN_MANUAL_TOTAL_MINUTES = 120;
+const MIN_BROWSER_DIRECT_SEEDS = 6;
 const REQUIRED_DIFFICULTIES = ["novice", "normal", "intermediate", "expert", "master"];
 
 function readJson(path) {
@@ -497,8 +498,8 @@ function buildRows(balance, browser, direct, manual) {
   const directCoversTargets = directScenarioIds.every((id) => !!directScenario(direct, id));
   rows.push({
     req: "브라우저 직접 플레이형 자동 표본 범위",
-    evidence: direct ? `${direct.scenarios?.length ?? 0}/${directScenarioIds.length} target scenarios, ${direct.seeds ?? "?"} seeds, ${(directSeconds / 3600).toFixed(2)} simulated hours` : "missing browser-direct JSON",
-    pass: !!direct && Number(direct.seeds ?? 0) >= 2 && directSeconds > 0 && directCoversTargets,
+    evidence: direct ? `${direct.scenarios?.length ?? 0}/${directScenarioIds.length} target scenarios, ${direct.seeds ?? "?"}/${MIN_BROWSER_DIRECT_SEEDS} seeds, ${(directSeconds / 3600).toFixed(2)} simulated hours` : "missing browser-direct JSON",
+    pass: !!direct && Number(direct.seeds ?? 0) >= MIN_BROWSER_DIRECT_SEEDS && directSeconds > 0 && directCoversTargets,
     missing: !direct || !directCoversTargets,
   });
   const directObservations = direct?.observations ?? [];

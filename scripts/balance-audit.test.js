@@ -76,10 +76,10 @@ function directScenario(id, clearRate, avgRound, avgPressureRatio, avgLegendOrBe
   return { id, clearRate, avgRound, avgPressureRatio, avgLegendOrBetter };
 }
 
-function completeDirect() {
+function completeDirect({ seeds = 6 } = {}) {
   return {
     passed: true,
-    seeds: 2,
+    seeds,
     totalSimulatedSeconds: 3600,
     scenarios: [
       directScenario("noviceHero", 1, 40, 0, 0),
@@ -229,6 +229,27 @@ describe("balance-audit assert", () => {
     ]);
 
     expect(output).toContain("일반: 전설 1~2개부터 클리어권 | PASS");
+  });
+
+  it("브라우저 직접 입력 증거는 최소 6시드가 필요하다", () => {
+    const paths = {
+      balance: writeJson("balance.json", completeBalance()),
+      browser: writeJson("browser.json", completeBrowser()),
+      direct: writeJson("direct.json", completeDirect({ seeds: 2 })),
+      manual: writeJson("manual.json", completeManual()),
+    };
+
+    const failed = runAuditFailure([
+      `--balance=${paths.balance}`,
+      `--browser=${paths.browser}`,
+      `--direct=${paths.direct}`,
+      `--manual=${paths.manual}`,
+      "--assert",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stdout).toContain("브라우저 직접 플레이형 자동 표본 범위 | FAIL | 9/9 target scenarios, 2/6 seeds");
+    expect(failed.stderr).toContain("브라우저 직접 플레이형 자동 표본 범위");
   });
 
   it("수동 2시간 증거가 없으면 assert가 실패한다", () => {

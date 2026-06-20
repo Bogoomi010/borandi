@@ -20,7 +20,7 @@ const manualPath = String(args.manual ?? "output/manual-balance-playlog.json");
 const auditPath = String(args.out ?? "output/balance-audit.md");
 const browserScreenshots = String(args.screenshots ?? "output/browser-balance-shots");
 const balanceSeeds = Number(args.seeds ?? 30);
-const directSeeds = Number(args["direct-seeds"] ?? 2);
+const directSeeds = Number(args["direct-seeds"] ?? 6);
 const requireComplete = args["require-complete"] === "true" || args.assert === "true";
 
 function run(command, commandArgs, options = {}) {
