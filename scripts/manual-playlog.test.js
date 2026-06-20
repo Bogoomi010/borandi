@@ -31,6 +31,10 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
+function shellArg(value) {
+  return `'${String(value).replace(/'/g, "'\\''")}'`;
+}
+
 function appendSession(out, {
   difficulty,
   minutes,
@@ -83,9 +87,9 @@ describe("manual-playlog plan", () => {
       kind: "total-minutes",
       minutes: 48,
       label: "총 120분 보충",
-      startNextCommandTemplate: "yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE",
+      startNextCommandTemplate: `yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
     });
-    expect(plan.steps.slice(0, 6).map((step) => step.startNextCommandTemplate)).toEqual(Array(6).fill("yarn manual-playlog --start-next --seed=GAME_SEED_HERE"));
+    expect(plan.steps.slice(0, 6).map((step) => step.startNextCommandTemplate)).toEqual(Array(6).fill(`yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)}`));
   });
 
   it("예시 로그는 실제 2시간 수동 증거 계획에서 제외된다", () => {
@@ -110,8 +114,8 @@ describe("manual-playlog plan", () => {
       difficulty: "novice",
       label: "입문자 무전설 40R 클리어",
       minutes: 12,
-      startCommandTemplate: "yarn manual-playlog --start --difficulty=novice --stage=1 --seed=GAME_SEED_HERE --notes='입문자 무전설 40R 클리어'",
-      startNextCommandTemplate: "yarn manual-playlog --start-next --seed=GAME_SEED_HERE",
+      startCommandTemplate: `yarn manual-playlog --start --difficulty=novice --stage=1 --seed=GAME_SEED_HERE --notes='입문자 무전설 40R 클리어' --out=${shellArg(out)}`,
+      startNextCommandTemplate: `yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
       finishTemplate: {
         result: "clear",
         round: "40",
@@ -145,7 +149,7 @@ describe("manual-playlog plan", () => {
       kind: "target-session",
       difficulty: "novice",
       label: "입문자 무전설 40R 클리어",
-      startNextCommandTemplate: "yarn manual-playlog --start-next --seed=GAME_SEED_HERE",
+      startNextCommandTemplate: `yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
       finishTemplate: {
         result: "clear",
         round: "40",
@@ -273,7 +277,7 @@ describe("manual-playlog plan", () => {
       seed: "NEXT-SEED",
       notes: "입문자 무전설 40R 클리어",
       startedAt: "2026-06-20T02:00:00.000Z",
-      finishCommandTemplate: "yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT",
+      finishCommandTemplate: `yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT --out=${shellArg(out)}`,
     });
   });
 
@@ -412,7 +416,7 @@ describe("manual-playlog plan", () => {
       difficulty: "any",
       label: "총 120분 보충",
       minutes: 48,
-      startNextCommandTemplate: "yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE",
+      startNextCommandTemplate: `yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
     });
     expect(text).toContain("추천 시작 마커:");
     expect(text).toContain("yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE");

@@ -20,6 +20,12 @@ function writeJson(name, data) {
   return path;
 }
 
+function commandArg(value) {
+  const text = String(value);
+  if (/^[A-Za-z0-9_./:@=-]+$/.test(text)) return text;
+  return `'${text.replace(/'/g, "'\\''")}'`;
+}
+
 function runAudit(args) {
   return execFileSync(process.execPath, ["scripts/balance-audit.mjs", ...args], {
     cwd: process.cwd(),
@@ -268,6 +274,7 @@ describe("balance-audit assert", () => {
     expect(failed.stdout).toContain("아직 실제 수동 플레이 기록 없음, 남은 120.0분, 목표 0/6개 완료");
     expect(failed.stdout).toContain("다음 수동 플레이 세션 | MISSING | 입문자 무전설 40R 클리어");
     expect(failed.stdout).toContain("추천 시작 마커: yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
+    expect(failed.stdout).toContain(`--out=${commandArg(paths.manual)}`);
     expect(failed.stderr).toContain("balance-audit assert failed");
   });
 

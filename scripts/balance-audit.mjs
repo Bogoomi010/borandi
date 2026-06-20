@@ -14,7 +14,8 @@ const args = Object.fromEntries(
 const balancePath = String(args.balance ?? "output/current-balance.json");
 const browserPath = String(args.browser ?? "output/browser-balance.json");
 const directPath = String(args.direct ?? "output/browser-direct.json");
-const manualPath = String(args.manual ?? "output/manual-balance-playlog.json");
+const DEFAULT_MANUAL_LOG_PATH = "output/manual-balance-playlog.json";
+const manualPath = String(args.manual ?? DEFAULT_MANUAL_LOG_PATH);
 const outPath = typeof args.out === "string" && args.out !== "true" ? args.out : "";
 const MIN_MANUAL_MINUTES_PER_DIFFICULTY = 12;
 const MIN_MANUAL_TARGET_SESSION_MINUTES = 12;
@@ -418,7 +419,8 @@ function manualNextMissing(manual) {
 function startNextCommandTemplate(step) {
   if (!step) return "";
   const difficultyArg = step.difficulty === "any" ? " --difficulty=DIFFICULTY" : "";
-  return `yarn manual-playlog --start-next${difficultyArg} --seed=GAME_SEED_HERE`;
+  const outArg = manualPath === DEFAULT_MANUAL_LOG_PATH ? "" : ` --out=${shellArg(manualPath)}`;
+  return `yarn manual-playlog --start-next${difficultyArg} --seed=GAME_SEED_HERE${outArg}`;
 }
 
 function buildRows(balance, browser, direct, manual) {

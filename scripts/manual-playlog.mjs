@@ -10,7 +10,8 @@ const args = Object.fromEntries(
   }),
 );
 
-const outPath = String(args.out ?? "output/manual-balance-playlog.json");
+const DEFAULT_MANUAL_LOG_PATH = "output/manual-balance-playlog.json";
+const outPath = String(args.out ?? DEFAULT_MANUAL_LOG_PATH);
 const difficulties = ["novice", "normal", "intermediate", "expert", "master"];
 const results = ["clear", "loss", "quit"];
 const grades = ["common", "rare", "hero", "legend", "hidden"];
@@ -272,6 +273,10 @@ function shellArg(value) {
   return `'${String(value).replace(/'/g, "'\\''")}'`;
 }
 
+function outPathArg() {
+  return outPath === DEFAULT_MANUAL_LOG_PATH ? "" : ` --out=${shellArg(outPath)}`;
+}
+
 function startCommandTemplate(step) {
   if (!step || step.kind === "total-minutes") return "";
   const difficulty = step.difficulty === "any" ? "novice" : step.difficulty;
@@ -281,7 +286,7 @@ function startCommandTemplate(step) {
     "--stage=1",
     "--seed=GAME_SEED_HERE",
     `--notes=${shellArg(step.label)}`,
-  ].join(" ");
+  ].join(" ") + outPathArg();
 }
 
 const targetPlans = [
@@ -769,7 +774,7 @@ function finishTemplateForNext(step) {
 function startNextCommandTemplate(step) {
   if (!step) return "";
   const difficultyArg = step.difficulty === "any" ? " --difficulty=DIFFICULTY" : "";
-  return `yarn manual-playlog --start-next${difficultyArg} --seed=GAME_SEED_HERE`;
+  return `yarn manual-playlog --start-next${difficultyArg} --seed=GAME_SEED_HERE${outPathArg()}`;
 }
 
 function finishCommandTemplate({ id, next }) {
@@ -783,7 +788,7 @@ function finishCommandTemplate({ id, next }) {
     "--dataVersion=RESULT_DATA_VERSION",
     "--stateChecksum=RESULT_CHECKSUM",
     "--endedAt=RESULT_ENDED_AT",
-  ].join(" ");
+  ].join(" ") + outPathArg();
 }
 
 function savePendingSession({ difficulty, stage, seed, startedAt, id, notes }) {
