@@ -184,6 +184,10 @@ describe("manual-playlog plan", () => {
       pass: false,
       evidence: "증거 없음",
     });
+
+    const preflightText = runManualPlaylog([`--out=${out}`, "--preflight"]);
+    expect(preflightText).toContain("유효 사람 플레이 시간: 0.0/120.0분");
+    expect(preflightText).toContain("Codex 직접 조작 보조 시간: 1세션, 12.5분 (사람 120분 증거에는 미포함)");
   });
 
   it("preflight는 미완료 시작 마커가 있으면 먼저 finish하도록 실패한다", () => {

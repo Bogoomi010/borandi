@@ -806,7 +806,10 @@ function printPreflight() {
   console.log(`- 로그: ${summary.logPath}${summary.logExists ? "" : " (아직 없음)"}`);
   console.log(`- 무효 세션: ${summary.invalidSessionCount}개`);
   console.log(`- 시작 마커 대기: ${summary.pendingCount}개`);
-  console.log(`- 유효 플레이 시간: ${summary.totalMinutes.toFixed(1)}/${summary.requiredMinutes.toFixed(1)}분, 남은 ${summary.remainingMinutes.toFixed(1)}분`);
+  console.log(`- 유효 사람 플레이 시간: ${summary.totalMinutes.toFixed(1)}/${summary.requiredMinutes.toFixed(1)}분, 남은 ${summary.remainingMinutes.toFixed(1)}분`);
+  if (summary.codexDirectSessionCount > 0 || summary.codexDirectMinutes > 0) {
+    console.log(`- Codex 직접 조작 보조 시간: ${summary.codexDirectSessionCount}세션, ${summary.codexDirectMinutes.toFixed(1)}분 (사람 120분 증거에는 미포함)`);
+  }
   console.log(`- 목표 세션: ${summary.targetRowsPassed}/${summary.targetRowsTotal}개 완료, 남은 ${summary.targetRowsRemaining}개`);
   console.log("");
   if (summary.invalidSessionCount > 0) {
