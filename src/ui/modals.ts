@@ -550,7 +550,7 @@ function manualTargetHint(difficultyId: DifficultyId): string {
     .join(" / ");
 }
 
-export function openNewRunModal(ctx: AppCtx, dismissable = true, preferredStageId?: number) {
+export function openNewRunModal(ctx: AppCtx, dismissable = true) {
   openModal((body, close) => {
     body.appendChild(el("h2", "", "새 게임"));
 
@@ -558,7 +558,7 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true, preferredStageI
     const unlockedStage = Math.max(1, Math.min(profile.unlockedStage, STAGES.length));
     body.appendChild(el("h3", "", "난이도"));
     let chosen: DifficultyId = "novice";
-    let chosenStage = initialNewRunStageId(ctx.game.state.stageId, unlockedStage, preferredStageId);
+    let chosenStage = initialNewRunStageId(ctx.game.state.stageId, unlockedStage);
     const diffRow = el("div", "choice-grid difficulty-choice-grid");
     const diffBtns: HTMLButtonElement[] = [];
     for (const d of DIFFICULTIES) {
@@ -578,7 +578,7 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true, preferredStageI
     body.appendChild(diffRow);
 
     body.appendChild(el("h3", "", "이번 판 맵 선택"));
-    body.appendChild(el("div", "modal-note map-rule-note", `선택 가능 권한: 1~${unlockedStage}번 맵. 새 게임을 시작할 때 이번 판의 맵을 하나 정합니다. 이 판은 1R부터 40R 최종 보스까지 같은 맵으로 진행하고, 라운드/보스 사이에 맵이 바뀌지 않습니다. 40R 보스를 클리어해도 다음 맵으로 자동 이동하지 않고 이번 판은 종료되며, 다음 새 게임에서 고를 수 있는 맵 권한만 하나 늘어납니다.`));
+    body.appendChild(el("div", "modal-note map-rule-note", `선택 가능 권한: 1~${unlockedStage}번 맵. 게임 시작 때 이번 판의 맵을 직접 정하면 1R부터 40R 최종 보스까지 그 맵으로 고정됩니다. 40R 보스 클리어는 다음 맵을 자동 시작하거나 자동 선택하지 않고, 다음 새 게임에서 고를 수 있는 권한만 하나 추가합니다.`));
     const stageRow = el("div", "choice-grid stage-choice-grid");
     const stageBtns: HTMLButtonElement[] = [];
     for (const stage of STAGES) {
@@ -586,7 +586,7 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true, preferredStageI
       b.appendChild(el("span", "cname", `${stage.id}. ${stage.name}`));
       b.appendChild(el("span", "cdesc", `${stage.subtitle} · 이번 판 1~40R 동안 이 맵 고정`));
       b.disabled = stage.id > unlockedStage;
-      if (b.disabled) b.appendChild(el("span", "cdesc", `권한 없음: ${stage.id - 1}번 맵을 새 게임에서 골라 40R 보스 클리어 후 다음 새 게임 권한 추가`));
+      if (b.disabled) b.appendChild(el("span", "cdesc", `권한 없음: ${stage.id - 1}번 맵을 별도 새 게임에서 골라 40R 보스 클리어 후 선택 가능`));
       if (stage.id === chosenStage) b.style.borderColor = "var(--accent)";
       b.onclick = () => {
         chosenStage = stage.id;

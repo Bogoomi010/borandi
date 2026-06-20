@@ -107,14 +107,10 @@ export function defaultNewRunStageId(currentStageId: number, unlockedStage: numb
   return playableStageId(currentStageId, unlockedStage);
 }
 
-export function initialNewRunStageId(
-  currentStageId: number,
-  unlockedStage: number,
-  preferredStageId?: number,
-): number {
-  // 기본 새 게임은 현재 맵을 유지한다. 결과 화면에서 "해금된 맵 선택"처럼
-  // 사용자가 명시적으로 고른 경우에만 해당 선택 가능 맵을 미리 선택한다.
-  return playableStageId(preferredStageId ?? currentStageId, unlockedStage);
+export function initialNewRunStageId(currentStageId: number, unlockedStage: number): number {
+  // 다음 맵 해금은 선택 권한만 추가한다. 새 게임 모달은 어떤 경로로 열려도
+  // 방금 해금된 다음 맵으로 자동 이동하지 않고 현재/이전 선택 맵을 유지한다.
+  return playableStageId(currentStageId, unlockedStage);
 }
 
 export function profileRecordRun(
