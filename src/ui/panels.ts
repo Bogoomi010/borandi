@@ -31,10 +31,14 @@ export function renderTopbar(ctx: AppCtx) {
   const diff = DIFFICULTY_BY_ID[s.difficulty];
   const unlockedStage = Math.max(1, Math.min(loadProfile().unlockedStage, FINAL_STAGE));
 
-  const stat = (label: string, value: string, cls = "") => {
-    const d = el("div", "stat");
+  const stat = (label: string, value: string, cls = "", onClick?: () => void) => {
+    const d = el("div", `stat ${onClick ? "clickable" : ""}`);
     d.appendChild(el("span", "label", label));
     d.appendChild(el("span", `value ${cls}`, value));
+    if (onClick) {
+      d.title = "수동 밸런스 증거 안내 열기";
+      d.onclick = onClick;
+    }
     return d;
   };
 
@@ -58,8 +62,8 @@ export function renderTopbar(ctx: AppCtx) {
   const proofText = proofSeconds >= MANUAL_PROOF_TARGET_SECONDS
     ? "12:00+ 충족"
     : `${clockText(proofSeconds)}/12:00 · ${clockText(proofRemainingSeconds)} 남음`;
-  root.appendChild(stat("수동증거", proofText, proofSeconds >= MANUAL_PROOF_TARGET_SECONDS ? "proof-ok" : "proof-wait"));
-  root.appendChild(stat("증거조건", proofTarget.status, proofConditionClass));
+  root.appendChild(stat("수동증거", proofText, proofSeconds >= MANUAL_PROOF_TARGET_SECONDS ? "proof-ok" : "proof-wait", () => openManualProofGuideModal(ctx)));
+  root.appendChild(stat("증거조건", proofTarget.status, proofConditionClass, () => openManualProofGuideModal(ctx)));
   root.appendChild(stat("시드", s.seed));
 
   const nextBoss = BOSS_ROUND_LIST.find((r) => r >= s.round);
