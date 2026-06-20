@@ -342,7 +342,15 @@ export function maybeShowResult(ctx: AppCtx) {
   openModal((body, close) => {
     const proofTarget = manualProofResultTarget(summary);
     const proofChecks = manualProofResultChecklist(summary);
+    const proofPassed = proofChecks.every((check) => check.ok);
     body.appendChild(el("h2", "", summary.cleared ? `선택한 맵 40라운드 보스 클리어!` : `${summary.reachedRound}라운드에서 패배`));
+    body.appendChild(el(
+      "div",
+      proofPassed ? "result-proof-ok" : "result-hint",
+      proofPassed
+        ? `수동 목표 증거 충족: ${proofTarget}. 아래 로그 명령으로 저장하세요.`
+        : `수동 목표 증거 미충족: ${proofTarget}. 아래 체크리스트의 부족 항목을 확인하세요.`,
+    ));
 
     const grid = el("div", "result-stats");
     const kv = (k: string, v: string) => {
