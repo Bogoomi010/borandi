@@ -16,6 +16,7 @@ const browserPath = String(args.browser ?? "output/browser-balance.json");
 const directPath = String(args.direct ?? "output/browser-direct.json");
 const DEFAULT_MANUAL_LOG_PATH = "output/manual-balance-playlog.json";
 const manualPath = String(args.manual ?? DEFAULT_MANUAL_LOG_PATH);
+const codexPath = String(args.codex ?? (manualPath === DEFAULT_MANUAL_LOG_PATH ? "output/codex-direct-playlog.json" : ""));
 const outPath = typeof args.out === "string" && args.out !== "true" ? args.out : "";
 const MIN_MANUAL_MINUTES_PER_DIFFICULTY = 12;
 const MIN_MANUAL_TARGET_SESSION_MINUTES = 12;
@@ -474,7 +475,7 @@ function startNextEvidence(step) {
   return `추천 시작 검증: ${startNextDryRunCommandTemplate(step)}; 추천 시작 마커: ${startNextCommandTemplate(step)}`;
 }
 
-function buildRows(balance, browser, direct, manual) {
+function buildRows(balance, browser, direct, manual, codex) {
   const rows = [];
   const balanceSeedText = `${balance?.seeds ?? "?"}시드`;
   const difficulties = new Set((balance?.scenarios ?? []).map((s) => s.difficulty));
@@ -647,7 +648,10 @@ function buildRows(balance, browser, direct, manual) {
   const manualSessionCount = countNonExampleManualSessions(manual);
   const validManualSessionCount = humanManualSessions(manual).length;
   const codexDirectSessions = codexDirectManualSessions(manual);
+  const separateCodexDirectSessions = codexDirectManualSessions(codex);
+  const allCodexDirectSessions = [...codexDirectSessions, ...separateCodexDirectSessions];
   const codexDirectMinutes = codexDirectSessions.reduce((sum, session) => sum + sessionMinutes(session), 0);
+  const allCodexDirectMinutes = allCodexDirectSessions.reduce((sum, session) => sum + sessionMinutes(session), 0);
   const invalidManual = invalidManualSessions(manual);
   const pendingManual = pendingManualSessions(manual);
   const pendingManualText = `pending ${pendingManual.length}개`;
@@ -685,9 +689,9 @@ function buildRows(balance, browser, direct, manual) {
   });
   rows.push({
     req: "Codex 직접 조작 보조 증거 분리",
-    evidence: manual
-      ? `codex-direct ${codexDirectSessions.length}세션 ${codexDirectMinutes.toFixed(1)}분, human 집계 ${manualTotalMinutes.toFixed(1)}분에는 미포함`
-      : "수동 로그 없음, codex-direct 보조 세션 없음",
+    evidence: allCodexDirectSessions.length > 0
+      ? `codex-direct ${allCodexDirectSessions.length}세션 ${allCodexDirectMinutes.toFixed(1)}분, human 집계 ${manualTotalMinutes.toFixed(1)}분에는 미포함`
+      : "codex-direct 보조 세션 없음",
     pass: true,
   });
   rows.push({
@@ -742,8 +746,8 @@ function buildRows(balance, browser, direct, manual) {
   return rows;
 }
 
-function buildMarkdown(balance, browser, direct, manual) {
-  const rows = buildRows(balance, browser, direct, manual);
+function buildMarkdown(balance, browser, direct, manual, codex) {
+  const rows = buildRows(balance, browser, direct, manual, codex);
   const lines = [
     "# 5난이도 밸런스 감사",
     "",
@@ -752,6 +756,7 @@ function buildMarkdown(balance, browser, direct, manual) {
     `- browser-balance: ${browserPath} (${browser ? "loaded" : "missing"})`,
     `- browser-direct: ${directPath} (${direct ? "loaded" : "missing"})`,
     `- manual-playlog: ${manualPath} (${manual ? "loaded" : "missing"})`,
+    `- codex-direct-playlog: ${codexPath} (${codex ? "loaded" : "missing"})`,
     "",
     "| 요구사항 | 상태 | 근거 |",
     "| --- | --- | --- |",
@@ -777,8 +782,9 @@ const balance = readJson(balancePath);
 const browser = readJson(browserPath);
 const direct = readJson(directPath);
 const manual = readJson(manualPath);
-const rows = buildRows(balance, browser, direct, manual);
-const markdown = buildMarkdown(balance, browser, direct, manual);
+const codex = codexPath === manualPath ? null : readJson(codexPath);
+const rows = buildRows(balance, browser, direct, manual, codex);
+const markdown = buildMarkdown(balance, browser, direct, manual, codex);
 
 console.log(markdown);
 

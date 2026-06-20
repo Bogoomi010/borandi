@@ -107,6 +107,7 @@ exit 0
     const calls = readFileSync(logPath, "utf8");
     expect(calls).toContain(`browser-balance --url=http://127.0.0.1:${port}/ --json=${join(tempDir, "browser.json")} --screenshots=${browserShots}`);
     expect(calls).toContain(`browser-direct --url=http://127.0.0.1:${port}/ --seeds=1 --strict --json=${join(tempDir, "direct.json")} --screenshots=${directShots} --codex-log=${directCodexLog}`);
+    expect(calls).toContain(`balance-audit --balance=${join(tempDir, "balance.json")} --browser=${join(tempDir, "browser.json")} --direct=${join(tempDir, "direct.json")} --manual=${join(tempDir, "manual.json")} --codex=${directCodexLog} --out=${join(tempDir, "audit.md")}`);
   });
 
   it("수동 증거가 없으면 자동 게이트를 시작하기 전에 실패한다", () => {

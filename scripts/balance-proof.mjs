@@ -150,6 +150,7 @@ try {
     `--browser=${browserPath}`,
     `--direct=${directPath}`,
     `--manual=${manualPath}`,
+    `--codex=${directCodexLog}`,
     `--out=${auditPath}`,
     ...(requireComplete ? ["--assert"] : []),
   ]);
