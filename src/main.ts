@@ -79,18 +79,36 @@ let lastRound = game.state.round;
 let lastSelectorCount = game.state.pendingSelectors.length;
 let autosaveTimer: number | null = null;
 let endedHandled = false;
+let manualProofReadyNotified = false;
 
 function markRunStarted() {
   ctx.runStartedAt = new Date().toISOString();
   ctx.runStartedAtMs = performance.now();
   ctx.runEndedAt = null;
   ctx.runEndedAtMs = null;
+  manualProofReadyNotified = false;
 }
 
 function markRunEnded() {
   if (ctx.runEndedAt) return;
   ctx.runEndedAt = new Date().toISOString();
   ctx.runEndedAtMs = performance.now();
+}
+
+function currentLegendOrBetterCount(): number {
+  return game.state.units.filter((u) => (
+    GRADE_ORDER.indexOf(UNIT_BY_ID[u.defId].grade) >= GRADE_ORDER.indexOf("legend")
+  )).length;
+}
+
+function maybeNotifyManualProofReady(now: number) {
+  if (manualProofReadyNotified || ctx.scene !== "game" || game.state.phase === "ended") return;
+  const proofSeconds = Math.max(0, Math.floor((now - ctx.runStartedAtMs) / 1000));
+  if (proofSeconds < MANUAL_PROOF_TARGET_SECONDS) return;
+  manualProofReadyNotified = true;
+  const target = manualProofTargetFor(game.state.difficulty, currentLegendOrBetterCount());
+  toast(`수동증거 12분 충족 · ${target.status} · 결과 후 로그 기록`, target.state === "warn" ? "warn" : "ok", 5200);
+  panelsDirty = true;
 }
 
 const ctx: AppCtx = {
@@ -291,6 +309,7 @@ function loop(now: number) {
     lastSelectorCount = game.state.pendingSelectors.length;
 
     if (game.state.phase !== lastPhase) { lastPhase = game.state.phase; panelsDirty = true; }
+    maybeNotifyManualProofReady(now);
 
     // 종료 처리 (1회)
     if (game.state.phase === "ended" && !endedHandled) {
@@ -630,6 +649,7 @@ function renderGameToText(): string {
       targetLabel: manualProofTarget.label,
       conditionStatus: manualProofTarget.status,
       conditionState: manualProofTarget.state,
+      readyNotified: manualProofReadyNotified,
       startedAt: ctx.scene === "game" ? ctx.runStartedAt : null,
       commands: manualProofCommands,
       evidenceFields: ctx.scene === "game"
@@ -685,6 +705,7 @@ function advanceTimeForTest(ms: number) {
   if (ctx.scene === "game" && game.state.phase === "ended") markRunEnded();
   renderer.autoStartIn = game.state.breakTicks > 0 ? game.state.breakTicks * DT : null;
   renderer.draw(game.state);
+  maybeNotifyManualProofReady(performance.now());
   renderTopbar(ctx);
   renderLeftPanel(ctx);
   renderRightPanel(ctx);
@@ -704,6 +725,11 @@ if (import.meta.env.DEV) {
         const difficulty = typeof difficultyOrStage === "number" ? "novice" : difficultyOrStage;
         const resolvedStageId = typeof difficultyOrStage === "number" ? difficultyOrStage : stageId;
         ctx.newRun(seed, difficulty, resolvedStageId);
+      },
+      ageRunForManualProof: (seconds: number) => {
+        ctx.runStartedAtMs = performance.now() - Math.max(0, seconds) * 1000;
+        maybeNotifyManualProofReady(performance.now());
+        renderTopbar(ctx);
       },
       act: (type: string, payload?: Record<string, unknown>) => ctx.act(type, payload),
       state: () => game.state,
