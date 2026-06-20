@@ -1496,7 +1496,13 @@ function startNextManualSession() {
     fail(`지원하지 않는 난이도입니다: ${difficulty || "(없음)"}`);
   }
   if (next.difficulty !== "any" && requestedDifficulty && requestedDifficulty !== next.difficulty) {
-    fail(`다음 필요 세션은 ${next.difficulty} 난이도입니다. --difficulty=${requestedDifficulty}로 시작할 수 없습니다.`);
+    fail([
+      `다음 필요 세션은 ${next.difficulty} 난이도입니다. --difficulty=${requestedDifficulty}로 시작할 수 없습니다.`,
+      `다음 필요 세션: ${next.label}`,
+      `추천 시작 검증: ${next.startNextDryRunCommandTemplate}`,
+      `추천 시작 마커: ${next.startNextCommandTemplate}`,
+      "올바른 난이도로 새 게임을 시작한 뒤 GAME_SEED_HERE를 그 판의 실제 시드로 바꿔 실행하세요.",
+    ].join("\n"));
   }
   const stage = optionalNumber("stage", 1);
   if (!isValidStageId(stage)) {

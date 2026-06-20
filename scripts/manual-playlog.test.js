@@ -880,6 +880,10 @@ describe("manual-playlog plan", () => {
 
     expect(failed.status).toBe(1);
     expect(failed.stderr).toContain("다음 필요 세션은 novice 난이도입니다");
+    expect(failed.stderr).toContain("다음 필요 세션: 입문자 무전설 40R 클리어");
+    expect(failed.stderr).toContain(`추천 시작 검증: yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`);
+    expect(failed.stderr).toContain(`추천 시작 마커: yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)}`);
+    expect(failed.stderr).toContain("올바른 난이도로 새 게임을 시작한 뒤 GAME_SEED_HERE를 그 판의 실제 시드로 바꿔 실행하세요.");
   });
 
   it("start-next는 일부 목표를 채운 뒤에도 다음 필요 난이도와 다른 강제 난이도를 거부한다", () => {
@@ -916,6 +920,10 @@ describe("manual-playlog plan", () => {
     expect(failed.status).toBe(1);
     expect(failed.stderr).toContain("다음 필요 세션은 expert 난이도입니다");
     expect(failed.stderr).toContain("--difficulty=master로 시작할 수 없습니다");
+    expect(failed.stderr).toContain("다음 필요 세션: 고수 5전설 이하 실패");
+    expect(failed.stderr).toContain(`추천 시작 검증: yarn manual-playlog --start-next --difficulty=expert --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`);
+    expect(failed.stderr).toContain(`추천 시작 마커: yarn manual-playlog --start-next --difficulty=expert --seed=GAME_SEED_HERE --out=${shellArg(out)}`);
+    expect(failed.stderr).toContain("올바른 난이도로 새 게임을 시작한 뒤 GAME_SEED_HERE를 그 판의 실제 시드로 바꿔 실행하세요.");
     expect(pending.pending).toHaveLength(0);
   });
 
