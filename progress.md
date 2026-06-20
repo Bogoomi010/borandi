@@ -119,6 +119,7 @@ Original prompt: 완성된 에셋으로 게임 스테이지를 최대 15스테�
 - The bottom action bar now has a direct `수동증거` button that opens the current-run manual proof guide, making the exact start-marker command and remaining target commands reachable without digging through the Tools menu during a human playtest.
 - Result modals and exported result reports now include a manual proof checklist that separates the 12-minute timer, 40R reach, result, and legend-count criteria, so failed or too-short human playtest runs show exactly why they do not satisfy a target evidence row.
 - The manual proof checklist no longer shows a 40R requirement for master difficulty, matching the audit rule that 초고수 only needs a 12+ minute failure record rather than a final-round failure.
+- Added a manual-playlog regression test that locks the 초고수 `--start-next` finish template to `ROUND_REACHED` instead of a hard-coded 40R, keeping the CLI aligned with the master manual evidence rule.
 
 ## TODO
 

@@ -193,6 +193,43 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("yarn manual-playlog --finish='normal-1-NORMAL-SEED-20260620T024500000Z' --result=clear --round=40 --legends=1 --maxGrade=legend");
   });
 
+  it("start-next는 초고수 실패 기록에 40R 고정 마감 템플릿을 쓰지 않는다", () => {
+    const out = makeTempPath("start-next-master.json");
+    const sessions = [
+      ["novice", "clear", 40, 0, "hero", "abc10001"],
+      ["normal", "clear", 40, 1, "legend", "abc10002"],
+      ["intermediate", "clear", 40, 5, "legend", "abc10003"],
+      ["expert", "loss", 40, 5, "legend", "abc10004"],
+      ["expert", "clear", 40, 6, "legend", "abc10005"],
+    ];
+    let startMs = Date.parse("2026-06-20T00:00:00.000Z");
+    for (const [difficulty, result, round, legends, maxGrade, checksum] of sessions) {
+      appendSession(out, {
+        difficulty,
+        minutes: 12,
+        result,
+        round,
+        legends,
+        maxGrade,
+        checksum,
+        startedAt: new Date(startMs).toISOString(),
+      });
+      startMs += 13 * 60_000;
+    }
+
+    const output = runManualPlaylog([
+      `--out=${out}`,
+      "--start-next",
+      "--seed=MASTER-SEED",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+    ]);
+
+    expect(output).toContain("- 목표: 초고수 실패 기록");
+    expect(output).toContain("- 기록 조건: result=loss legends=최종값");
+    expect(output).toContain("yarn manual-playlog --finish='master-1-MASTER-SEED-20260620T020000000Z' --result=loss --round=ROUND_REACHED --legends=FINAL_LEGENDS --maxGrade=MAX_GRADE");
+    expect(output).not.toContain("--result=loss --round=40 --legends=5");
+  });
+
   it("수동 증거 assert는 빈 로그에서 실패 코드와 다음 세션을 출력한다", () => {
     const out = makeTempPath("assert-empty.json");
     const failed = runManualPlaylogFailure([`--out=${out}`, "--assert"]);
