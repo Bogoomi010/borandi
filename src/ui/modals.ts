@@ -636,7 +636,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const summaryCommand = "yarn manual-playlog --summary";
     const planCommand = "yarn manual-playlog --plan";
     const nextCommand = "yarn manual-playlog --next";
-    const startNextCommand = "yarn manual-playlog --start-next --seed=GAME_SEED_HERE";
+    const startNextCommand = currentStartNextCommand || "yarn manual-playlog --start-next --seed=GAME_SEED_HERE";
     const pendingCommand = "yarn manual-playlog --pending";
     const preflightCommand = "yarn manual-playlog --preflight";
     const preflightJsonCommand = "yarn --silent manual-playlog --preflight-json";
