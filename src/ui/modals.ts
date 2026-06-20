@@ -113,6 +113,7 @@ function manualStartNextCommand(ctx: AppCtx): string {
     `--difficulty=${s.difficulty}`,
     `--stage=${s.stageId}`,
     `--seed=${shellArg(s.seed)}`,
+    `--startedAt=${shellArg(ctx.runStartedAt)}`,
   ].join(" ");
 }
 
