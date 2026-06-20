@@ -300,6 +300,31 @@ describe("manual-playlog plan", () => {
     });
   });
 
+  it("start-next는 미완료 시작 마커가 있으면 새 마커를 만들지 않는다", () => {
+    const out = makeTempPath("start-next-pending-block.json");
+    runManualPlaylog([
+      `--out=${out}`,
+      "--start-next",
+      "--seed=FIRST-SEED",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+    ]);
+
+    const failed = runManualPlaylogFailure([
+      `--out=${out}`,
+      "--start-next",
+      "--seed=SECOND-SEED",
+      "--startedAt=2026-06-20T02:10:00.000Z",
+    ]);
+
+    const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+    expect(failed.status).toBe(1);
+    expect(failed.stderr).toContain("이미 finish되지 않은 수동 시작 마커가 1개 있습니다.");
+    expect(failed.stderr).toContain("새 start-next를 만들기 전에 기존 시작 마커를 먼저 마무리하세요.");
+    expect(failed.stderr).toContain("마무리 템플릿: yarn manual-playlog --finish='novice-1-FIRST-SEED-20260620T020000000Z'");
+    expect(pending.pending).toHaveLength(1);
+    expect(pending.pending[0].seed).toBe("FIRST-SEED");
+  });
+
   it("start-next는 다음 필요 난이도와 다른 강제 난이도를 거부한다", () => {
     const out = makeTempPath("start-next-wrong-difficulty.json");
     const failed = runManualPlaylogFailure([

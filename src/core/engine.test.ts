@@ -211,7 +211,11 @@ describe("전투/리플레이 재현성", () => {
 
     expect(new Set(observedStageIds)).toEqual(new Set([stageId]));
     expect(game.state.stageId).toBe(stageId);
+    expect(game.state.round).toBe(FINAL_ROUND);
+    expect(game.state.bossKillSeconds[FINAL_ROUND]).toBeDefined();
     expect(replayed.state.stageId).toBe(stageId);
+    expect(replayed.state.round).toBe(FINAL_ROUND);
+    expect(replayed.state.bossKillSeconds[FINAL_ROUND]).toBeDefined();
     expect(replayed.state.round).toBe(game.state.round);
     expect(replayed.state.cleared).toBe(game.state.cleared);
   }, 30000);

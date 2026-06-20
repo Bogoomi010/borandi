@@ -106,7 +106,7 @@ const ctx: AppCtx = {
     audio.sfx("waveStart");
     const stage = stageById(game.state.stageId);
     const lockNote = allowedStage !== requestedStage ? " · 잠긴 맵 요청은 현재 선택 가능 맵으로 조정됨" : "";
-    toast(`새 게임: ${stage.id}. ${stage.name} · 40R까지 맵 고정 · 시드 ${game.state.seed}${lockNote}`, "ok");
+    toast(`새 게임: ${stage.id}. ${stage.name} · 이번 판 1~40R 맵 고정 · 시드 ${game.state.seed}${lockNote}`, "ok");
   },
   adoptGame: (g) => {
     game = g;
@@ -531,6 +531,7 @@ function renderGameToText(): string {
       name: stage.name,
       ground: stage.ground,
       fixedForRun: true,
+      currentRunMapLocked: true,
       runGoal: "selected_map_round_1_to_40_final_boss",
       unlockRule: "clear_round_40_boss_on_current_unlocked_map",
       nextMapStartsInCurrentRun: false,
@@ -542,10 +543,12 @@ function renderGameToText(): string {
     map: {
       selectedAtNewGameStart: true,
       fixedUntilFinalBossRound: 40,
+      fixedForRounds: "1-40",
       changesBetweenRounds: false,
       changesAfterFinalBossClear: false,
       nextMapPermissionOnly: true,
       nextMapPermissionAppliesToNextNewGame: true,
+      clearRound40BossOnlyUnlocksPermission: true,
     },
     manualProof: {
       elapsedSeconds: manualProofSeconds,

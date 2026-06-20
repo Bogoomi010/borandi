@@ -848,6 +848,20 @@ function printStartSaved({ id, startedAt, next }) {
   console.log(finishCommandTemplate({ id, next }));
 }
 
+function failIfPendingStartExists() {
+  const pending = buildPending().pending;
+  if (pending.length === 0) return;
+  const first = pending[0];
+  const lines = [
+    `이미 finish되지 않은 수동 시작 마커가 ${pending.length}개 있습니다.`,
+    "새 start-next를 만들기 전에 기존 시작 마커를 먼저 마무리하세요.",
+  ];
+  if (first?.finishCommandTemplate) {
+    lines.push(`마무리 템플릿: ${first.finishCommandTemplate}`);
+  }
+  fail(lines.join("\n"));
+}
+
 function startManualSession() {
   const difficulty = String(args.difficulty ?? "");
   if (!difficulties.includes(difficulty)) {
@@ -873,6 +887,7 @@ function startManualSession() {
 }
 
 function startNextManualSession() {
+  failIfPendingStartExists();
   const next = buildNext().next;
   if (!next) {
     console.log("PASS 다음에 필요한 수동 플레이 세션이 없습니다.");
