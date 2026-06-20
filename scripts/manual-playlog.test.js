@@ -249,6 +249,45 @@ describe("manual-playlog plan", () => {
     expect(output).not.toContain("--result=loss --round=40 --legends=5");
   });
 
+  it("목표 세션 이후 총 시간 보충 단계도 start-next 추천 명령을 출력한다", () => {
+    const out = makeTempPath("start-next-flexible-minutes.json");
+    const sessions = [
+      ["novice", "clear", 40, 0, "hero", "abc20001"],
+      ["normal", "clear", 40, 1, "legend", "abc20002"],
+      ["intermediate", "clear", 40, 5, "legend", "abc20003"],
+      ["expert", "loss", 40, 5, "legend", "abc20004"],
+      ["expert", "clear", 40, 6, "legend", "abc20005"],
+      ["master", "loss", 18, 3, "legend", "abc20006"],
+    ];
+    let startMs = Date.parse("2026-06-20T00:00:00.000Z");
+    for (const [difficulty, result, round, legends, maxGrade, checksum] of sessions) {
+      appendSession(out, {
+        difficulty,
+        minutes: 12,
+        result,
+        round,
+        legends,
+        maxGrade,
+        checksum,
+        startedAt: new Date(startMs).toISOString(),
+      });
+      startMs += 13 * 60_000;
+    }
+
+    const next = JSON.parse(runManualPlaylog([`--out=${out}`, "--next-json"]));
+    const text = runManualPlaylog([`--out=${out}`, "--next"]);
+
+    expect(next.next).toMatchObject({
+      kind: "total-minutes",
+      difficulty: "any",
+      label: "총 120분 보충",
+      minutes: 48,
+      startNextCommandTemplate: "yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE",
+    });
+    expect(text).toContain("추천 시작 마커:");
+    expect(text).toContain("yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE");
+  });
+
   it("수동 증거 assert는 빈 로그에서 실패 코드와 다음 세션을 출력한다", () => {
     const out = makeTempPath("assert-empty.json");
     const failed = runManualPlaylogFailure([`--out=${out}`, "--assert"]);

@@ -643,7 +643,7 @@ function finishTemplateForNext(step) {
 }
 
 function startNextCommandTemplate(step) {
-  if (!step?.startCommandTemplate) return "";
+  if (!step) return "";
   const difficultyArg = step.difficulty === "any" ? " --difficulty=DIFFICULTY" : "";
   return `yarn manual-playlog --start-next${difficultyArg} --seed=GAME_SEED_HERE`;
 }
