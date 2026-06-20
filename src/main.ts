@@ -22,6 +22,10 @@ import { FINAL_ROUND, waveForRound } from "./data/waves";
 import { UPGRADES, upgradeCost } from "./data/upgrades";
 import { GRADE_ORDER, type DifficultyId, type Grade } from "./core/types";
 import { MANUAL_PROOF_TARGET_SECONDS, manualProofRemainingSeconds, manualProofTargetFor } from "./core/manualProof";
+import {
+  manualStartCommand as buildManualStartCommand,
+  manualStartNextCommand as buildManualStartNextCommand,
+} from "./core/manualProofCommands";
 
 const settings = loadSettings();
 const audio = new GameAudio(settings);
@@ -520,12 +524,26 @@ function renderGameToText(): string {
   }
   const legendOrBetter = gradeCounts.legend + gradeCounts.hidden;
   const manualProofTarget = manualProofTargetFor(s.difficulty, legendOrBetter);
+  const manualStartInput = {
+    difficultyId: s.difficulty,
+    stageId: s.stageId,
+    seed: s.seed,
+    startedAt: ctx.runStartedAt,
+    notes: manualProofTarget.label,
+  };
+  const manualProofCommands = ctx.scene === "game"
+    ? {
+        start: buildManualStartCommand(manualStartInput),
+        startNext: buildManualStartNextCommand(manualStartInput),
+      }
+    : null;
   return JSON.stringify({
     coordinateSystem: "board origin top-left, x right, y down, logical size 960x560",
     scene: ctx.scene,
     paused: ctx.paused,
     mode: s.phase,
     dataVersion: s.dataVersion,
+    seed: s.seed,
     difficulty: { id: s.difficulty, name: game.diff.name },
     stage: {
       current: s.stageId,
@@ -559,6 +577,8 @@ function renderGameToText(): string {
       targetLabel: manualProofTarget.label,
       conditionStatus: manualProofTarget.status,
       conditionState: manualProofTarget.state,
+      startedAt: ctx.scene === "game" ? ctx.runStartedAt : null,
+      commands: manualProofCommands,
     },
     round: s.round,
     wave: { type: wave.type, enemyName: wave.enemyName, count: wave.count, spawned: s.waveSpawned, killed: s.waveKilled },
