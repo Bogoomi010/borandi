@@ -685,6 +685,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       }
       body.appendChild(el("pre", "report", currentStartDryRunCommand));
       body.appendChild(el("pre", "report", currentStartCommand));
+      body.appendChild(el("div", "modal-note", "직접 시작 마커에는 현재 목표 라벨이 함께 저장됩니다. 검증 출력의 finish 템플릿이 목표 조건과 맞는지 확인한 뒤 저장하세요."));
       body.appendChild(el("div", "modal-note", "플레이 시작 직후 한 번 실행해두면 결과 화면을 놓쳐도 --finish 명령으로 같은 시작 시각을 재사용할 수 있습니다."));
     }
     body.appendChild(el("h3", "", "실제 세션 기록 순서"));
