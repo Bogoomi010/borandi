@@ -198,16 +198,53 @@ function hasCompleteManualMetadata(session) {
     /^[0-9a-f]{8}$/i.test(checksumValue);
 }
 
-function realManualSessions(log) {
+function sessionValidationEntries(log) {
   if (!log || isExampleManualLog(log)) return [];
   const seenChecksums = new Set();
-  return (log.sessions ?? []).filter((session) => {
-    if (isExampleManualSession(session) || !hasValidManualTiming(session) || !hasCompleteManualMetadata(session)) return false;
-    const checksum = String(session.stateChecksum).toLowerCase();
-    if (seenChecksums.has(checksum)) return false;
-    seenChecksums.add(checksum);
-    return true;
-  });
+  return (log.sessions ?? [])
+    .filter((session) => !isExampleManualSession(session))
+    .map((session, index) => {
+      const issues = [];
+      if (!hasValidManualTiming(session)) {
+        issues.push("startedAt/endedAt와 기록 시간이 맞지 않음");
+      }
+      if (!hasCompleteManualMetadata(session)) {
+        issues.push("필수 결과 메타데이터 누락 또는 모순");
+      }
+      const checksum = String(session.stateChecksum ?? "").toLowerCase();
+      if (issues.length === 0) {
+        if (seenChecksums.has(checksum)) {
+          issues.push("stateChecksum 중복");
+        } else {
+          seenChecksums.add(checksum);
+        }
+      }
+      return { index, session, issues };
+    });
+}
+
+function realManualSessions(log) {
+  return sessionValidationEntries(log)
+    .filter((entry) => entry.issues.length === 0)
+    .map((entry) => entry.session);
+}
+
+function invalidManualSessions(log) {
+  return sessionValidationEntries(log)
+    .filter((entry) => entry.issues.length > 0)
+    .map(({ index, session, issues }) => {
+      const checksum = String(session.stateChecksum ?? "").slice(0, 8);
+      return {
+        index,
+        difficulty: String(session.difficulty ?? ""),
+        result: sessionResult(session) || "",
+        round: Number(session.round ?? 0),
+        seed: String(session.seed ?? ""),
+        checksum,
+        minutes: sessionMinutes(session),
+        issues,
+      };
+    });
 }
 
 function reachedFinalRound(session) {
@@ -297,6 +334,7 @@ function buildSummary() {
   const allSessions = isExampleManualLog(log) ? [] : (log.sessions ?? []).filter((session) => !isExampleManualSession(session));
   const pending = isExampleManualLog(log) ? [] : pendingSessions(log).map(pendingSessionWithCommands);
   const validSessions = realManualSessions(log);
+  const invalidSessions = invalidManualSessions(log);
   const totalMinutes = validSessions.reduce((sum, session) => sum + sessionMinutes(session), 0);
   const minutesByDifficulty = new Map();
   for (const session of validSessions) {
@@ -355,6 +393,8 @@ function buildSummary() {
     exampleExcluded: isExampleManualLog(log),
     nonExampleSessionCount: allSessions.length,
     validSessionCount: validSessions.length,
+    invalidSessionCount: invalidSessions.length,
+    invalidSessions,
     pendingCount: pending.length,
     pending,
     totalMinutes,
@@ -405,6 +445,7 @@ function buildPlanFromSummary(summary) {
       requiredMinutes: summary.requiredMinutes,
       minutesByDifficulty: summary.minutesByDifficulty,
       validSessionCount: summary.validSessionCount,
+      invalidSessionCount: summary.invalidSessionCount,
       pendingCount: summary.pendingCount,
     },
     steps: [
@@ -455,8 +496,24 @@ function printSummary() {
   console.log("# 수동 플레이 로그 상태");
   console.log(`- 로그: ${summary.logPath}${summary.logExists ? "" : " (아직 없음)"}`);
   console.log(`- 예시 로그 제외: ${summary.exampleExcluded ? "예" : "아니오"}`);
+  console.log(`- 무효 세션: ${summary.invalidSessionCount}개`);
   console.log(`- 시작 마커 대기: ${summary.pendingCount}개`);
   console.log("");
+  if (summary.invalidSessionCount > 0) {
+    console.log("INVALID 증거로 인정되지 않은 세션:");
+    for (const session of summary.invalidSessions) {
+      const label = [
+        `#${session.index + 1}`,
+        session.difficulty || "difficulty?",
+        session.result || "result?",
+        `${session.round || "?"}R`,
+        session.seed ? `seed=${session.seed}` : "",
+        session.checksum ? `#${session.checksum}` : "",
+      ].filter(Boolean).join(" ");
+      console.log(`  - ${label}: ${session.issues.join(", ")}`);
+    }
+    console.log("");
+  }
   if (summary.pendingCount > 0) {
     console.log("PENDING 아직 finish되지 않은 시작 마커:");
     for (const session of summary.pending) {
@@ -491,6 +548,7 @@ function printPlan() {
   console.log("# 수동 플레이 증거 수집 계획");
   console.log(`- 로그: ${plan.logPath}`);
   console.log(`- 현재: ${plan.current.validSessionCount}세션, ${plan.current.totalMinutes.toFixed(1)}/${plan.current.requiredMinutes.toFixed(1)}분`);
+  console.log(`- 무효 세션: ${plan.current.invalidSessionCount}개`);
   console.log(`- 시작 마커 대기: ${plan.current.pendingCount}개`);
   console.log(`- 난이도별: ${difficulties.map((id) => `${id} ${Number(plan.current.minutesByDifficulty[id] ?? 0).toFixed(1)}분`).join(", ")}`);
   console.log("");

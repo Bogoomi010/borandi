@@ -145,6 +145,88 @@ describe("manual-playlog plan", () => {
     });
   });
 
+  it("summary는 증거로 인정되지 않는 수동 세션과 사유를 보여준다", () => {
+    const out = makeTempPath("summary-invalid-sessions.json");
+    writeFileSync(out, JSON.stringify({
+      schemaVersion: 1,
+      source: "manual-playlog",
+      sessions: [
+        {
+          source: "human-playtest",
+          difficulty: "novice",
+          minutes: 12,
+          startedAt: "2026-06-20T00:00:00.000Z",
+          endedAt: "2026-06-20T00:01:00.000Z",
+          result: "clear",
+          stage: 1,
+          round: 40,
+          seed: "BAD-TIME",
+          legends: 0,
+          maxGrade: "hero",
+          dataVersion: "0.8.0",
+          stateChecksum: "bad00001",
+        },
+        {
+          source: "human-playtest",
+          difficulty: "novice",
+          minutes: 12,
+          startedAt: "2026-06-20T01:00:00.000Z",
+          endedAt: "2026-06-20T01:12:00.000Z",
+          result: "clear",
+          stage: 1,
+          round: 40,
+          seed: "GOOD-SEED",
+          legends: 0,
+          maxGrade: "hero",
+          dataVersion: "0.8.0",
+          stateChecksum: "bad00002",
+        },
+        {
+          source: "human-playtest",
+          difficulty: "normal",
+          minutes: 12,
+          startedAt: "2026-06-20T02:00:00.000Z",
+          endedAt: "2026-06-20T02:12:00.000Z",
+          result: "clear",
+          stage: 1,
+          round: 40,
+          seed: "DUP-SEED",
+          legends: 1,
+          maxGrade: "legend",
+          dataVersion: "0.8.0",
+          stateChecksum: "bad00002",
+        },
+      ],
+    }, null, 2), "utf8");
+
+    const text = runManualPlaylog([`--out=${out}`, "--summary"]);
+    const summary = JSON.parse(runManualPlaylog([`--out=${out}`, "--summary-json"]));
+    const plan = JSON.parse(runManualPlaylog([`--out=${out}`, "--plan-json"]));
+
+    expect(summary.validSessionCount).toBe(1);
+    expect(summary.invalidSessionCount).toBe(2);
+    expect(plan.current.invalidSessionCount).toBe(2);
+    expect(summary.invalidSessions[0]).toMatchObject({
+      index: 0,
+      difficulty: "novice",
+      seed: "BAD-TIME",
+      checksum: "bad00001",
+      issues: ["startedAt/endedAt와 기록 시간이 맞지 않음"],
+    });
+    expect(summary.invalidSessions[1]).toMatchObject({
+      index: 2,
+      difficulty: "normal",
+      seed: "DUP-SEED",
+      checksum: "bad00002",
+      issues: ["stateChecksum 중복"],
+    });
+    expect(text).toContain("INVALID 증거로 인정되지 않은 세션:");
+    expect(text).toContain("#1 novice clear 40R seed=BAD-TIME #bad00001");
+    expect(text).toContain("startedAt/endedAt와 기록 시간이 맞지 않음");
+    expect(text).toContain("#3 normal clear 40R seed=DUP-SEED #bad00002");
+    expect(text).toContain("stateChecksum 중복");
+  });
+
   it("start-next는 다음 필요 세션의 시작 마커를 바로 저장한다", () => {
     const out = makeTempPath("start-next.json");
     const output = runManualPlaylog([
