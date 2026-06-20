@@ -143,7 +143,8 @@ const ctx: AppCtx = {
   newRun: (seed, difficulty, stageId = 1) => {
     const requestedStage = stageId;
     const allowedStage = playableStageId(requestedStage, loadProfile().unlockedStage);
-    game = new Game(seed || randomSeed(), difficulty, allowedStage);
+    const resolvedSeed = typeof seed === "string" ? seed : String(seed ?? "");
+    game = new Game(resolvedSeed || randomSeed(), difficulty, allowedStage);
     ctx.game = game;
     markRunStarted();
     game.onEvent = onGameEvent;

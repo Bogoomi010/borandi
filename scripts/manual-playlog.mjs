@@ -20,6 +20,8 @@ const FINAL_ROUND = 40;
 const PENDING_TARGET_MINUTES = 12;
 const CURRENT_DATA_VERSION = readCurrentDataVersion();
 const VALID_STAGE_IDS = readValidStageIds();
+const MIN_MANUAL_TOTAL_MINUTES = 120;
+const MIN_MANUAL_MINUTES_PER_DIFFICULTY = 12;
 
 function usage() {
   return [
@@ -81,6 +83,19 @@ function fail(message) {
   console.error("");
   console.error(usage());
   process.exit(1);
+}
+
+function progressValue(current, required) {
+  const safeCurrent = Number.isFinite(current) ? Math.max(0, current) : 0;
+  const safeRequired = Number.isFinite(required) && required > 0 ? required : 1;
+  const ratio = Math.min(1, safeCurrent / safeRequired);
+  return {
+    current: safeCurrent,
+    required: safeRequired,
+    remaining: Math.max(0, safeRequired - safeCurrent),
+    ratio,
+    percent: Math.round(ratio * 1000) / 10,
+  };
 }
 
 if (args.help === "true" || args.h === "true") {
@@ -462,9 +477,9 @@ function buildSummary() {
     },
     {
       label: "사람이 직접 2시간 플레이",
-      pass: totalMinutes >= 120 && difficulties.every((id) => (minutesByDifficulty.get(id) ?? 0) >= 12),
-      evidence: `human ${validHumanSessions.length}/${allSessions.length}세션, ${totalMinutes.toFixed(1)}/120.0분, codex-direct ${directSessionCount}세션 ${directMinutes.toFixed(1)}분, ${difficulties.map((id) => `${id} ${(minutesByDifficulty.get(id) ?? 0).toFixed(1)}분`).join(", ")}`,
-      next: "총 120분 이상과 각 난이도 12분 이상을 채우세요.",
+      pass: totalMinutes >= MIN_MANUAL_TOTAL_MINUTES && difficulties.every((id) => (minutesByDifficulty.get(id) ?? 0) >= MIN_MANUAL_MINUTES_PER_DIFFICULTY),
+      evidence: `human ${validHumanSessions.length}/${allSessions.length}세션, ${totalMinutes.toFixed(1)}/${MIN_MANUAL_TOTAL_MINUTES.toFixed(1)}분, codex-direct ${directSessionCount}세션 ${directMinutes.toFixed(1)}분, ${difficulties.map((id) => `${id} ${(minutesByDifficulty.get(id) ?? 0).toFixed(1)}분`).join(", ")}`,
+      next: `총 ${MIN_MANUAL_TOTAL_MINUTES}분 이상과 각 난이도 ${MIN_MANUAL_MINUTES_PER_DIFFICULTY}분 이상을 채우세요.`,
     },
     {
       label: "입문자 무전설 40R 클리어",
@@ -505,6 +520,15 @@ function buildSummary() {
   ];
   const targetRows = rows.filter((row) => targetPlans.some((target) => target.label === row.label));
   const targetRowsPassed = targetRows.filter((row) => row.pass).length;
+  const minutesByDifficultyObject = Object.fromEntries(difficulties.map((id) => [id, minutesByDifficulty.get(id) ?? 0]));
+  const progress = {
+    totalMinutes: progressValue(totalMinutes, MIN_MANUAL_TOTAL_MINUTES),
+    perDifficultyMinutes: Object.fromEntries(difficulties.map((id) => [
+      id,
+      progressValue(minutesByDifficultyObject[id] ?? 0, MIN_MANUAL_MINUTES_PER_DIFFICULTY),
+    ])),
+    targetRows: progressValue(targetRowsPassed, targetRows.length),
+  };
 
   const summary = {
     schemaVersion: 1,
@@ -522,12 +546,13 @@ function buildSummary() {
     pendingCount: pending.length,
     pending,
     totalMinutes,
-    requiredMinutes: 120,
-    remainingMinutes: Math.max(0, 120 - totalMinutes),
-    minutesByDifficulty: Object.fromEntries(difficulties.map((id) => [id, minutesByDifficulty.get(id) ?? 0])),
+    requiredMinutes: MIN_MANUAL_TOTAL_MINUTES,
+    remainingMinutes: progress.totalMinutes.remaining,
+    minutesByDifficulty: minutesByDifficultyObject,
     targetRowsPassed,
     targetRowsTotal: targetRows.length,
     targetRowsRemaining: targetRows.length - targetRowsPassed,
+    progress,
     rows,
     passed: rows.every((row) => row.pass),
   };

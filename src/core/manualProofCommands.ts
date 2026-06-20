@@ -8,8 +8,9 @@ export interface ManualProofStartCommandInput {
   notes?: string;
 }
 
-export function shellArg(value: string): string {
-  return `'${value.replace(/'/g, "'\\''")}'`;
+export function shellArg(value: unknown): string {
+  const text = String(value);
+  return `'${text.replace(/'/g, "'\\''")}'`;
 }
 
 export function manualStartId(

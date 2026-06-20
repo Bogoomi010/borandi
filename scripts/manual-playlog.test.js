@@ -475,6 +475,17 @@ describe("manual-playlog plan", () => {
     expect(summary.targetRowsPassed).toBe(0);
     expect(summary.targetRowsTotal).toBe(6);
     expect(summary.targetRowsRemaining).toBe(6);
+    expect(summary.progress).toMatchObject({
+      totalMinutes: { current: 0, required: 120, remaining: 120, ratio: 0, percent: 0 },
+      targetRows: { current: 0, required: 6, remaining: 6, ratio: 0, percent: 0 },
+    });
+    expect(summary.progress.perDifficultyMinutes).toMatchObject({
+      novice: { current: 0, required: 12, remaining: 12, ratio: 0, percent: 0 },
+      normal: { current: 0, required: 12, remaining: 12, ratio: 0, percent: 0 },
+      intermediate: { current: 0, required: 12, remaining: 12, ratio: 0, percent: 0 },
+      expert: { current: 0, required: 12, remaining: 12, ratio: 0, percent: 0 },
+      master: { current: 0, required: 12, remaining: 12, ratio: 0, percent: 0 },
+    });
     expect(summary.commandTemplates).toMatchObject({
       preflight: `yarn manual-playlog --preflight --out=${shellArg(out)}`,
       preflightJson: `yarn --silent manual-playlog --preflight-json --out=${shellArg(out)}`,

@@ -47,6 +47,10 @@ describe("수동 증거 시작 명령", () => {
     expect(manualStartCommand(input)).toContain(`--notes=${shellArg(input.notes)}`);
   });
 
+  it("shell 인자 escaping은 숫자 seed 같은 런타임 값도 문자열로 다룬다", () => {
+    expect(shellArg(1554)).toBe("'1554'");
+  });
+
   it("pending-id 명령은 같은 시작 id 저장 여부를 확인한다", () => {
     const id = manualStartId(input.difficultyId, input.stageId, input.seed, input.startedAt);
     const pending = manualPendingIdCommand(input);
