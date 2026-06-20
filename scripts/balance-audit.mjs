@@ -525,9 +525,19 @@ function manualPlanCommandTemplate() {
   return `yarn manual-playlog --plan${manualOutArg()}`;
 }
 
+function manualNextCommandTemplate() {
+  return `yarn manual-playlog --next${manualOutArg()}`;
+}
+
+function manualNextJsonCommandTemplate() {
+  return `yarn --silent manual-playlog --next-json${manualOutArg()}`;
+}
+
 function manualProofWorkflowEvidence(step) {
   return [
     `시작 전 점검: ${manualPreflightCommandTemplate()}`,
+    `다음 세션 상세: ${manualNextCommandTemplate()}`,
+    `다음 세션 JSON: ${manualNextJsonCommandTemplate()}`,
     `전체 계획: ${manualPlanCommandTemplate()}`,
     `추천 시작 검증: ${startNextDryRunCommandTemplate(step)}`,
     `추천 시작 마커: ${startNextCommandTemplate(step)}`,

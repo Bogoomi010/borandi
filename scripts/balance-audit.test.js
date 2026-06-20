@@ -469,6 +469,8 @@ describe("balance-audit assert", () => {
     expect(failed.stdout).toContain("아직 실제 수동 플레이 기록 없음, 남은 120.0분, 목표 0/6개 완료");
     expect(failed.stdout).toContain("다음 수동 플레이 세션 | MISSING | 입문자 무전설 40R 클리어");
     expect(failed.stdout).toContain("시작 전 점검: yarn manual-playlog --preflight");
+    expect(failed.stdout).toContain("다음 세션 상세: yarn manual-playlog --next");
+    expect(failed.stdout).toContain("다음 세션 JSON: yarn --silent manual-playlog --next-json");
     expect(failed.stdout).toContain("전체 계획: yarn manual-playlog --plan");
     expect(failed.stdout).toContain("추천 시작 검증: yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
     expect(failed.stdout).toContain("--dry-run");
