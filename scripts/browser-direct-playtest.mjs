@@ -18,6 +18,7 @@ const maxRound = Math.max(1, Number(args["max-round"] ?? 40));
 const stepMs = Math.max(250, Number(args["step-ms"] ?? 5000));
 const outPath = typeof args.json === "string" && args.json !== "true" ? args.json : "";
 const screenshotDir = typeof args.screenshots === "string" && args.screenshots !== "true" ? args.screenshots : "";
+const codexLogPath = typeof args["codex-log"] === "string" && args["codex-log"] !== "true" ? args["codex-log"] : "";
 const strict = args.strict === "true";
 const CURRENT_DATA_VERSION = readCurrentDataVersion();
 const selectedScenarioIds = typeof args.scenarios === "string" && args.scenarios !== "true"
@@ -148,27 +149,47 @@ function shellArg(value) {
 }
 
 function manualPlaylogCommand({ scenario, seed, simulatedSeconds, final, endedAt }) {
+  const session = codexDirectSession({ scenario, seed, simulatedSeconds, final, endedAt });
+  return [
+    "yarn manual-playlog",
+    "--source=codex-direct-playtest",
+    `--difficulty=${shellArg(session.difficulty)}`,
+    `--seconds=${session.seconds}`,
+    `--result=${session.result}`,
+    `--stage=${session.stage}`,
+    `--round=${session.round}`,
+    `--seed=${shellArg(session.seed)}`,
+    `--legends=${session.legends}`,
+    `--maxGrade=${shellArg(session.maxGrade)}`,
+    `--dataVersion=${shellArg(session.dataVersion)}`,
+    `--stateChecksum=${shellArg(session.stateChecksum)}`,
+    `--endedAt=${shellArg(session.endedAt)}`,
+    `--notes=${shellArg(session.notes)}`,
+  ].join(" ");
+}
+
+function codexDirectSession({ scenario, seed, simulatedSeconds, final, endedAt }) {
   const result = final.cleared ? "clear" : "loss";
   const stage = final.stage?.current ?? 1;
   const legends = final.unitSummary.legendOrBetter;
   const maxGrade = final.unitSummary.maxGrade ?? "common";
   const notes = `Codex browser-direct ${scenario.id}: ${scenario.expectation}`;
-  return [
-    "yarn manual-playlog",
-    "--source=codex-direct-playtest",
-    `--difficulty=${shellArg(final.difficulty?.id ?? scenario.difficulty)}`,
-    `--seconds=${Math.round(simulatedSeconds)}`,
-    `--result=${result}`,
-    `--stage=${stage}`,
-    `--round=${final.round}`,
-    `--seed=${shellArg(seed)}`,
-    `--legends=${legends}`,
-    `--maxGrade=${shellArg(maxGrade)}`,
-    `--dataVersion=${shellArg(final.dataVersion)}`,
-    `--stateChecksum=${shellArg(final.stateChecksum)}`,
-    `--endedAt=${shellArg(endedAt)}`,
-    `--notes=${shellArg(notes)}`,
-  ].join(" ");
+  return {
+    source: "codex-direct-playtest",
+    difficulty: final.difficulty?.id ?? scenario.difficulty,
+    seconds: Math.round(simulatedSeconds),
+    startedAt: new Date(new Date(endedAt).getTime() - Math.round(simulatedSeconds) * 1000).toISOString(),
+    endedAt,
+    result,
+    stage,
+    round: final.round,
+    seed,
+    legends,
+    maxGrade,
+    dataVersion: final.dataVersion,
+    stateChecksum: final.stateChecksum,
+    notes,
+  };
 }
 
 function hasRole(unit, role) {
@@ -406,6 +427,13 @@ async function playScenarioSeed(page, scenario, seedIndex) {
     simulatedSeconds: steps * (stepMs / 1000),
     endedAt,
     final,
+    codexDirectSession: codexDirectSession({
+      scenario,
+      seed,
+      simulatedSeconds: steps * (stepMs / 1000),
+      final,
+      endedAt,
+    }),
     codexDirectPlaylogCommand: manualPlaylogCommand({
       scenario,
       seed,
@@ -439,6 +467,18 @@ function summarizeScenario(scenario, runs) {
     avgSimulatedSeconds: totalSimulatedSeconds / runs.length,
     avgPressureRatio,
     runs,
+  };
+}
+
+function codexDirectLog(results) {
+  return {
+    schemaVersion: 1,
+    source: "manual-playlog",
+    generatedBy: "browser-direct",
+    generatedAt: new Date().toISOString(),
+    dataVersion: CURRENT_DATA_VERSION,
+    sessions: results.flatMap((scenario) => scenario.runs.map((run) => run.codexDirectSession)),
+    pendingSessions: [],
   };
 }
 
@@ -568,6 +608,12 @@ try {
     if (dir && dir !== ".") mkdirSync(dir, { recursive: true });
     writeFileSync(outPath, JSON.stringify(payload, null, 2), "utf8");
     console.log(`JSON 리포트 저장: ${outPath}`);
+  }
+  if (codexLogPath) {
+    const dir = dirname(codexLogPath);
+    if (dir && dir !== ".") mkdirSync(dir, { recursive: true });
+    writeFileSync(codexLogPath, JSON.stringify(codexDirectLog(results), null, 2), "utf8");
+    console.log(`Codex 직접 조작 보조 로그 저장: ${codexLogPath}`);
   }
   if (strict && !payload.passed) process.exitCode = 1;
 } finally {
