@@ -522,6 +522,46 @@ describe("manual-playlog plan", () => {
     });
   });
 
+  it("start-next --dry-run은 다음 필요 세션을 검증하지만 pending 시작 마커를 저장하지 않는다", () => {
+    const out = makeTempPath("start-next-dry-run.json");
+    const output = runManualPlaylog([
+      `--out=${out}`,
+      "--start-next",
+      "--seed=DRY-SEED",
+      "--startedAt=2026-06-20T02:15:00.000Z",
+      "--dry-run",
+    ]);
+
+    const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+    expect(output).toContain("DRY-RUN 수동 플레이 시작 마커 검증 통과");
+    expect(output).toContain("- 목표: 입문자 무전설 40R 클리어");
+    expect(output).toContain("- 로그 쓰기: 안 함");
+    expect(output).toContain("yarn manual-playlog --finish='novice-1-DRY-SEED-20260620T021500000Z' --result=clear --round=40 --legends=0 --maxGrade=hero");
+    expect(output).toContain("시작 마커를 실제로 저장하려면 같은 명령에서 --dry-run을 빼고 실행하세요.");
+    expect(pending.pending).toHaveLength(0);
+  });
+
+  it("start --dry-run은 직접 시작 마커를 검증하지만 pending 시작 마커를 저장하지 않는다", () => {
+    const out = makeTempPath("start-dry-run.json");
+    const output = runManualPlaylog([
+      `--out=${out}`,
+      "--start",
+      "--id=direct-dry-start",
+      "--difficulty=normal",
+      "--stage=2",
+      "--seed=DIRECT-DRY-SEED",
+      "--startedAt=2026-06-20T02:20:00.000Z",
+      "--dry-run",
+    ]);
+
+    const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+    expect(output).toContain("DRY-RUN 수동 플레이 시작 마커 검증 통과");
+    expect(output).toContain("- id: direct-dry-start");
+    expect(output).toContain("- 로그 쓰기: 안 함");
+    expect(output).toContain("yarn manual-playlog --finish='direct-dry-start'");
+    expect(pending.pending).toHaveLength(0);
+  });
+
   it("start-next는 비어 있는 out 파일도 새 로그처럼 처리한다", () => {
     const out = makeTempPath("start-next-empty-file.json");
     writeFileSync(out, "", "utf8");

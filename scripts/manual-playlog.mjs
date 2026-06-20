@@ -40,6 +40,8 @@ function usage() {
     "                          # 수동 플레이 시작 마커를 pendingSessions에 저장",
     "  --start-next --seed=RUN123",
     "                          # 다음 필요 수동 세션의 난이도/목표로 시작 마커를 저장",
+    "  --start-next --seed=RUN123 --dry-run",
+    "                          # 다음 필요 시작 마커를 저장하지 않고 검증/마감 템플릿만 출력",
     "  --pending                # 아직 finish되지 않은 시작 마커 목록 출력",
     "  --preflight              # 새 수동 세션 시작 전 무효/미완료 마커 점검",
     "  --preflight-json         # --preflight 결과를 JSON으로 출력",
@@ -48,7 +50,7 @@ function usage() {
     "  --finish-latest --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT",
     "                          # 가장 최근 시작 마커를 자동 선택해 결과 세션 저장",
     "  --finish                 # --finish-latest와 동일",
-    "  --dry-run                # 결과 세션을 검증하고 미리보기만 출력, 로그 파일은 쓰지 않음",
+    "  --dry-run                # 시작/결과 세션을 검증하고 미리보기만 출력, 로그 파일은 쓰지 않음",
     "  --summary             # 현재 수동 로그 충족/미충족 항목만 출력",
     "  --summary --json      # 현재 수동 로그 상태를 JSON으로 출력",
     "  --summary-json        # --summary --json과 동일",
@@ -976,6 +978,10 @@ function finishDryRunCommandTemplate({ id, next }) {
   return `${finishCommandTemplate({ id, next })} --dry-run`;
 }
 
+function isDryRun() {
+  return args["dry-run"] === "true";
+}
+
 function savePendingSession({ difficulty, stage, seed, startedAt, id, notes }) {
   const log = readJson(outPath);
   log.schemaVersion = 1;
@@ -999,8 +1005,10 @@ function savePendingSession({ difficulty, stage, seed, startedAt, id, notes }) {
   writeFileSync(outPath, `${JSON.stringify(log, null, 2)}\n`, "utf8");
 }
 
-function printStartSaved({ id, startedAt, next }) {
-  console.log(`수동 플레이 시작 마커 저장: ${outPath}`);
+function printStartSaved({ id, startedAt, next, dryRun = false }) {
+  console.log(dryRun
+    ? `DRY-RUN 수동 플레이 시작 마커 검증 통과: ${outPath}`
+    : `수동 플레이 시작 마커 저장: ${outPath}`);
   if (next?.label) {
     console.log(`- 목표: ${next.label}`);
     if (next.goal) console.log(`- 플레이 조건: ${next.goal}`);
@@ -1008,12 +1016,19 @@ function printStartSaved({ id, startedAt, next }) {
   }
   console.log(`- id: ${id}`);
   console.log(`- 시작: ${startedAt.toISOString()}`);
+  if (dryRun) {
+    console.log("- 로그 쓰기: 안 함");
+  }
   console.log("");
   console.log("결과가 나오면 먼저 아래 형식으로 저장 전 검증을 실행하세요:");
   console.log(finishDryRunCommandTemplate({ id, next }));
   console.log("");
   console.log("검증이 통과하면 아래 형식으로 실제 저장하세요. RESULT_ENDED_AT은 결과 화면의 종료 시각을 사용하세요:");
   console.log(finishCommandTemplate({ id, next }));
+  if (dryRun) {
+    console.log("");
+    console.log("시작 마커를 실제로 저장하려면 같은 명령에서 --dry-run을 빼고 실행하세요.");
+  }
 }
 
 function failIfPendingStartExists() {
@@ -1080,16 +1095,18 @@ function startManualSession() {
   const id = String(args.id ?? makePendingId({ difficulty, stage, seed, startedAt: startedAt.toISOString() }));
   if (!id.trim()) fail("--id 값이 비어 있습니다.");
 
-  savePendingSession({
-    id,
-    difficulty,
-    stage,
-    seed,
-    startedAt,
-    notes: args.notes ? String(args.notes) : "",
-  });
+  if (!isDryRun()) {
+    savePendingSession({
+      id,
+      difficulty,
+      stage,
+      seed,
+      startedAt,
+      notes: args.notes ? String(args.notes) : "",
+    });
+  }
 
-  printStartSaved({ id, startedAt });
+  printStartSaved({ id, startedAt, dryRun: isDryRun() });
 }
 
 function startNextManualSession() {
@@ -1115,15 +1132,17 @@ function startNextManualSession() {
   const startedAt = parseDate("startedAt", args.startedAt) ?? new Date();
   const id = String(args.id ?? makePendingId({ difficulty, stage, seed, startedAt: startedAt.toISOString() }));
   if (!id.trim()) fail("--id 값이 비어 있습니다.");
-  savePendingSession({
-    id,
-    difficulty,
-    stage,
-    seed,
-    startedAt,
-    notes: args.notes ? String(args.notes) : String(next.label),
-  });
-  printStartSaved({ id, startedAt, next });
+  if (!isDryRun()) {
+    savePendingSession({
+      id,
+      difficulty,
+      stage,
+      seed,
+      startedAt,
+      notes: args.notes ? String(args.notes) : String(next.label),
+    });
+  }
+  printStartSaved({ id, startedAt, next, dryRun: isDryRun() });
 }
 
 if (args.summary === "true" || args.status === "true") {

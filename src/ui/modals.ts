@@ -633,10 +633,13 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const dataVersion = ctx?.game.state.dataVersion ?? DATA_VERSION;
     const currentStartCommand = ctx?.scene === "game" ? manualStartCommand(ctx) : "";
     const currentStartNextCommand = ctx?.scene === "game" ? manualStartNextCommand(ctx) : "";
+    const currentStartDryRunCommand = currentStartCommand ? manualDryRunCommand(currentStartCommand) : "";
+    const currentStartNextDryRunCommand = currentStartNextCommand ? manualDryRunCommand(currentStartNextCommand) : "";
     const summaryCommand = "yarn manual-playlog --summary";
     const planCommand = "yarn manual-playlog --plan";
     const nextCommand = "yarn manual-playlog --next";
     const startNextCommand = currentStartNextCommand || "yarn manual-playlog --start-next --seed=GAME_SEED_HERE";
+    const startNextDryRunCommand = manualDryRunCommand(startNextCommand);
     const pendingCommand = "yarn manual-playlog --pending";
     const preflightCommand = "yarn manual-playlog --preflight";
     const preflightJsonCommand = "yarn --silent manual-playlog --preflight-json";
@@ -668,9 +671,12 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     if (currentStartCommand) {
       body.appendChild(el("h3", "", "현재 판 시작 마커"));
       if (currentStartNextCommand) {
+        body.appendChild(el("pre", "report", currentStartNextDryRunCommand));
+        body.appendChild(el("div", "modal-note", "먼저 위 검증 명령으로 현재 판이 다음 필요 세션에 맞는지 확인한 뒤, 아래 실제 시작 마커를 저장하세요."));
         body.appendChild(el("pre", "report", currentStartNextCommand));
         body.appendChild(el("div", "modal-note", "현재 판이 다음 필요 세션과 같은 난이도라면 위 단축 명령을 쓰세요. 아니면 아래 직접 시작 마커를 사용하세요."));
       }
+      body.appendChild(el("pre", "report", currentStartDryRunCommand));
       body.appendChild(el("pre", "report", currentStartCommand));
       body.appendChild(el("div", "modal-note", "플레이 시작 직후 한 번 실행해두면 결과 화면을 놓쳐도 --finish 명령으로 같은 시작 시각을 재사용할 수 있습니다."));
     }
@@ -679,6 +685,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     body.appendChild(el("pre", "report", preflightJsonCommand));
     body.appendChild(el("pre", "report", pendingCommand));
     body.appendChild(el("pre", "report", nextCommand));
+    body.appendChild(el("pre", "report", startNextDryRunCommand));
     body.appendChild(el("pre", "report", startNextCommand));
     body.appendChild(el("pre", "report", summaryCommand));
     body.appendChild(el("pre", "report", planCommand));
@@ -705,6 +712,16 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const row = el("div", "row-btns");
     if (currentStartCommand) {
       if (currentStartNextCommand) {
+        const copyCurrentStartNextDryRun = el("button", "", "현재 다음검증 복사");
+        copyCurrentStartNextDryRun.onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(currentStartNextDryRunCommand);
+            toast("현재 판 시드의 다음 필요 세션 검증 명령을 복사했습니다", "ok");
+          } catch {
+            toast("복사 실패: 명령을 직접 선택하세요", "warn");
+          }
+        };
+        row.appendChild(copyCurrentStartNextDryRun);
         const copyCurrentStartNext = el("button", "", "현재 다음마커 복사");
         copyCurrentStartNext.onclick = async () => {
           try {
@@ -716,6 +733,16 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
         };
         row.appendChild(copyCurrentStartNext);
       }
+      const copyStartDryRun = el("button", "", "시작검증 복사");
+      copyStartDryRun.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(currentStartDryRunCommand);
+          toast("현재 판 시작 마커 검증 명령을 복사했습니다", "ok");
+        } catch {
+          toast("복사 실패: 명령을 직접 선택하세요", "warn");
+        }
+      };
+      row.appendChild(copyStartDryRun);
       const copyStart = el("button", "", "시작마커 복사");
       copyStart.onclick = async () => {
         try {
@@ -767,6 +794,16 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       }
     };
     row.appendChild(copyNext);
+    const copyStartNextDryRun = el("button", "", "다음 시작검증 복사");
+    copyStartNextDryRun.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(startNextDryRunCommand);
+        toast("다음 필요 세션 시작 검증 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copyStartNextDryRun);
     const copyStartNext = el("button", "", "다음 시작마커 복사");
     copyStartNext.onclick = async () => {
       try {
