@@ -639,8 +639,8 @@ function finishCommandTemplate({ id, next }) {
     `--round=${template.round}`,
     `--legends=${template.legends}`,
     `--maxGrade=${template.maxGrade}`,
-    "--dataVersion=0.8.0",
-    "--stateChecksum=1234abcd",
+    "--dataVersion=RESULT_DATA_VERSION",
+    "--stateChecksum=RESULT_CHECKSUM",
   ].join(" ");
 }
 

@@ -132,6 +132,8 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("- 플레이 조건: 전설 없이 40R 최종 보스 클리어");
     expect(output).toContain("- 기록 조건: result=clear round=40 legends=0 maxGrade=hero 이하");
     expect(output).toContain("yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero");
+    expect(output).toContain("--dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM");
+    expect(output).not.toContain("--dataVersion=0.8.0 --stateChecksum=1234abcd");
     expect(pending.pending).toHaveLength(1);
     expect(pending.pending[0]).toMatchObject({
       source: "human-playtest-start",
