@@ -39,6 +39,44 @@ function unitScore(defId: string): number {
   return d.attack * d.attackSpeed * (1 + (d.bossDamageBonus ?? 0)) * (1 + (d.splashRadius ? 0.25 : 0));
 }
 
+function isMajorUnit(defId: string): boolean {
+  const grade = UNIT_BY_ID[defId].grade;
+  return grade === "legend" || grade === "hidden";
+}
+
+function selectorScore(game: Game, defId: string): number {
+  if (isMajorUnit(defId)) return selectionScore(game, defId);
+  const d = UNIT_BY_ID[defId];
+  return d.attack * d.attackSpeed * (1 + (d.bossDamageBonus ?? 0));
+}
+
+function selectionScore(game: Game, defId: string, excludeUid?: number): number {
+  const d = UNIT_BY_ID[defId];
+  let score = unitScore(defId);
+  if (!isMajorUnit(defId)) return score;
+
+  const majorUnits = game.state.units.filter((u) => isMajorUnit(u.defId) && u.uid !== excludeUid);
+  const sameFamilyCount = majorUnits.filter((u) => UNIT_BY_ID[u.defId].family === d.family).length;
+  if (sameFamilyCount === 0) score += 90;
+  else score -= sameFamilyCount * 140;
+
+  const roleBonus = {
+    waveClear: 110,
+    bossKiller: 110,
+    debuff: 80,
+    hold: 80,
+    finisher: 35,
+    economy: 25,
+  };
+  for (const [role, bonus] of Object.entries(roleBonus)) {
+    if (!d.roles.includes(role as (typeof d.roles)[number])) continue;
+    const sameRoleCount = majorUnits.filter((u) => UNIT_BY_ID[u.defId].roles.includes(role as (typeof d.roles)[number])).length;
+    if (sameRoleCount === 0) score += bonus;
+    else score -= sameRoleCount * 45;
+  }
+  return score;
+}
+
 function enforceLegendLimit(game: Game, maxLegendCount?: number) {
   if (maxLegendCount === undefined) return;
   const legends = game.state.units
@@ -47,7 +85,7 @@ function enforceLegendLimit(game: Game, maxLegendCount?: number) {
       const sameA = game.state.units.filter((u) => u.defId === a.defId).length;
       const sameB = game.state.units.filter((u) => u.defId === b.defId).length;
       if (sameA !== sameB) return sameA - sameB;
-      return unitScore(b.defId) - unitScore(a.defId) || a.uid - b.uid;
+      return selectionScore(game, b.defId, b.uid) - selectionScore(game, a.defId, a.uid) || a.uid - b.uid;
     });
   const sell = legends.slice(maxLegendCount).map((u) => u.uid);
   if (sell.length > 0) game.dispatch("sell", { unitIds: sell });
@@ -74,8 +112,7 @@ function claimSelectors(game: Game, options: AutoPlayOptions) {
     let best = candidates[0];
     let bestScore = -1;
     for (const id of candidates) {
-      const d = UNIT_BY_ID[id];
-      const score = d.attack * d.attackSpeed * (1 + (d.bossDamageBonus ?? 0));
+      const score = selectorScore(game, id);
       if (score > bestScore) { bestScore = score; best = id; }
     }
     const res = game.dispatch("pickSelector", { selectorId: sel.id, unitId: best });
@@ -106,19 +143,31 @@ function doCrafts(game: Game, maxCrafts: number, options: AutoPlayOptions) {
       const aOwned = game.state.units.filter((u) => u.defId === a.recipe.resultUnitId).length;
       const bOwned = game.state.units.filter((u) => u.defId === b.recipe.resultUnitId).length;
       if (aOwned !== bOwned) return aOwned - bOwned;
-      return unitScore(b.recipe.resultUnitId) - unitScore(a.recipe.resultUnitId);
+      return selectionScore(game, b.recipe.resultUnitId) - selectionScore(game, a.recipe.resultUnitId);
     });
     const res = game.dispatch("craft", { recipeId: statuses[0].recipe.id });
     if (!res.ok) return;
   }
 }
 
-function doMerges(game: Game, maxMerges: number) {
+function canMergeGrade(game: Game, grade: Grade, options: AutoPlayOptions): boolean {
+  const nextGrade = GRADE_ORDER[gradeRank(grade) + 1];
+  if (!nextGrade || nextGrade === "hidden") return false;
+  if (options.maxGrade && gradeRank(nextGrade) > gradeRank(options.maxGrade)) return false;
+  if (options.maxLegendCount !== undefined && nextGrade === "legend") {
+    const owned = game.state.units.filter((u) => UNIT_BY_ID[u.defId].grade === "legend").length;
+    return owned < options.maxLegendCount;
+  }
+  return true;
+}
+
+function doMerges(game: Game, maxMerges: number, options: AutoPlayOptions) {
   for (let i = 0; i < maxMerges; i++) {
     const s = game.state;
     if (s.units.length < game.diff.unitCap * 0.7) return;
-    // 가장 흔한 일반/희귀 그룹에서 3기 합성
-    for (const grade of ["common", "rare"] as const) {
+    // 가장 흔한 일반/희귀/영웅 그룹에서 3기 합성한다. 영웅 합성은 전설 제한을 존중한다.
+    for (const grade of ["common", "rare", "hero"] as const) {
+      if (!canMergeGrade(game, grade, options)) continue;
       const byFamily = new Map<string, number[]>();
       for (const u of s.units) {
         const d = UNIT_BY_ID[u.defId];
@@ -173,7 +222,7 @@ function doPrep(game: Game, options: AutoPlayOptions) {
   const strategy = options.strategy ?? "balanced";
   enforceLimits(game, options);
   claimSelectors(game, options);
-  doMerges(game, 3);
+  doMerges(game, 3, options);
   enforceLimits(game, options);
   doCrafts(game, 4, options);
   const reserve = strategy === "aggressive" ? 0 : strategy === "conservative" ? 120 : 50;
