@@ -556,6 +556,51 @@ const MANUAL_START_WORKFLOW = [
   "결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 실행 후 실제 finish 저장",
 ];
 
+function manualResultExpected(target?: ManualProofTargetStatus): Record<string, string> {
+  switch (target?.label) {
+    case "입문자 무전설 40R 클리어":
+      return { result: "clear", round: "40", legends: "0", maxGrade: "hero" };
+    case "일반 1~2전설 40R 클리어":
+      return { result: "clear", round: "40", legends: "1~2", maxGrade: "legend" };
+    case "중급자 5전설 이상 40R 클리어":
+      return { result: "clear", round: "40", legends: "5+", maxGrade: "legend|hidden" };
+    case "고수 5전설 이하 40R 실패":
+      return { result: "loss", round: "40", legends: "0~5", maxGrade: "hero|legend" };
+    case "고수 6전설 이상 40R 클리어":
+      return { result: "clear", round: "40", legends: "6+", maxGrade: "legend|hidden" };
+    case "초고수 실패 기록":
+      return { result: "loss", round: "RESULT_ROUND", legends: "FINAL_LEGENDS", maxGrade: "MAX_GRADE" };
+    default:
+      return { result: "clear|loss", round: "RESULT_ROUND", legends: "FINAL_LEGENDS", maxGrade: "MAX_GRADE" };
+  }
+}
+
+function appendManualResultFieldChecklist(body: HTMLElement, target?: ManualProofTargetStatus) {
+  const expected = manualResultExpected(target);
+  body.appendChild(el("h3", "", "결과 기록 필드"));
+  const table = el("table", "kv-table");
+  const rows = [
+    ["seed", "새 게임 시작 후 상단 시드 또는 결과 화면", "실제 게임 시드"],
+    ["startedAt", "시작 마커 저장 명령 또는 pending 시작 마커", "실제 시작 시각"],
+    ["endedAt", "결과 화면 RESULT_ENDED_AT", "실제 종료 시각"],
+    ["dataVersion", "결과 화면 RESULT_DATA_VERSION", DATA_VERSION],
+    ["stateChecksum", "결과 화면 RESULT_CHECKSUM", "8자리 checksum"],
+    ["result", "결과 화면 클리어/실패 상태", expected.result],
+    ["round", "결과 화면 도달 라운드", expected.round],
+    ["legends", "결과 화면 전설 이상 수", expected.legends],
+    ["maxGrade", "결과 화면 최고 등급", expected.maxGrade],
+    ["minutes", "시작/종료 시각으로 계산된 실제 플레이 시간", "12분 이상"],
+  ];
+  for (const [field, source, value] of rows) {
+    const tr = el("tr");
+    tr.appendChild(el("td", "", field));
+    tr.appendChild(el("td", "", source));
+    tr.appendChild(el("td", "", value));
+    table.appendChild(tr);
+  }
+  body.appendChild(table);
+}
+
 function manualTargetHint(difficultyId: DifficultyId): string {
   return MANUAL_BALANCE_TARGETS
     .filter((target) => target.difficultyId === difficultyId)
@@ -654,6 +699,9 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const summaryJsonCommand = "yarn --silent manual-playlog --summary-json";
     const primaryStartCheckCommand = currentStartNextDryRunCommand || preflightCommand;
     const primaryStartMarkerCommand = currentStartNextCommand || startNextCommand;
+    const currentTarget = ctx?.scene === "game"
+      ? manualProofTargetFor(ctx.game.state.difficulty, legendOrBetterCount(ctx))
+      : undefined;
     body.appendChild(el("h3", "", "먼저 할 일"));
     body.appendChild(el(
       "div",
@@ -674,10 +722,9 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     body.appendChild(el("h3", "", "현재 증거 버전"));
     body.appendChild(el("pre", "report", `DATA_VERSION ${dataVersion}`));
     body.appendChild(el("div", "modal-note", "결과 기록이나 --finish 명령의 --dataVersion, --stateChecksum, --endedAt은 결과 화면에 표시된 실제 값을 그대로 사용하세요."));
-    if (ctx?.scene === "game") {
+    if (ctx?.scene === "game" && currentTarget) {
       const s = ctx.game.state;
       const legends = legendOrBetterCount(ctx);
-      const currentTarget = manualProofTargetFor(s.difficulty, legends);
       body.appendChild(el("h3", "", "현재 판 목표 상태"));
       const statusTable = el("table", "kv-table");
       const rows = [
@@ -715,6 +762,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       workflow.appendChild(el("li", "", step));
     }
     body.appendChild(workflow);
+    appendManualResultFieldChecklist(body, currentTarget);
     body.appendChild(el("h3", "", "상태 확인"));
     body.appendChild(el("pre", "report", preflightCommand));
     body.appendChild(el("pre", "report", preflightJsonCommand));

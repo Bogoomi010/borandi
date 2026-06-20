@@ -51,6 +51,7 @@ describe("프로필 맵 해금", () => {
   it("해금 조건은 현재 열린 맵의 40라운드 최종 보스 클리어로만 참이다", () => {
     expect(canUnlockNextStage(true, FINAL_ROUND, 1, 1, true)).toBe(true);
     expect(canUnlockNextStage(true, FINAL_ROUND - 1, 1, 1, true)).toBe(false);
+    expect(canUnlockNextStage(true, FINAL_ROUND + 1, 1, 1, true)).toBe(false);
     expect(canUnlockNextStage(false, FINAL_ROUND, 1, 1, true)).toBe(false);
     expect(canUnlockNextStage(true, FINAL_ROUND, 1, 1, false)).toBe(false);
     expect(canUnlockNextStage(true, FINAL_ROUND, 2, 1, true)).toBe(false);
@@ -70,6 +71,13 @@ describe("프로필 맵 해금", () => {
 
   it("클리어 플래그가 있어도 40라운드 전이면 다음 맵을 해금하지 않는다", () => {
     const unlocked = profileRecordRun(true, "novice", FINAL_ROUND - 1, 1, true);
+
+    expect(unlocked).toBe(false);
+    expect(loadProfile().unlockedStage).toBe(1);
+  });
+
+  it("40라운드 이후의 비정상 라운드 값으로는 다음 맵을 해금하지 않는다", () => {
+    const unlocked = profileRecordRun(true, "novice", FINAL_ROUND + 1, 1, true);
 
     expect(unlocked).toBe(false);
     expect(loadProfile().unlockedStage).toBe(1);
