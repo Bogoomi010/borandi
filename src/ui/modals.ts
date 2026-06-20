@@ -234,10 +234,11 @@ function manualProofChecklist(r: ResultSummary): Array<{ label: string; ok: bool
       );
       break;
     case "expert":
-      checks.push(
-        { label: "고수 저전설 실패 증거", ok: !r.cleared && finalRound && r.legendOrBetterCount <= 5, detail: `${result}, ${r.legendOrBetterCount}전설+` },
-        { label: "고수 고전설 클리어 증거", ok: r.cleared && finalRound && r.legendOrBetterCount >= 6, detail: `${result}, ${r.legendOrBetterCount}전설+` },
-      );
+      if (r.legendOrBetterCount <= 5) {
+        checks.push({ label: "고수 5전설 이하 40R 실패", ok: !r.cleared && finalRound, detail: `${result}, ${r.legendOrBetterCount}전설+` });
+      } else {
+        checks.push({ label: "고수 6전설 이상 40R 클리어", ok: r.cleared && finalRound, detail: `${result}, ${r.legendOrBetterCount}전설+` });
+      }
       break;
     case "master":
       checks.push(

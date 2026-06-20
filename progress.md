@@ -121,6 +121,7 @@ Original prompt: 완성된 에셋으로 게임 스테이지를 최대 15스테�
 - The manual proof checklist no longer shows a 40R requirement for master difficulty, matching the audit rule that 초고수 only needs a 12+ minute failure record rather than a final-round failure.
 - Added a manual-playlog regression test that locks the 초고수 `--start-next` finish template to `ROUND_REACHED` instead of a hard-coded 40R, keeping the CLI aligned with the master manual evidence rule.
 - Latest `yarn balance-proof` on the current tree regenerated `output/current-balance.json`, browser 10R screenshots/JSON, browser-direct strict JSON, and `output/balance-audit.md`: automatic/browser evidence PASS with CLI balance novice/no-legend 100.0%, normal 0/1/2 legend 20.0%/40.0%/56.7%, intermediate 2/5/open 13.3%/50.0%/100.0%, expert 5/open 0.0%/63.3%, master open 0.0%; browser direct passed 5/5 observations over 9.77 simulated hours. The audit still reports only the real 120-minute human manual proof rows as MISSING.
+- Expert result checklists now show only the evidence row relevant to the finished run's legend count: 5-or-fewer legends checks the 40R failure target, while 6+ legends checks the 40R clear target. This avoids showing an unrelated expert target as `부족` on a valid expert proof run.
 
 ## TODO
 
