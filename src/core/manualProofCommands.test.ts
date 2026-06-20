@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   manualDryRunCommand,
+  manualPendingIdCommand,
   manualStartCommand,
   manualStartId,
   manualStartNextCommand,
@@ -35,6 +36,13 @@ describe("수동 증거 시작 명령", () => {
     expect(startNext).toContain("yarn manual-playlog --start-next");
     expect(startNext).not.toContain("--notes=");
     expect(manualStartCommand(input)).toContain(`--notes=${shellArg(input.notes)}`);
+  });
+
+  it("pending-id 명령은 같은 시작 id 저장 여부를 확인한다", () => {
+    const id = manualStartId(input.difficultyId, input.stageId, input.seed, input.startedAt);
+    const pending = manualPendingIdCommand(input);
+
+    expect(pending).toBe(`yarn manual-playlog --pending-id=${shellArg(id)}`);
   });
 
   it("dry-run 명령은 로그 쓰기 전에 같은 결과 명령을 검증한다", () => {

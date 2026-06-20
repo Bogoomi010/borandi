@@ -36,6 +36,7 @@ import { GRADE_ORDER, type DifficultyId, type Grade } from "./core/types";
 import { MANUAL_PROOF_TARGET_SECONDS, manualProofRemainingSeconds, manualProofTargetFor } from "./core/manualProof";
 import {
   manualDryRunCommand,
+  manualPendingIdCommand as buildManualPendingIdCommand,
   manualStartCommand as buildManualStartCommand,
   manualStartNextCommand as buildManualStartNextCommand,
 } from "./core/manualProofCommands";
@@ -581,12 +582,15 @@ function renderGameToText(): string {
   };
   const manualStartCommand = buildManualStartCommand(manualStartInput);
   const manualStartNextCommand = buildManualStartNextCommand(manualStartInput);
+  const manualPendingIdCommand = buildManualPendingIdCommand(manualStartInput);
   const manualProofCommands = ctx.scene === "game"
     ? {
         start: manualStartCommand,
         startDryRun: manualDryRunCommand(manualStartCommand),
         startNext: manualStartNextCommand,
         startNextDryRun: manualDryRunCommand(manualStartNextCommand),
+        pendingId: manualPendingIdCommand,
+        pendingIdJson: `${manualPendingIdCommand} --json`,
         result: null as string | null,
         resultDryRun: null as string | null,
         resultThenNext: null as string | null,

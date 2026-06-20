@@ -47,6 +47,11 @@ export function manualStartNextCommand(input: ManualProofStartCommandInput): str
   ].join(" ");
 }
 
+export function manualPendingIdCommand(input: ManualProofStartCommandInput): string {
+  const id = manualStartId(input.difficultyId, input.stageId, input.seed, input.startedAt);
+  return `yarn manual-playlog --pending-id=${shellArg(id)}`;
+}
+
 export function manualDryRunCommand(command: string): string {
   const separator = " && ";
   const separatorIndex = command.indexOf(separator);

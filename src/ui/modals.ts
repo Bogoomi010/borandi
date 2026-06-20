@@ -32,6 +32,7 @@ import { manualProofResultChecklist, manualProofResultTarget } from "../core/man
 import {
   manualStartCommand as buildManualStartCommand,
   manualDryRunCommand,
+  manualPendingIdCommand as buildManualPendingIdCommand,
   manualStartId,
   manualStartNextCommand as buildManualStartNextCommand,
   shellArg,
@@ -95,6 +96,18 @@ function manualStartCommand(ctx: AppCtx): string {
   const s = ctx.game.state;
   const target = manualProofTargetFor(s.difficulty, legendOrBetterCount(ctx));
   return buildManualStartCommand({
+    difficultyId: s.difficulty,
+    stageId: s.stageId,
+    seed: s.seed,
+    startedAt: ctx.runStartedAt,
+    notes: target.label,
+  });
+}
+
+function manualPendingIdCommand(ctx: AppCtx): string {
+  const s = ctx.game.state;
+  const target = manualProofTargetFor(s.difficulty, legendOrBetterCount(ctx));
+  return buildManualPendingIdCommand({
     difficultyId: s.difficulty,
     stageId: s.stageId,
     seed: s.seed,
@@ -626,6 +639,8 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const dataVersion = ctx?.game.state.dataVersion ?? DATA_VERSION;
     const currentStartCommand = ctx?.scene === "game" ? manualStartCommand(ctx) : "";
     const currentStartNextCommand = ctx?.scene === "game" ? manualStartNextCommand(ctx) : "";
+    const currentPendingIdCommand = ctx?.scene === "game" ? manualPendingIdCommand(ctx) : "";
+    const currentPendingIdJsonCommand = currentPendingIdCommand ? `${currentPendingIdCommand} --json` : "";
     const currentStartDryRunCommand = currentStartCommand ? manualDryRunCommand(currentStartCommand) : "";
     const currentStartNextDryRunCommand = currentStartNextCommand ? manualDryRunCommand(currentStartNextCommand) : "";
     const summaryCommand = "yarn manual-playlog --summary";
@@ -651,6 +666,11 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     body.appendChild(el("pre", "report", primaryStartCheckCommand));
     body.appendChild(el("h3", "", "2. 시작 마커 저장"));
     body.appendChild(el("pre", "report", primaryStartMarkerCommand));
+    if (currentPendingIdCommand) {
+      body.appendChild(el("h3", "", "3. 시작 마커 저장 확인"));
+      body.appendChild(el("pre", "report", currentPendingIdCommand));
+      body.appendChild(el("div", "modal-note", "시작 마커 저장 명령을 실행한 직후 이 확인 명령이 PASS 상태로 끝나는지 보고 12분 이상 플레이를 시작하세요."));
+    }
     body.appendChild(el("h3", "", "현재 증거 버전"));
     body.appendChild(el("pre", "report", `DATA_VERSION ${dataVersion}`));
     body.appendChild(el("div", "modal-note", "결과 기록이나 --finish 명령의 --dataVersion, --stateChecksum, --endedAt은 결과 화면에 표시된 실제 값을 그대로 사용하세요."));
@@ -685,6 +705,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       }
       body.appendChild(el("pre", "report", currentStartDryRunCommand));
       body.appendChild(el("pre", "report", currentStartCommand));
+      body.appendChild(el("pre", "report", currentPendingIdCommand));
       body.appendChild(el("div", "modal-note", "직접 시작 마커에는 현재 목표 라벨이 함께 저장됩니다. 검증 출력의 finish 템플릿이 목표 조건과 맞는지 확인한 뒤 저장하세요."));
       body.appendChild(el("div", "modal-note", "플레이 시작 직후 한 번 실행해두면 결과 화면을 놓쳐도 --finish 명령으로 같은 시작 시각을 재사용할 수 있습니다."));
     }
@@ -767,6 +788,26 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
         }
       };
       row.appendChild(copyStart);
+      const copyPendingId = el("button", "", "현재마커 확인 복사");
+      copyPendingId.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(currentPendingIdCommand);
+          toast("현재 판 시작 마커 저장 확인 명령을 복사했습니다", "ok");
+        } catch {
+          toast("복사 실패: 명령을 직접 선택하세요", "warn");
+        }
+      };
+      row.appendChild(copyPendingId);
+      const copyPendingIdJson = el("button", "", "현재마커 JSON 복사");
+      copyPendingIdJson.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(currentPendingIdJsonCommand);
+          toast("현재 판 시작 마커 JSON 확인 명령을 복사했습니다", "ok");
+        } catch {
+          toast("복사 실패: 명령을 직접 선택하세요", "warn");
+        }
+      };
+      row.appendChild(copyPendingIdJson);
     }
     const copyPending = el("button", "", "대기목록 복사");
     copyPending.onclick = async () => {

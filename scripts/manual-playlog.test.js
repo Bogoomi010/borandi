@@ -88,6 +88,8 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("--plan-json           # --plan --json과 동일");
     expect(output).toContain("--next-json           # --next --json과 동일");
     expect(output).toContain("--pending-json        # --pending --json과 동일");
+    expect(output).toContain("--pending-id=RUN1");
+    expect(output).toContain("--pending-id-json");
     expect(output).toContain("--source=human-playtest|codex-direct-playtest");
   });
 
@@ -207,6 +209,34 @@ describe("manual-playlog plan", () => {
     expect(failed.stdout).toContain("마무리 템플릿: yarn manual-playlog --finish='novice-1-PENDING-SEED-20260620T020000000Z'");
     expect(failed.stdout).toContain("FAIL 새 수동 플레이 시작 전 정리 필요");
     expect(failed.stdout).toContain("판정: 정리 필요");
+  });
+
+  it("pending-id는 특정 시작 마커 저장 여부를 성공/실패 코드로 확인한다", () => {
+    const out = makeTempPath("pending-id.json");
+    const id = "novice-1-PENDING-SEED-20260620T020000000Z";
+    runManualPlaylog([
+      `--out=${out}`,
+      "--start-next",
+      "--seed=PENDING-SEED",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+    ]);
+
+    const found = runManualPlaylog([`--out=${out}`, `--pending-id=${id}`]);
+    expect(found).toContain("# 수동 플레이 시작 마커 확인");
+    expect(found).toContain(`- 확인 id: ${id}`);
+    expect(found).toContain("- 대기 중: 1개");
+    expect(found).toContain(`- ${id}: novice stage=1 seed=PENDING-SEED`);
+    expect(found).toContain("마무리 템플릿:");
+
+    const foundJson = JSON.parse(runManualPlaylog([`--out=${out}`, `--pending-id=${id}`, "--json"]));
+    expect(foundJson.pendingId).toBe(id);
+    expect(foundJson.pendingCount).toBe(1);
+    expect(foundJson.pending[0].id).toBe(id);
+
+    const missing = runManualPlaylogFailure([`--out=${out}`, "--pending-id=missing-id"]);
+    expect(missing.status).toBe(1);
+    expect(missing.stdout).toContain("- 확인 id: missing-id");
+    expect(missing.stdout).toContain("해당 id의 시작 마커가 없습니다");
   });
 
   it("preflight-json은 미완료 시작 마커가 있으면 실패 코드와 blocking 이유를 출력한다", () => {

@@ -45,6 +45,8 @@ function usage() {
     "  --start-next --difficulty=normal --seed=RUN123 --dry-run",
     "                          # 다음 필요 시작 마커를 저장하지 않고 검증/마감 템플릿만 출력",
     "  --pending                # 아직 finish되지 않은 시작 마커 목록 출력",
+    "  --pending-id=RUN1         # 특정 시작 마커가 저장되어 있는지 확인",
+    "  --pending-id-json          # --pending-id 결과를 JSON으로 출력",
     "  --preflight              # 새 수동 세션 시작 전 무효/미완료 마커 점검",
     "  --preflight-json         # --preflight 결과를 JSON으로 출력",
     "  --finish=RUN1 --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT",
@@ -1009,10 +1011,14 @@ function findMatchingPendingSession(log, { difficulty, stage, seed, startedAt })
 
 function buildPending() {
   const log = readJson(outPath);
-  const pending = pendingSessions(log).map(pendingSessionWithCommands);
+  const pendingId = args["pending-id"] !== undefined ? String(args["pending-id"]) : "";
+  const pending = pendingSessions(log)
+    .filter((session) => !pendingId || String(session.id ?? "") === pendingId)
+    .map(pendingSessionWithCommands);
   return {
     schemaVersion: 1,
     logPath: outPath,
+    ...(pendingId ? { pendingId } : {}),
     pendingCount: pending.length,
     pending,
   };
@@ -1020,12 +1026,16 @@ function buildPending() {
 
 function printPending() {
   const pending = buildPending();
-  console.log("# 수동 플레이 시작 마커");
+  console.log(pending.pendingId ? "# 수동 플레이 시작 마커 확인" : "# 수동 플레이 시작 마커");
   console.log(`- 로그: ${pending.logPath}`);
+  if (pending.pendingId) console.log(`- 확인 id: ${pending.pendingId}`);
   console.log(`- 대기 중: ${pending.pendingCount}개`);
   console.log("");
   if (pending.pending.length === 0) {
-    console.log("대기 중인 시작 마커가 없습니다.");
+    console.log(pending.pendingId
+      ? "해당 id의 시작 마커가 없습니다. 실제 시작 마커 저장 명령을 먼저 실행하세요."
+      : "대기 중인 시작 마커가 없습니다.");
+    if (pending.pendingId) process.exitCode = 1;
     return;
   }
   for (const session of pending.pending) {
@@ -1041,7 +1051,9 @@ function printPending() {
 }
 
 function printPendingJson() {
-  console.log(`${JSON.stringify(buildPending(), null, 2)}`);
+  const pending = buildPending();
+  console.log(`${JSON.stringify(pending, null, 2)}`);
+  if (pending.pendingId && pending.pendingCount === 0) process.exitCode = 1;
 }
 
 function assertManualProof() {
@@ -1335,6 +1347,12 @@ if (args.pending === "true") {
   process.exit(0);
 }
 
+if (args["pending-id"] !== undefined) {
+  if (args.json === "true" || args["pending-id-json"] === "true") printPendingJson();
+  else printPending();
+  process.exit(process.exitCode ?? 0);
+}
+
 if (args.preflight === "true") {
   if (args.json === "true" || args["preflight-json"] === "true") printPreflightJson();
   else printPreflight();
@@ -1364,6 +1382,12 @@ if (args["next-json"] === "true") {
 if (args["pending-json"] === "true") {
   printPendingJson();
   process.exit(0);
+}
+
+if (args["pending-id-json"] === "true") {
+  if (args["pending-id"] === undefined) fail("--pending-id-json에는 --pending-id=RUN1이 필요합니다.");
+  printPendingJson();
+  process.exit(process.exitCode ?? 0);
 }
 
 if (args["preflight-json"] === "true") {
