@@ -898,6 +898,47 @@ describe("manual-playlog plan", () => {
     expect(pending.pending[0].finishDryRunCommandTemplate).toContain("--dry-run");
   });
 
+  it("start-next는 고수 5전설 이하 실패에 실제 도달 라운드 마감 템플릿을 쓴다", () => {
+    const out = makeTempPath("start-next-expert-weak.json");
+    const sessions = [
+      ["novice", "clear", 40, 0, "hero", "abc30001"],
+      ["normal", "clear", 40, 1, "legend", "abc30002"],
+      ["intermediate", "clear", 40, 5, "legend", "abc30003"],
+    ];
+    let startMs = Date.parse("2026-06-20T00:00:00.000Z");
+    for (const [difficulty, result, round, legends, maxGrade, checksum] of sessions) {
+      appendSession(out, {
+        difficulty,
+        minutes: 12,
+        result,
+        round,
+        legends,
+        maxGrade,
+        checksum,
+        startedAt: new Date(startMs).toISOString(),
+      });
+      startMs += 13 * 60_000;
+    }
+
+    const output = runManualPlaylog([
+      `--out=${out}`,
+      "--start-next",
+      "--seed=EXPERT-WEAK-SEED",
+      "--startedAt=2026-06-20T02:15:00.000Z",
+    ]);
+    const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+
+    expect(output).toContain("- 목표: 고수 5전설 이하 실패");
+    expect(output).toContain("- 기록 조건: result=loss round=RESULT_ROUND legends<=5");
+    expect(output).toContain("yarn manual-playlog --finish='expert-1-EXPERT-WEAK-SEED-20260620T021500000Z' --result=loss --round=ROUND_REACHED --legends=FINAL_LEGENDS --maxGrade=MAX_GRADE");
+    expect(output).not.toContain("--result=loss --round=40 --legends=5");
+    expect(pending.pending[0]).toMatchObject({
+      difficulty: "expert",
+      notes: "고수 5전설 이하 실패",
+    });
+    expect(pending.pending[0].finishCommandTemplate).toContain("--result=loss --round=ROUND_REACHED --legends=FINAL_LEGENDS --maxGrade=MAX_GRADE");
+  });
+
   it("start-next는 초고수 실패 기록에 40R 고정 마감 템플릿을 쓰지 않는다", () => {
     const out = makeTempPath("start-next-master.json");
     const sessions = [
