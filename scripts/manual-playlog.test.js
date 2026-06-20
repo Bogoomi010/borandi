@@ -492,6 +492,44 @@ describe("manual-playlog plan", () => {
     expect(finishOutput).toContain("- 추천 시작 마커: yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
   });
 
+  it("직접 저장 명령도 같은 시작 마커가 있으면 자동으로 연결해 닫는다", () => {
+    const out = makeTempPath("pending-direct-save.json");
+    runManualPlaylog([
+      `--out=${out}`,
+      "--start-next",
+      "--seed=DIRECT-SEED",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+    ]);
+
+    const output = runManualPlaylog([
+      `--out=${out}`,
+      "--difficulty=novice",
+      "--seconds=900",
+      "--result=clear",
+      "--stage=1",
+      "--round=40",
+      "--seed=DIRECT-SEED",
+      "--legends=0",
+      "--maxGrade=hero",
+      "--dataVersion=0.8.0",
+      "--stateChecksum=20000012",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+      "--endedAt=2026-06-20T02:15:00.000Z",
+    ]);
+
+    const log = readJson(out);
+    const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+    expect(output).toContain("- 연결된 시작 마커: novice-1-DIRECT-SEED-20260620T020000000Z");
+    expect(pending.pending).toHaveLength(0);
+    expect(log.sessions).toHaveLength(1);
+    expect(log.sessions[0]).toMatchObject({
+      pendingSessionId: "novice-1-DIRECT-SEED-20260620T020000000Z",
+      difficulty: "novice",
+      seed: "DIRECT-SEED",
+      seconds: 900,
+    });
+  });
+
   it("finish-latest는 가장 최근 시작 마커만 마무리한다", () => {
     const out = makeTempPath("finish-latest.json");
     runManualPlaylog([
