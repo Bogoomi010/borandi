@@ -151,13 +151,18 @@ describe("조합", () => {
 
   it("일반 난이도는 1~2전설부터 지휘 보너스를 받는다", () => {
     const g = new Game("NORMAL-COMMAND", "normal");
+    const baseLimit = g.diff.enemyLimit;
     expect(g.legendCommandAttackMult()).toBe(1);
+    expect(g.legendCommandEnemyLimitBonus()).toBe(0);
+    expect(g.enemyLimit()).toBe(baseLimit);
 
     give(g, "solar_avatar", 1);
-    expect(g.legendCommandAttackMult()).toBeCloseTo(1.08);
+    expect(g.legendCommandAttackMult()).toBeCloseTo(1.12);
+    expect(g.legendCommandEnemyLimitBonus()).toBe(6);
+    expect(g.enemyLimit()).toBe(baseLimit + 6);
 
     give(g, "chrono_marshal", 3);
-    expect(g.legendCommandAttackMult()).toBeCloseTo(1.16);
+    expect(g.legendCommandAttackMult()).toBeCloseTo(1.2);
   });
 
   it("잠금 유닛은 조합 재료로 소비되지 않는다", () => {

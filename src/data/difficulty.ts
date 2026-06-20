@@ -19,7 +19,7 @@ export const DIFFICULTIES: DifficultyDef[] = [
   },
   {
     id: "master", name: "초고수",
-    unitCap: 28, enemyHpMult: 18.0, enemyLimit: 32, goldMult: 0.76, startGold: 55, startLife: 10,
+    unitCap: 28, enemyHpMult: 18.0, enemyLimit: 30, goldMult: 0.76, startGold: 55, startLife: 10,
   },
 ];
 

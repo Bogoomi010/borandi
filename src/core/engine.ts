@@ -49,6 +49,9 @@ const INITIAL_BREAK_TICKS = 200;
 const LEGEND_COMMAND_THRESHOLD = 5;
 const LEGEND_COMMAND_STEP = 0.08;
 const LEGEND_COMMAND_MAX = 0.24;
+const NORMAL_LEGEND_COMMAND_STEP = 0.12;
+const NORMAL_LEGEND_COMMAND_MAX = 0.20;
+const NORMAL_LEGEND_COMMAND_LIMIT_BONUS = 6;
 const INTERMEDIATE_LEGEND_COMMAND_LIMIT_BONUS = 12;
 
 export interface ActionResult { ok: boolean; reason?: string; }
@@ -601,15 +604,21 @@ export class Game {
   legendCommandAttackMult(): number {
     const count = this.legendOrBetterCount();
     if (this.state.difficulty === "normal") {
-      return 1 + Math.min(LEGEND_COMMAND_STEP * 2, count * LEGEND_COMMAND_STEP);
+      return 1 + Math.min(NORMAL_LEGEND_COMMAND_MAX, count * NORMAL_LEGEND_COMMAND_STEP);
     }
     const stacks = Math.max(0, count - LEGEND_COMMAND_THRESHOLD + 1);
     return 1 + Math.min(LEGEND_COMMAND_MAX, stacks * LEGEND_COMMAND_STEP);
   }
 
   legendCommandEnemyLimitBonus(): number {
-    if (this.state.difficulty !== "intermediate") return 0;
-    return this.legendOrBetterCount() >= LEGEND_COMMAND_THRESHOLD ? INTERMEDIATE_LEGEND_COMMAND_LIMIT_BONUS : 0;
+    const count = this.legendOrBetterCount();
+    if (this.state.difficulty === "normal") {
+      return count >= 1 ? NORMAL_LEGEND_COMMAND_LIMIT_BONUS : 0;
+    }
+    if (this.state.difficulty === "intermediate") {
+      return count >= LEGEND_COMMAND_THRESHOLD ? INTERMEDIATE_LEGEND_COMMAND_LIMIT_BONUS : 0;
+    }
+    return 0;
   }
 
   enemyLimit(): number {
