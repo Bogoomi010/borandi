@@ -105,6 +105,7 @@ describe("manual-playlog plan", () => {
       label: "입문자 무전설 40R 클리어",
       minutes: 12,
       startCommandTemplate: "yarn manual-playlog --start --difficulty=novice --stage=1 --seed=GAME_SEED_HERE --notes='입문자 무전설 40R 클리어'",
+      startNextCommandTemplate: "yarn manual-playlog --start-next --seed=GAME_SEED_HERE",
       finishTemplate: {
         result: "clear",
         round: "40",
@@ -113,7 +114,9 @@ describe("manual-playlog plan", () => {
       },
     });
     const text = runManualPlaylog([`--out=${out}`, "--next"]);
-    expect(text).toContain("시작 마커:");
+    expect(text).toContain("추천 시작 마커:");
+    expect(text).toContain("yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
+    expect(text).toContain("직접 시작 마커:");
     expect(text).toContain("마무리 조건: result=clear round=40 legends=0 maxGrade=hero");
     expect(text).toContain("--seed=GAME_SEED_HERE");
   });

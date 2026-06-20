@@ -18,7 +18,7 @@ const grades = ["common", "rare", "hero", "legend", "hidden"];
 function usage() {
   return [
     "사용법:",
-    "  yarn manual-playlog --difficulty=normal --minutes=24 --result=loss --stage=1 --round=39 --seed=RUN123 --legends=1 --maxGrade=legend --dataVersion=0.8.0 --stateChecksum=1234abcd --notes=\"2전설, 후반 누적 압박\"",
+    "  yarn manual-playlog --difficulty=normal --minutes=24 --result=loss --stage=1 --round=39 --seed=RUN123 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --notes=\"2전설, 후반 누적 압박\"",
     "",
     "필수:",
     "  --difficulty=novice|normal|intermediate|expert|master",
@@ -37,9 +37,9 @@ function usage() {
     "  --start-next --seed=RUN123",
     "                          # 다음 필요 수동 세션의 난이도/목표로 시작 마커를 저장",
     "  --pending                # 아직 finish되지 않은 시작 마커 목록 출력",
-    "  --finish=RUN1 --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=0.8.0 --stateChecksum=1234abcd",
+    "  --finish=RUN1 --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM",
     "                          # 시작 마커의 startedAt/difficulty/stage/seed를 사용해 결과 세션 저장",
-    "  --finish-latest --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=0.8.0 --stateChecksum=1234abcd",
+    "  --finish-latest --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM",
     "                          # 가장 최근 시작 마커를 자동 선택해 결과 세션 저장",
     "  --finish                 # --finish-latest와 동일",
     "  --summary             # 현재 수동 로그 충족/미충족 항목만 출력",
@@ -501,12 +501,18 @@ function printPlanJson() {
 
 function buildNext() {
   const plan = buildPlan();
+  const nextStep = plan.steps[0] ?? null;
   return {
     schemaVersion: 1,
     logPath: plan.logPath,
     passed: plan.passed,
     current: plan.current,
-    next: plan.steps[0] ?? null,
+    next: nextStep
+      ? {
+        ...nextStep,
+        startNextCommandTemplate: startNextCommandTemplate(nextStep),
+      }
+      : null,
   };
 }
 
@@ -525,8 +531,13 @@ function printNext() {
     if (next.next.finishTemplate) {
       console.log(`마무리 조건: result=${next.next.finishTemplate.result} round=${next.next.finishTemplate.round} legends=${next.next.finishTemplate.legends} maxGrade=${next.next.finishTemplate.maxGrade}`);
     }
+    if (next.next.startNextCommandTemplate) {
+      console.log("추천 시작 마커:");
+      console.log(next.next.startNextCommandTemplate);
+      console.log("  GAME_SEED_HERE는 새 게임 시작 후 상단에 표시된 실제 시드로 바꾸세요.");
+    }
     if (next.next.startCommandTemplate) {
-      console.log("시작 마커:");
+      console.log("직접 시작 마커:");
       console.log(next.next.startCommandTemplate);
       console.log("  GAME_SEED_HERE는 새 게임 시작 후 상단에 표시된 실제 시드로 바꾸세요.");
     }
@@ -629,6 +640,12 @@ function finishTemplateForNext(step) {
     default:
       return base;
   }
+}
+
+function startNextCommandTemplate(step) {
+  if (!step?.startCommandTemplate) return "";
+  const difficultyArg = step.difficulty === "any" ? " --difficulty=DIFFICULTY" : "";
+  return `yarn manual-playlog --start-next${difficultyArg} --seed=GAME_SEED_HERE`;
 }
 
 function finishCommandTemplate({ id, next }) {
