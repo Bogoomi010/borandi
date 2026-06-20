@@ -391,6 +391,8 @@ function buildSummary() {
       next: "master loss 세션 12분 이상",
     },
   ];
+  const targetRows = rows.filter((row) => targetPlans.some((target) => target.label === row.label));
+  const targetRowsPassed = targetRows.filter((row) => row.pass).length;
 
   const summary = {
     schemaVersion: 1,
@@ -405,7 +407,11 @@ function buildSummary() {
     pending,
     totalMinutes,
     requiredMinutes: 120,
+    remainingMinutes: Math.max(0, 120 - totalMinutes),
     minutesByDifficulty: Object.fromEntries(difficulties.map((id) => [id, minutesByDifficulty.get(id) ?? 0])),
+    targetRowsPassed,
+    targetRowsTotal: targetRows.length,
+    targetRowsRemaining: targetRows.length - targetRowsPassed,
     rows,
     passed: rows.every((row) => row.pass),
   };
@@ -449,10 +455,14 @@ function buildPlanFromSummary(summary) {
     current: {
       totalMinutes: summary.totalMinutes,
       requiredMinutes: summary.requiredMinutes,
+      remainingMinutes: summary.remainingMinutes,
       minutesByDifficulty: summary.minutesByDifficulty,
       validSessionCount: summary.validSessionCount,
       invalidSessionCount: summary.invalidSessionCount,
       pendingCount: summary.pendingCount,
+      targetRowsPassed: summary.targetRowsPassed,
+      targetRowsTotal: summary.targetRowsTotal,
+      targetRowsRemaining: summary.targetRowsRemaining,
     },
     steps: [
       ...missingTargets.map((target) => ({
@@ -504,6 +514,8 @@ function printSummary() {
   console.log(`- 예시 로그 제외: ${summary.exampleExcluded ? "예" : "아니오"}`);
   console.log(`- 무효 세션: ${summary.invalidSessionCount}개`);
   console.log(`- 시작 마커 대기: ${summary.pendingCount}개`);
+  console.log(`- 유효 플레이 시간: ${summary.totalMinutes.toFixed(1)}/${summary.requiredMinutes.toFixed(1)}분, 남은 ${summary.remainingMinutes.toFixed(1)}분`);
+  console.log(`- 목표 세션: ${summary.targetRowsPassed}/${summary.targetRowsTotal}개 완료, 남은 ${summary.targetRowsRemaining}개`);
   console.log("");
   if (summary.invalidSessionCount > 0) {
     console.log("INVALID 증거로 인정되지 않은 세션:");
@@ -554,6 +566,8 @@ function printPlan() {
   console.log("# 수동 플레이 증거 수집 계획");
   console.log(`- 로그: ${plan.logPath}`);
   console.log(`- 현재: ${plan.current.validSessionCount}세션, ${plan.current.totalMinutes.toFixed(1)}/${plan.current.requiredMinutes.toFixed(1)}분`);
+  console.log(`- 남은 유효 플레이 시간: ${plan.current.remainingMinutes.toFixed(1)}분`);
+  console.log(`- 목표 세션: ${plan.current.targetRowsPassed}/${plan.current.targetRowsTotal}개 완료, 남은 ${plan.current.targetRowsRemaining}개`);
   console.log(`- 무효 세션: ${plan.current.invalidSessionCount}개`);
   console.log(`- 시작 마커 대기: ${plan.current.pendingCount}개`);
   console.log(`- 난이도별: ${difficulties.map((id) => `${id} ${Number(plan.current.minutesByDifficulty[id] ?? 0).toFixed(1)}분`).join(", ")}`);

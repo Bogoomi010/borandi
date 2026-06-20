@@ -73,6 +73,10 @@ describe("manual-playlog plan", () => {
 
     expect(plan.passed).toBe(false);
     expect(plan.current.totalMinutes).toBe(0);
+    expect(plan.current.remainingMinutes).toBe(120);
+    expect(plan.current.targetRowsPassed).toBe(0);
+    expect(plan.current.targetRowsTotal).toBe(6);
+    expect(plan.current.targetRowsRemaining).toBe(6);
     expect(plan.steps).toHaveLength(7);
     expect(plan.steps.slice(0, 6).map((step) => step.kind)).toEqual(Array(6).fill("target-session"));
     expect(plan.steps[6]).toMatchObject({
@@ -128,6 +132,12 @@ describe("manual-playlog plan", () => {
     const text = runManualPlaylog([`--out=${out}`, "--summary"]);
     const summary = JSON.parse(runManualPlaylog([`--out=${out}`, "--summary-json"]));
 
+    expect(text).toContain("- 유효 플레이 시간: 0.0/120.0분, 남은 120.0분");
+    expect(text).toContain("- 목표 세션: 0/6개 완료, 남은 6개");
+    expect(summary.remainingMinutes).toBe(120);
+    expect(summary.targetRowsPassed).toBe(0);
+    expect(summary.targetRowsTotal).toBe(6);
+    expect(summary.targetRowsRemaining).toBe(6);
     expect(text).toContain("추천 시작 마커:");
     expect(text).toContain("yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
     expect(text).toContain("GAME_SEED_HERE는 새 게임 시작 후 상단에 표시된 실제 시드로 바꾸세요.");
