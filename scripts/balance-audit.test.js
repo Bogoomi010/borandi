@@ -102,6 +102,7 @@ function completeDirect({ seeds = 6 } = {}) {
       directScenario("normalTwoLegend", 1, 40, 0, 2),
       directScenario("intermediateTwoLegend", 0, 38, 0.8, 2),
       directScenario("intermediateFiveLegend", 1, 40, 0.1, 5),
+      directScenario("intermediateOpen", 1, 40, 0, 8),
       directScenario("expertFiveLegend", 0, 39, 0.8, 5),
       directScenario("expertOpen", 1, 40, 0.1, 8),
       directScenario("masterOpen", 0, 3, 1.2, 8),
@@ -110,6 +111,7 @@ function completeDirect({ seeds = 6 } = {}) {
       { label: "입문자 직접 플레이 표본", pass: true },
       { label: "일반 직접 플레이 표본", pass: true },
       { label: "중급자 직접 플레이 표본", pass: true },
+      { label: "중급자 직접 플레이 표본은 제한 없음", pass: true },
       { label: "고수 직접 플레이 표본", pass: true },
       { label: "초고수 직접 플레이 표본", pass: true },
     ],
@@ -271,7 +273,31 @@ describe("balance-audit assert", () => {
     ]);
 
     expect(failed.status).toBe(1);
-    expect(failed.stdout).toContain("브라우저 직접 플레이형 자동 표본 범위 | FAIL | 9/9 target scenarios, 2/6 seeds");
+    expect(failed.stdout).toContain("브라우저 직접 플레이형 자동 표본 범위 | FAIL | 10/10 target scenarios, 2/6 seeds");
+    expect(failed.stderr).toContain("브라우저 직접 플레이형 자동 표본 범위");
+  });
+
+  it("브라우저 직접 입력 증거는 중급자 제한 없음 시나리오도 포함해야 한다", () => {
+    const direct = completeDirect();
+    direct.scenarios = direct.scenarios.filter((item) => item.id !== "intermediateOpen");
+    const paths = {
+      balance: writeJson("balance.json", completeBalance()),
+      browser: writeJson("browser.json", completeBrowser()),
+      direct: writeJson("direct.json", direct),
+      manual: writeJson("manual.json", completeManual()),
+    };
+
+    const failed = runAuditFailure([
+      `--balance=${paths.balance}`,
+      `--browser=${paths.browser}`,
+      `--direct=${paths.direct}`,
+      `--manual=${paths.manual}`,
+      "--assert",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stdout).toContain("브라우저 직접 플레이형 자동 표본 범위 | MISSING | 9/10 target scenarios");
+    expect(failed.stdout).toContain("브라우저 직접: 중급자 제한 없음 안정권 | MISSING");
     expect(failed.stderr).toContain("브라우저 직접 플레이형 자동 표본 범위");
   });
 

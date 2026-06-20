@@ -87,6 +87,13 @@ const SCENARIOS = [
     expectation: "5전설 이상부터 중급자 클리어권에 들어가야 한다.",
   },
   {
+    id: "intermediateOpen",
+    label: "중급자 / 제한 없음 직접 플레이",
+    difficulty: "intermediate",
+    options: {},
+    expectation: "중급자는 충분한 전설 축적을 허용하면 안정적인 클리어권이어야 한다.",
+  },
+  {
     id: "expertFiveLegend",
     label: "고수 / 전설 최대 5개 직접 플레이",
     difficulty: "expert",
@@ -505,6 +512,7 @@ function evaluateObservations(results) {
   const normalTwoLegend = scenarioById(results, "normalTwoLegend");
   const intermediateTwoLegend = scenarioById(results, "intermediateTwoLegend");
   const intermediateFiveLegend = scenarioById(results, "intermediateFiveLegend");
+  const intermediateOpen = scenarioById(results, "intermediateOpen");
   const expertFiveLegend = scenarioById(results, "expertFiveLegend");
   const expertOpen = scenarioById(results, "expertOpen");
   const masterOpen = scenarioById(results, "masterOpen");
@@ -537,6 +545,15 @@ function evaluateObservations(results) {
           intermediateFiveLegend.avgRound >= intermediateTwoLegend.avgRound + 1 ||
           intermediateFiveLegend.avgPressureRatio < intermediateTwoLegend.avgPressureRatio),
       detail: `2전설 ${pct(intermediateTwoLegend.clearRate)} ${intermediateTwoLegend.avgRound.toFixed(1)}R 압박 ${pct(intermediateTwoLegend.avgPressureRatio)}, 5전설 ${pct(intermediateFiveLegend.clearRate)} ${intermediateFiveLegend.avgRound.toFixed(1)}R 압박 ${pct(intermediateFiveLegend.avgPressureRatio)}`,
+    });
+  }
+  if (intermediateFiveLegend && intermediateOpen) {
+    gates.push({
+      label: "중급자 직접 플레이 표본은 제한 없음에서 안정권",
+      pass: clearAccess(intermediateOpen, { minClearRate: 0.7, minAvgRound: 39.5 }) &&
+        intermediateOpen.clearRate >= intermediateFiveLegend.clearRate &&
+        intermediateOpen.avgPressureRatio <= intermediateFiveLegend.avgPressureRatio,
+      detail: `5전설 ${pct(intermediateFiveLegend.clearRate)} ${intermediateFiveLegend.avgRound.toFixed(1)}R 압박 ${pct(intermediateFiveLegend.avgPressureRatio)}, 제한 없음 ${pct(intermediateOpen.clearRate)} ${intermediateOpen.avgRound.toFixed(1)}R 압박 ${pct(intermediateOpen.avgPressureRatio)}`,
     });
   }
   if (expertFiveLegend && expertOpen) {

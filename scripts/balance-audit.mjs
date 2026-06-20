@@ -603,6 +603,7 @@ function buildRows(balance, browser, direct, manual, codex) {
     "normalTwoLegend",
     "intermediateTwoLegend",
     "intermediateFiveLegend",
+    "intermediateOpen",
     "expertFiveLegend",
     "expertOpen",
     "masterOpen",
@@ -630,6 +631,7 @@ function buildRows(balance, browser, direct, manual, codex) {
   const directNormalTwo = directScenario(direct, "normalTwoLegend");
   const directIntermediateTwo = directScenario(direct, "intermediateTwoLegend");
   const directIntermediateFive = directScenario(direct, "intermediateFiveLegend");
+  const directIntermediateOpen = directScenario(direct, "intermediateOpen");
   const directExpertFive = directScenario(direct, "expertFiveLegend");
   const directExpertOpen = directScenario(direct, "expertOpen");
   const directMaster = directScenario(direct, "masterOpen");
@@ -642,6 +644,12 @@ function buildRows(balance, browser, direct, manual, codex) {
   const directIntermediatePass = directObservation(direct, "중급자 직접 플레이 표본")?.pass ??
     (!!directIntermediateTwo && Number(directIntermediateTwo.clearRate ?? 1) <= 0.1 &&
       directClearAccess(directIntermediateFive) && directBetterThan(directIntermediateTwo, directIntermediateFive));
+  const directIntermediateOpenObservation = directObservation(direct, "중급자 직접 플레이 표본은 제한 없음")?.pass;
+  const directIntermediateOpenPass = !!directIntermediateFive && !!directIntermediateOpen &&
+    directClearAccess(directIntermediateOpen, { minClearRate: 0.7, minAvgRound: 39.5 }) &&
+    Number(directIntermediateOpen.clearRate ?? 0) >= Number(directIntermediateFive.clearRate ?? 1) &&
+    Number(directIntermediateOpen.avgPressureRatio ?? 1) <= Number(directIntermediateFive.avgPressureRatio ?? 0) &&
+    (directIntermediateOpenObservation ?? true);
   const directExpertPass = directObservation(direct, "고수 직접 플레이 표본")?.pass ??
     (!!directExpertFive && Number(directExpertFive.clearRate ?? 1) <= 0.1 &&
       directClearAccess(directExpertOpen) && directBetterThan(directExpertFive, directExpertOpen));
@@ -666,6 +674,12 @@ function buildRows(balance, browser, direct, manual, codex) {
     evidence: `2전설 ${directText(directIntermediateTwo)}; 5전설 ${directText(directIntermediateFive)}`,
     pass: directIntermediatePass,
     missing: !direct || !directIntermediateTwo || !directIntermediateFive,
+  });
+  rows.push({
+    req: "브라우저 직접: 중급자 제한 없음 안정권",
+    evidence: `5전설 ${directText(directIntermediateFive)}; 제한 없음 ${directText(directIntermediateOpen)}`,
+    pass: directIntermediateOpenPass,
+    missing: !direct || !directIntermediateFive || !directIntermediateOpen,
   });
   rows.push({
     req: "브라우저 직접: 고수는 5전설보다 높은 성장 필요",
