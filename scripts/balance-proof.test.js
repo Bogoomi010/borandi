@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -57,6 +57,56 @@ function completeManualWithInvalidSession() {
 }
 
 describe("balance-proof require-complete", () => {
+  it("증거 갱신은 browser-direct 스크린샷 경로를 전달한다", () => {
+    const port = 59597;
+    const fakeYarn = join(tempDir, "yarn");
+    const logPath = join(tempDir, "fake-yarn.log");
+    writeFileSync(fakeYarn, `#!/bin/sh
+printf '%s\\n' "$*" >> "$FAKE_YARN_LOG"
+if [ "$1" = "dev" ]; then
+  port=""
+  prev=""
+  for arg in "$@"; do
+    if [ "$prev" = "--port" ]; then port="$arg"; fi
+    prev="$arg"
+  done
+  exec node -e "require('node:http').createServer((_, res) => res.end('ok')).listen(Number(process.argv[1]), '127.0.0.1')" "$port"
+fi
+exit 0
+`, "utf8");
+    chmodSync(fakeYarn, 0o755);
+
+    const browserShots = join(tempDir, "browser-shots");
+    const directShots = join(tempDir, "direct-shots");
+    const result = spawnSync(process.execPath, [
+      "scripts/balance-proof.mjs",
+      "--host=127.0.0.1",
+      `--port=${port}`,
+      `--manual=${join(tempDir, "manual.json")}`,
+      `--balance=${join(tempDir, "balance.json")}`,
+      `--browser=${join(tempDir, "browser.json")}`,
+      `--direct=${join(tempDir, "direct.json")}`,
+      `--out=${join(tempDir, "audit.md")}`,
+      `--screenshots=${browserShots}`,
+      `--direct-screenshots=${directShots}`,
+      "--seeds=1",
+      "--direct-seeds=1",
+    ], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${tempDir}:${process.env.PATH}`,
+        FAKE_YARN_LOG: logPath,
+      },
+    });
+
+    expect(result.status).toBe(0);
+    const calls = readFileSync(logPath, "utf8");
+    expect(calls).toContain(`browser-balance --url=http://127.0.0.1:${port}/ --json=${join(tempDir, "browser.json")} --screenshots=${browserShots}`);
+    expect(calls).toContain(`browser-direct --url=http://127.0.0.1:${port}/ --seeds=1 --strict --json=${join(tempDir, "direct.json")} --screenshots=${directShots}`);
+  });
+
   it("수동 증거가 없으면 자동 게이트를 시작하기 전에 실패한다", () => {
     const manualPath = join(tempDir, "missing-manual.json");
     const result = spawnSync(process.execPath, [
