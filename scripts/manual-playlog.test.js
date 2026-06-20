@@ -301,6 +301,8 @@ describe("manual-playlog plan", () => {
     expect(preflight.pending[0].finishCommandTemplate).toContain("yarn manual-playlog --finish='novice-1-PENDING-SEED-20260620T020000000Z'");
     expect(preflight.pending[0]).toMatchObject({
       targetMinutes: 12,
+      targetReadyAt: "2026-06-20T02:12:00.000Z",
+      remainingTargetSeconds: 0,
       remainingTargetMinutes: 0,
       targetReady: true,
     });
@@ -313,6 +315,7 @@ describe("manual-playlog plan", () => {
   it("pending은 시작 마커의 12분 목표까지 남은 시간을 보여준다", () => {
     const out = makeTempPath("pending-timer.json");
     const startedAt = new Date(Date.now() - 5 * 60_000).toISOString();
+    const targetReadyAt = new Date(Date.parse(startedAt) + 12 * 60_000).toISOString();
     runManualPlaylog([
       `--out=${out}`,
       "--start",
@@ -330,14 +333,19 @@ describe("manual-playlog plan", () => {
     expect(pending.pending[0]).toMatchObject({
       id: "timer-run",
       targetMinutes: 12,
+      targetReadyAt,
       targetReady: false,
     });
     expect(pending.pending[0].elapsedMinutes).toBeGreaterThanOrEqual(4.9);
     expect(pending.pending[0].elapsedMinutes).toBeLessThan(6);
+    expect(pending.pending[0].remainingTargetSeconds).toBeGreaterThan(6 * 60);
+    expect(pending.pending[0].remainingTargetSeconds).toBeLessThanOrEqual(7.1 * 60);
     expect(pending.pending[0].remainingTargetMinutes).toBeGreaterThan(6);
     expect(pending.pending[0].remainingTargetMinutes).toBeLessThanOrEqual(7.1);
     expect(text).toContain("timer-run");
     expect(text).toContain("경과: 12분까지");
+    expect(text).toContain(`12분 기준 시각: ${targetReadyAt}`);
+    expect(text).toContain("남은 초:");
     expect(text).toContain("분 남음");
   });
 
@@ -1461,7 +1469,14 @@ describe("manual-playlog plan", () => {
     expect(pending.pending[0].finishDryRunCommandTemplate).toContain("yarn manual-playlog --finish='normal-run-1'");
     expect(pending.pending[0].finishDryRunCommandTemplate).toContain("--dry-run");
     expect(pending.pending[0].finishCommandTemplate).toContain("--round=ROUND_REACHED");
+    expect(pending.pending[0]).toMatchObject({
+      targetReadyAt: "2026-06-20T00:12:00.000Z",
+      remainingTargetSeconds: 0,
+      targetReady: true,
+    });
     const pendingText = runManualPlaylog([`--out=${out}`, "--pending"]);
+    expect(pendingText).toContain("12분 기준 시각: 2026-06-20T00:12:00.000Z");
+    expect(pendingText).not.toContain("남은 초:");
     expect(pendingText).toContain("저장 전 검증 템플릿: yarn manual-playlog --finish='normal-run-1'");
     expect(pendingText).toContain("마무리 템플릿: yarn manual-playlog --finish='normal-run-1'");
     expect(summaryBeforeFinish.pendingCount).toBe(1);
@@ -1471,6 +1486,7 @@ describe("manual-playlog plan", () => {
     const summaryText = runManualPlaylog([`--out=${out}`, "--summary"]);
     expect(summaryText).toContain("PENDING 아직 finish되지 않은 시작 마커");
     expect(summaryText).toContain("경과: 12분 목표 충족");
+    expect(summaryText).toContain("12분 기준 시각: 2026-06-20T00:12:00.000Z");
     expect(summaryText).toContain("저장 전 검증 템플릿: yarn manual-playlog --finish='normal-run-1'");
     expect(summaryText).toContain("마무리 템플릿: yarn manual-playlog --finish='normal-run-1'");
     expect(summaryText).toContain("새 시작 마커 추천은 pending 시작 마커를 finish한 뒤 다시 표시됩니다.");
@@ -1478,11 +1494,16 @@ describe("manual-playlog plan", () => {
     const nextBeforeFinish = runManualPlaylog([`--out=${out}`, "--next"]);
     const nextJsonBeforeFinish = JSON.parse(runManualPlaylog([`--out=${out}`, "--next-json"]));
     expect(nextBeforeFinish).toContain("PENDING 먼저 finish해야 하는 시작 마커가 있습니다.");
+    expect(nextBeforeFinish).toContain("12분 기준 시각: 2026-06-20T00:12:00.000Z");
     expect(nextBeforeFinish).toContain("저장 전 검증 템플릿: yarn manual-playlog --finish='normal-run-1'");
     expect(nextBeforeFinish).not.toContain("추천 시작 마커:");
     expect(nextJsonBeforeFinish.blockedByPendingStartMarkers).toBe(true);
     expect(nextJsonBeforeFinish.next).toBeNull();
     expect(nextJsonBeforeFinish.pending).toHaveLength(1);
+    expect(nextJsonBeforeFinish.pending[0].targetReadyAt).toBe("2026-06-20T00:12:00.000Z");
+    const pendingSheet = runManualPlaylog([`--out=${out}`, "--sheet"]);
+    expect(pendingSheet).toContain("| id | 난이도 | 시드 | 경과 | 12분 기준 시각 | 저장 전 검증 |");
+    expect(pendingSheet).toContain("2026-06-20T00:12:00.000Z");
 
     const finishOutput = runManualPlaylog([
       `--out=${out}`,

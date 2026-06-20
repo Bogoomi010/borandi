@@ -697,6 +697,7 @@ function printSummary() {
     for (const session of summary.pending) {
       console.log(`  - ${session.id}: ${session.difficulty} stage=${session.stage} seed=${session.seed} startedAt=${session.startedAt}`);
       console.log(`    경과: ${pendingTimingLabel(session)}`);
+      printPendingTimingDetails(session, "    ");
       if (session.finishDryRunCommandTemplate) {
         console.log(`    저장 전 검증 템플릿: ${session.finishDryRunCommandTemplate}`);
       }
@@ -825,14 +826,15 @@ function printManualSheet() {
     console.log("");
     console.log("## 먼저 닫아야 할 시작 마커");
     console.log("");
-    console.log("| id | 난이도 | 시드 | 경과 | 저장 전 검증 |");
-    console.log("| --- | --- | --- | --- | --- |");
+    console.log("| id | 난이도 | 시드 | 경과 | 12분 기준 시각 | 저장 전 검증 |");
+    console.log("| --- | --- | --- | --- | --- | --- |");
     for (const pending of next.pending) {
       console.log([
         markdownCell(pending.id),
         markdownCell(pending.difficulty),
         markdownCell(pending.seed),
         markdownCell(pendingTimingLabel(pending)),
+        markdownCell(pending.targetReadyAt),
         markdownCell(pending.finishDryRunCommandTemplate ?? ""),
       ].join(" | ").replace(/^/, "| ").replace(/$/, " |"));
     }
@@ -939,6 +941,7 @@ function printNext() {
     for (const session of next.pending) {
       console.log(`  - ${session.id}: ${session.difficulty} stage=${session.stage} seed=${session.seed} startedAt=${session.startedAt}`);
       console.log(`    경과: ${pendingTimingLabel(session)}`);
+      printPendingTimingDetails(session, "    ");
       if (session.finishDryRunCommandTemplate) {
         console.log(`    저장 전 검증 템플릿: ${session.finishDryRunCommandTemplate}`);
       }
@@ -1048,6 +1051,7 @@ function printPreflight() {
     for (const session of summary.pending) {
       console.log(`  - ${session.id}: ${session.difficulty} stage=${session.stage} seed=${session.seed} startedAt=${session.startedAt}`);
       console.log(`    경과: ${pendingTimingLabel(session)}`);
+      printPendingTimingDetails(session, "    ");
       if (session.finishDryRunCommandTemplate) {
         console.log(`    저장 전 검증 템플릿: ${session.finishDryRunCommandTemplate}`);
       }
@@ -1155,15 +1159,24 @@ function targetPlanForNotes(notes) {
 function pendingTiming(startedAt) {
   const startedAtMs = new Date(String(startedAt ?? "")).getTime();
   const nowMs = Date.now();
-  const elapsedSeconds = Number.isFinite(startedAtMs)
+  const hasStartedAt = Number.isFinite(startedAtMs);
+  const targetReadyAtMs = hasStartedAt
+    ? startedAtMs + (PENDING_TARGET_MINUTES * 60_000)
+    : NaN;
+  const elapsedSeconds = hasStartedAt
     ? Math.max(0, Math.floor((nowMs - startedAtMs) / 1000))
     : 0;
   const elapsedMinutes = elapsedSeconds / 60;
+  const remainingTargetSeconds = Number.isFinite(targetReadyAtMs)
+    ? Math.max(0, Math.ceil((targetReadyAtMs - nowMs) / 1000))
+    : PENDING_TARGET_MINUTES * 60;
   const remainingTargetMinutes = Math.max(0, PENDING_TARGET_MINUTES - elapsedMinutes);
   return {
     elapsedSeconds,
     elapsedMinutes: Number(elapsedMinutes.toFixed(1)),
     targetMinutes: PENDING_TARGET_MINUTES,
+    targetReadyAt: Number.isFinite(targetReadyAtMs) ? new Date(targetReadyAtMs).toISOString() : "",
+    remainingTargetSeconds,
     remainingTargetMinutes: Number(remainingTargetMinutes.toFixed(1)),
     targetReady: elapsedMinutes >= PENDING_TARGET_MINUTES,
   };
@@ -1190,6 +1203,15 @@ function pendingSessionWithCommands(session) {
       ? finishDryRunCommandTemplate({ id, next })
       : "",
   };
+}
+
+function printPendingTimingDetails(session, indent = "  ") {
+  if (session.targetReadyAt) {
+    console.log(`${indent}12분 기준 시각: ${session.targetReadyAt}`);
+  }
+  if (!session.targetReady) {
+    console.log(`${indent}남은 초: ${session.remainingTargetSeconds}`);
+  }
 }
 
 function latestPendingSession(log) {
@@ -1249,6 +1271,7 @@ function printPending() {
   for (const session of pending.pending) {
     console.log(`- ${session.id}: ${session.difficulty} stage=${session.stage} seed=${session.seed} startedAt=${session.startedAt}`);
     console.log(`  경과: ${pendingTimingLabel(session)}`);
+    printPendingTimingDetails(session, "  ");
     if (session.finishDryRunCommandTemplate) {
       console.log(`  저장 전 검증 템플릿: ${session.finishDryRunCommandTemplate}`);
     }
