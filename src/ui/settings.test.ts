@@ -1,7 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { FINAL_STAGE } from "../data/stages";
 import { FINAL_ROUND } from "../data/waves";
-import { canUnlockNextStage, defaultNewRunStageId, loadProfile, playableStageId, profileRecordRun } from "./settings";
+import {
+  canUnlockNextStage,
+  defaultNewRunStageId,
+  initialNewRunStageId,
+  loadProfile,
+  playableStageId,
+  profileRecordRun,
+} from "./settings";
 
 class MemoryStorage implements Storage {
   private data = new Map<string, string>();
@@ -84,6 +91,13 @@ describe("프로필 맵 해금", () => {
     expect(defaultNewRunStageId(2, 2)).toBe(2);
     expect(defaultNewRunStageId(7, 3)).toBe(3);
     expect(defaultNewRunStageId(0, 4)).toBe(1);
+  });
+
+  it("해금된 맵 버튼처럼 명시적으로 요청한 경우에만 새 게임 모달에서 다음 맵을 미리 고른다", () => {
+    expect(initialNewRunStageId(1, 2)).toBe(1);
+    expect(initialNewRunStageId(1, 2, 2)).toBe(2);
+    expect(initialNewRunStageId(1, 2, 3)).toBe(2);
+    expect(initialNewRunStageId(3, 2, 0)).toBe(1);
   });
 
   it("40라운드에 도달해도 패배한 판이면 다음 맵을 해금하지 않는다", () => {

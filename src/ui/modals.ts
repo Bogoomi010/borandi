@@ -25,7 +25,7 @@ import {
   type BalanceScenarioResult,
 } from "../sim/balanceGate";
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
-import { defaultNewRunStageId, loadProfile } from "./settings";
+import { initialNewRunStageId, loadProfile } from "./settings";
 import { FINAL_ROUND } from "../data/waves";
 import { manualProofTargetFor, type ManualProofTargetStatus } from "../core/manualProof";
 import { manualProofResultChecklist, manualProofResultTarget } from "../core/manualProofResult";
@@ -519,7 +519,7 @@ export function maybeShowResult(ctx: AppCtx) {
       const nextMapBtn = el("button", "primary", "새 게임에서 해금된 맵 고르기");
       nextMapBtn.onclick = () => {
         close();
-        openNewRunModal(ctx);
+        openNewRunModal(ctx, true, nextStage.id);
       };
       row.appendChild(nextMapBtn);
     }
@@ -557,7 +557,7 @@ function manualTargetHint(difficultyId: DifficultyId): string {
     .join(" / ");
 }
 
-export function openNewRunModal(ctx: AppCtx, dismissable = true) {
+export function openNewRunModal(ctx: AppCtx, dismissable = true, preferredStageId?: number) {
   openModal((body, close) => {
     body.appendChild(el("h2", "", "새 게임"));
 
@@ -565,7 +565,7 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
     const unlockedStage = Math.max(1, Math.min(profile.unlockedStage, STAGES.length));
     body.appendChild(el("h3", "", "난이도"));
     let chosen: DifficultyId = "novice";
-    let chosenStage = defaultNewRunStageId(ctx.game.state.stageId, unlockedStage);
+    let chosenStage = initialNewRunStageId(ctx.game.state.stageId, unlockedStage, preferredStageId);
     const diffRow = el("div", "choice-grid difficulty-choice-grid");
     const diffBtns: HTMLButtonElement[] = [];
     for (const d of DIFFICULTIES) {
