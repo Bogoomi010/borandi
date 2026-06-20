@@ -95,9 +95,9 @@ describe("manual-playlog plan", () => {
 
     expect(output).toContain("PASS 새 수동 플레이 시작 가능");
     expect(output).toContain("추천 시작 검증:");
-    expect(output).toContain(`yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`);
+    expect(output).toContain(`yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`);
     expect(output).toContain("추천 시작 마커:");
-    expect(output).toContain(`yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)}`);
+    expect(output).toContain(`yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)}`);
     expect(output).toContain("실행 순서:");
     expect(output).toContain("1. 게임에서 다음 목표 난이도로 새 게임을 시작하고 상단의 실제 시드를 확인");
     expect(output).toContain("3. 검증이 통과하면 같은 명령에서 --dry-run을 빼고 시작 마커 저장");
@@ -114,8 +114,8 @@ describe("manual-playlog plan", () => {
     expect(preflight.pendingCount).toBe(0);
     expect(preflight.invalidSessionCount).toBe(0);
     expect(preflight.next.label).toBe("입문자 무전설 40R 클리어");
-    expect(preflight.nextStartCommandTemplate).toBe(`yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)}`);
-    expect(preflight.nextStartDryRunCommandTemplate).toBe(`yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`);
+    expect(preflight.nextStartCommandTemplate).toBe(`yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)}`);
+    expect(preflight.nextStartDryRunCommandTemplate).toBe(`yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`);
     expect(preflight.startWorkflow).toEqual([
       "게임에서 다음 목표 난이도로 새 게임을 시작하고 상단의 실제 시드를 확인",
       "추천 시작 검증 명령의 GAME_SEED_HERE를 실제 시드로 바꿔 --dry-run 실행",
@@ -222,8 +222,12 @@ describe("manual-playlog plan", () => {
       startNextCommandTemplate: `yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
       startNextDryRunCommandTemplate: `yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`,
     });
-    expect(plan.steps.slice(0, 6).map((step) => step.startNextCommandTemplate)).toEqual(Array(6).fill(`yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)}`));
-    expect(plan.steps.slice(0, 6).map((step) => step.startNextDryRunCommandTemplate)).toEqual(Array(6).fill(`yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`));
+    expect(plan.steps.slice(0, 6).map((step) => step.startNextCommandTemplate)).toEqual([
+      "novice", "normal", "intermediate", "expert", "expert", "master",
+    ].map((difficulty) => `yarn manual-playlog --start-next --difficulty=${difficulty} --seed=GAME_SEED_HERE --out=${shellArg(out)}`));
+    expect(plan.steps.slice(0, 6).map((step) => step.startNextDryRunCommandTemplate)).toEqual([
+      "novice", "normal", "intermediate", "expert", "expert", "master",
+    ].map((difficulty) => `yarn manual-playlog --start-next --difficulty=${difficulty} --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`));
   });
 
   it("예시 로그는 실제 2시간 수동 증거 계획에서 제외된다", () => {
@@ -250,8 +254,8 @@ describe("manual-playlog plan", () => {
       minutes: 12,
       startCommandTemplate: `yarn manual-playlog --start --difficulty=novice --stage=1 --seed=GAME_SEED_HERE --notes='입문자 무전설 40R 클리어' --out=${shellArg(out)}`,
       startCommandDryRunTemplate: `yarn manual-playlog --start --difficulty=novice --stage=1 --seed=GAME_SEED_HERE --notes='입문자 무전설 40R 클리어' --out=${shellArg(out)} --dry-run`,
-      startNextCommandTemplate: `yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
-      startNextDryRunCommandTemplate: `yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`,
+      startNextCommandTemplate: `yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
+      startNextDryRunCommandTemplate: `yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`,
       finishTemplate: {
         result: "clear",
         round: "40",
@@ -261,10 +265,10 @@ describe("manual-playlog plan", () => {
     });
     const text = runManualPlaylog([`--out=${out}`, "--next"]);
     expect(text).toContain("추천 시작 검증:");
-    expect(text).toContain("yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
+    expect(text).toContain("yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
     expect(text).toContain("--dry-run");
     expect(text).toContain("추천 시작 마커:");
-    expect(text).toContain("yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
+    expect(text).toContain("yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
     expect(text).toContain("직접 시작 검증:");
     expect(text).toContain("직접 시작 마커:");
     expect(text).toContain("마무리 조건: result=clear round=40 legends=0 maxGrade=hero");
@@ -283,17 +287,17 @@ describe("manual-playlog plan", () => {
     expect(summary.targetRowsTotal).toBe(6);
     expect(summary.targetRowsRemaining).toBe(6);
     expect(text).toContain("추천 시작 검증:");
-    expect(text).toContain("yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
+    expect(text).toContain("yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
     expect(text).toContain("--dry-run");
     expect(text).toContain("추천 시작 마커:");
-    expect(text).toContain("yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
+    expect(text).toContain("yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
     expect(text).toContain("GAME_SEED_HERE는 새 게임 시작 후 상단에 표시된 실제 시드로 바꾸세요.");
     expect(summary.next).toMatchObject({
       kind: "target-session",
       difficulty: "novice",
       label: "입문자 무전설 40R 클리어",
-      startNextCommandTemplate: `yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
-      startNextDryRunCommandTemplate: `yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`,
+      startNextCommandTemplate: `yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
+      startNextDryRunCommandTemplate: `yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`,
       finishTemplate: {
         result: "clear",
         round: "40",
@@ -767,9 +771,9 @@ describe("manual-playlog plan", () => {
     expect(failed.status).toBe(1);
     expect(failed.stdout).toContain("수동 증거 미충족");
     expect(failed.stderr).toContain("다음 필요 세션: 입문자 무전설 40R 클리어");
-    expect(failed.stderr).toContain("추천 시작 검증: yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
+    expect(failed.stderr).toContain("추천 시작 검증: yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
     expect(failed.stderr).toContain("--dry-run");
-    expect(failed.stderr).toContain("추천 시작 마커: yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
+    expect(failed.stderr).toContain("추천 시작 마커: yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
   });
 
   it("dry-run 직접 저장은 검증 미리보기만 출력하고 로그 파일을 만들지 않는다", () => {
@@ -1085,7 +1089,7 @@ describe("manual-playlog plan", () => {
       seconds: 900,
     });
     expect(finishOutput).toContain("다음 필요 세션: 입문자 무전설 40R 클리어");
-    expect(finishOutput).toContain("- 추천 시작 마커: yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
+    expect(finishOutput).toContain("- 추천 시작 마커: yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
   });
 
   it("직접 저장 명령도 같은 시작 마커가 있으면 자동으로 연결해 닫는다", () => {

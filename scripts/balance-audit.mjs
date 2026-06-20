@@ -446,7 +446,7 @@ function manualNextMissing(manual) {
 
 function startNextCommandTemplate(step) {
   if (!step) return "";
-  const difficultyArg = step.difficulty === "any" ? " --difficulty=DIFFICULTY" : "";
+  const difficultyArg = ` --difficulty=${step.difficulty === "any" ? "DIFFICULTY" : step.difficulty}`;
   const outArg = manualPath === DEFAULT_MANUAL_LOG_PATH ? "" : ` --out=${shellArg(manualPath)}`;
   return `yarn manual-playlog --start-next${difficultyArg} --seed=GAME_SEED_HERE${outArg}`;
 }
