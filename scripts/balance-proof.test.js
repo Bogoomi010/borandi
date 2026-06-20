@@ -148,6 +148,13 @@ exit 0
     const manualSheet = join(tempDir, "missing-manual-sheet.md");
     const manualPlan = join(tempDir, "missing-manual-plan.json");
     const manualPreflight = join(tempDir, "missing-manual-preflight.json");
+    writeFileSync(manualPreflight, JSON.stringify({
+      remainingMinutes: 0,
+      targetRowsPassed: 6,
+      targetRowsTotal: 6,
+    }), "utf8");
+    writeFileSync(manualSheet, "STALE COMPLETE SHEET", "utf8");
+    writeFileSync(manualPlan, JSON.stringify({ passed: true, steps: [] }), "utf8");
     const result = spawnSync(process.execPath, [
       "scripts/balance-proof.mjs",
       "--require-complete",
@@ -169,7 +176,11 @@ exit 0
     expect(result.status).toBe(1);
     expect(result.stdout).toContain("$ yarn manual-playlog");
     expect(result.stdout).not.toContain("$ yarn balance ");
-    expect(JSON.parse(readFileSync(manualPreflight, "utf8"))).toMatchObject({ remainingMinutes: 120 });
+    expect(JSON.parse(readFileSync(manualPreflight, "utf8"))).toMatchObject({
+      remainingMinutes: 120,
+      targetRowsPassed: 0,
+      targetRowsTotal: 6,
+    });
     expect(readFileSync(manualSheet, "utf8")).toContain("# 수동 밸런스 플레이 시트");
     expect(JSON.parse(readFileSync(manualPlan, "utf8"))).toMatchObject({ passed: false });
     expect(result.stdout).toContain(`수동 플레이 preflight JSON 저장: ${manualPreflight}`);
@@ -185,6 +196,9 @@ exit 0
 
   it("미완료 수동 시작 마커가 있으면 finish 템플릿을 보여주고 자동 게이트 전에 실패한다", () => {
     const manualPath = join(tempDir, "pending-manual.json");
+    const manualSheet = join(tempDir, "pending-manual-sheet.md");
+    const manualPlan = join(tempDir, "pending-manual-plan.json");
+    const manualPreflight = join(tempDir, "pending-manual-preflight.json");
     writeFileSync(manualPath, JSON.stringify({
       sessions: [],
       schemaVersion: 1,
@@ -211,6 +225,9 @@ exit 0
       `--direct=${join(tempDir, "direct.json")}`,
       `--out=${join(tempDir, "audit.md")}`,
       `--screenshots=${join(tempDir, "shots")}`,
+      `--manual-sheet=${manualSheet}`,
+      `--manual-plan=${manualPlan}`,
+      `--manual-preflight=${manualPreflight}`,
       "--port=59999",
     ], {
       cwd: process.cwd(),
@@ -230,6 +247,9 @@ exit 0
 
   it("무효 수동 세션이 있으면 자동 게이트 전에 실패한다", () => {
     const manualPath = join(tempDir, "invalid-manual.json");
+    const manualSheet = join(tempDir, "invalid-manual-sheet.md");
+    const manualPlan = join(tempDir, "invalid-manual-plan.json");
+    const manualPreflight = join(tempDir, "invalid-manual-preflight.json");
     writeFileSync(manualPath, JSON.stringify(completeManualWithInvalidSession(), null, 2), "utf8");
 
     const result = spawnSync(process.execPath, [
@@ -241,6 +261,9 @@ exit 0
       `--direct=${join(tempDir, "direct.json")}`,
       `--out=${join(tempDir, "audit.md")}`,
       `--screenshots=${join(tempDir, "shots")}`,
+      `--manual-sheet=${manualSheet}`,
+      `--manual-plan=${manualPlan}`,
+      `--manual-preflight=${manualPreflight}`,
       "--port=59999",
     ], {
       cwd: process.cwd(),
