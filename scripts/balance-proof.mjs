@@ -21,6 +21,7 @@ const directPath = String(args.direct ?? "output/browser-direct.json");
 const manualPath = String(args.manual ?? "output/manual-balance-playlog.json");
 const auditPath = String(args.out ?? "output/balance-audit.md");
 const manualSheetPath = String(args["manual-sheet"] ?? "output/manual-balance-play-sheet.md");
+const manualPlanPath = String(args["manual-plan"] ?? "output/manual-balance-play-plan.json");
 const browserScreenshots = String(args.screenshots ?? "output/browser-balance-shots");
 const directScreenshots = String(args["direct-screenshots"] ?? "output/browser-direct-shots");
 const directCodexLog = String(args["direct-codex-log"] ?? "output/codex-direct-playlog.json");
@@ -189,6 +190,14 @@ try {
   ]);
   writeTextFile(manualSheetPath, manualSheet);
   console.log(`\n수동 플레이 시트 저장: ${manualSheetPath}`);
+  const manualPlan = await runCapture("yarn", [
+    "--silent",
+    "manual-playlog",
+    `--out=${manualPath}`,
+    "--plan-json",
+  ]);
+  writeTextFile(manualPlanPath, manualPlan);
+  console.log(`수동 플레이 계획 JSON 저장: ${manualPlanPath}`);
 
   console.log(requireComplete
     ? `\n밸런스 완료 증거 검증 완료: ${auditPath}`

@@ -80,6 +80,13 @@ if [ "$1" = "manual-playlog" ]; then
     fi
   done
 fi
+if [ "$1" = "--silent" ] && [ "$2" = "manual-playlog" ]; then
+  for arg in "$@"; do
+    if [ "$arg" = "--plan-json" ]; then
+      printf '%s\\n' '{"passed":false,"steps":[{"label":"입문자 무전설 40R 클리어"}]}'
+    fi
+  done
+fi
 exit 0
 `, "utf8");
     chmodSync(fakeYarn, 0o755);
@@ -88,6 +95,7 @@ exit 0
     const directShots = join(tempDir, "direct-shots");
     const directCodexLog = join(tempDir, "codex-direct.json");
     const manualSheet = join(tempDir, "manual-sheet.md");
+    const manualPlan = join(tempDir, "manual-plan.json");
     const result = spawnSync(process.execPath, [
       "scripts/balance-proof.mjs",
       "--host=127.0.0.1",
@@ -101,6 +109,7 @@ exit 0
       `--direct-screenshots=${directShots}`,
       `--direct-codex-log=${directCodexLog}`,
       `--manual-sheet=${manualSheet}`,
+      `--manual-plan=${manualPlan}`,
       "--seeds=1",
       "--direct-seeds=1",
     ], {
@@ -119,8 +128,11 @@ exit 0
     expect(calls).toContain(`browser-direct --url=http://127.0.0.1:${port}/ --seeds=1 --strict --json=${join(tempDir, "direct.json")} --screenshots=${directShots} --codex-log=${directCodexLog}`);
     expect(calls).toContain(`balance-audit --balance=${join(tempDir, "balance.json")} --browser=${join(tempDir, "browser.json")} --direct=${join(tempDir, "direct.json")} --manual=${join(tempDir, "manual.json")} --codex=${directCodexLog} --out=${join(tempDir, "audit.md")}`);
     expect(calls).toContain(`manual-playlog --out=${join(tempDir, "manual.json")} --sheet`);
+    expect(calls).toContain(`--silent manual-playlog --out=${join(tempDir, "manual.json")} --plan-json`);
     expect(readFileSync(manualSheet, "utf8")).toContain("# 수동 밸런스 플레이 시트");
+    expect(JSON.parse(readFileSync(manualPlan, "utf8"))).toMatchObject({ passed: false });
     expect(result.stdout).toContain(`수동 플레이 시트 저장: ${manualSheet}`);
+    expect(result.stdout).toContain(`수동 플레이 계획 JSON 저장: ${manualPlan}`);
   });
 
   it("수동 증거가 없으면 자동 게이트를 시작하기 전에 실패한다", () => {
