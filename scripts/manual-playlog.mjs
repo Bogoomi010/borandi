@@ -943,3 +943,13 @@ console.log(`- 누적 시간: ${total.toFixed(1)}분 / 120.0분`);
 console.log(`- 난이도 커버: ${[...covered].join(", ") || "없음"}`);
 console.log(`- 남은 난이도: ${missing.join(", ") || "없음"}`);
 console.log(`- 감사 통과 조건: ${total >= 120 && missing.length === 0 ? "충족" : "미충족"}`);
+
+const nextAfterSave = buildNext().next;
+console.log("");
+if (nextAfterSave) {
+  console.log(`다음 필요 세션: ${nextAfterSave.label} (${nextAfterSave.minutes.toFixed(1)}분 이상)`);
+  console.log(`- 목표: ${nextAfterSave.goal}`);
+  console.log(`- 추천 시작 마커: ${nextAfterSave.startNextCommandTemplate}`);
+} else {
+  console.log("PASS 다음에 필요한 수동 플레이 세션이 없습니다.");
+}

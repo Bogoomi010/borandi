@@ -327,7 +327,7 @@ describe("manual-playlog plan", () => {
     expect(planBeforeFinish.current.pendingCount).toBe(1);
     expect(runManualPlaylog([`--out=${out}`, "--summary"])).toContain("PENDING 아직 finish되지 않은 시작 마커");
 
-    runManualPlaylog([
+    const finishOutput = runManualPlaylog([
       `--out=${out}`,
       "--finish=normal-run-1",
       "--result=clear",
@@ -352,6 +352,8 @@ describe("manual-playlog plan", () => {
       seed: "PENDING-SEED",
       seconds: 900,
     });
+    expect(finishOutput).toContain("다음 필요 세션: 입문자 무전설 40R 클리어");
+    expect(finishOutput).toContain("- 추천 시작 마커: yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
   });
 
   it("finish-latest는 가장 최근 시작 마커만 마무리한다", () => {
@@ -435,5 +437,21 @@ describe("manual-playlog plan", () => {
     expect(plan.steps).toEqual([]);
     expect(JSON.parse(runManualPlaylog([`--out=${out}`, "--next-json"])).next).toBeNull();
     expect(runManualPlaylog([`--out=${out}`, "--assert"])).toContain("PASS 수동 플레이 증거 충족");
+    const finalOutput = runManualPlaylog([
+      `--out=${out}`,
+      "--difficulty=normal",
+      "--minutes=1",
+      "--result=quit",
+      "--stage=1",
+      "--round=1",
+      "--seed=AFTER-COMPLETE",
+      "--legends=0",
+      "--maxGrade=hero",
+      "--dataVersion=0.8.0",
+      "--stateChecksum=20000008",
+      "--startedAt=2026-06-20T03:00:00.000Z",
+      "--endedAt=2026-06-20T03:01:00.000Z",
+    ]);
+    expect(finalOutput).toContain("PASS 다음에 필요한 수동 플레이 세션이 없습니다.");
   });
 });
