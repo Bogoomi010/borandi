@@ -149,6 +149,7 @@ describe("manual-playlog plan", () => {
       seed: "NEXT-SEED",
       notes: "입문자 무전설 40R 클리어",
       startedAt: "2026-06-20T02:00:00.000Z",
+      finishCommandTemplate: "yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT",
     });
   });
 
@@ -324,6 +325,9 @@ describe("manual-playlog plan", () => {
       difficulty: "normal",
       seed: "PENDING-SEED",
     });
+    expect(pending.pending[0].finishCommandTemplate).toContain("yarn manual-playlog --finish='normal-run-1'");
+    expect(pending.pending[0].finishCommandTemplate).toContain("--round=ROUND_REACHED");
+    expect(runManualPlaylog([`--out=${out}`, "--pending"])).toContain("마무리 템플릿: yarn manual-playlog --finish='normal-run-1'");
     expect(summaryBeforeFinish.pendingCount).toBe(1);
     expect(planBeforeFinish.current.pendingCount).toBe(1);
     expect(runManualPlaylog([`--out=${out}`, "--summary"])).toContain("PENDING 아직 finish되지 않은 시작 마커");

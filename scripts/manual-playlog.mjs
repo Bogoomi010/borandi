@@ -560,6 +560,21 @@ function pendingSessions(log) {
   return (log.pendingSessions ?? []).filter((session) => !isExampleManualSession(session));
 }
 
+function targetPlanForPendingSession(session) {
+  const notes = String(session.notes ?? "");
+  return targetPlans.find((target) => target.label === notes) ?? null;
+}
+
+function pendingSessionWithCommands(session) {
+  const id = String(session.id ?? "");
+  return {
+    ...session,
+    finishCommandTemplate: id
+      ? finishCommandTemplate({ id, next: targetPlanForPendingSession(session) })
+      : "",
+  };
+}
+
 function latestPendingSession(log) {
   const pending = pendingSessions(log);
   return pending
@@ -573,7 +588,7 @@ function latestPendingSession(log) {
 
 function buildPending() {
   const log = readJson(outPath);
-  const pending = pendingSessions(log);
+  const pending = pendingSessions(log).map(pendingSessionWithCommands);
   return {
     schemaVersion: 1,
     logPath: outPath,
@@ -594,6 +609,9 @@ function printPending() {
   }
   for (const session of pending.pending) {
     console.log(`- ${session.id}: ${session.difficulty} stage=${session.stage} seed=${session.seed} startedAt=${session.startedAt}`);
+    if (session.finishCommandTemplate) {
+      console.log(`  마무리 템플릿: ${session.finishCommandTemplate}`);
+    }
   }
 }
 
