@@ -562,6 +562,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const startNextCommand = "yarn manual-playlog --start-next --seed=GAME_SEED_HERE";
     const pendingCommand = "yarn manual-playlog --pending";
     const preflightCommand = "yarn manual-playlog --preflight";
+    const preflightJsonCommand = "yarn --silent manual-playlog --preflight-json";
     const summaryJsonCommand = "yarn --silent manual-playlog --summary-json";
     if (currentStartCommand) {
       body.appendChild(el("h3", "", "현재 판 시작 마커"));
@@ -574,6 +575,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     }
     body.appendChild(el("h3", "", "상태 확인"));
     body.appendChild(el("pre", "report", preflightCommand));
+    body.appendChild(el("pre", "report", preflightJsonCommand));
     body.appendChild(el("pre", "report", pendingCommand));
     body.appendChild(el("pre", "report", nextCommand));
     body.appendChild(el("pre", "report", startNextCommand));
@@ -644,6 +646,16 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       }
     };
     row.appendChild(copyPreflight);
+    const copyPreflightJson = el("button", "", "점검JSON 복사");
+    copyPreflightJson.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(preflightJsonCommand);
+        toast("수동 플레이 시작 전 점검 JSON 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copyPreflightJson);
     const copyNext = el("button", "", "다음 세션 복사");
     copyNext.onclick = async () => {
       try {

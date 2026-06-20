@@ -39,6 +39,7 @@ function usage() {
     "                          # 다음 필요 수동 세션의 난이도/목표로 시작 마커를 저장",
     "  --pending                # 아직 finish되지 않은 시작 마커 목록 출력",
     "  --preflight              # 새 수동 세션 시작 전 무효/미완료 마커 점검",
+    "  --preflight-json         # --preflight 결과를 JSON으로 출력",
     "  --finish=RUN1 --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM",
     "                          # 시작 마커의 startedAt/difficulty/stage/seed를 사용해 결과 세션 저장",
     "  --finish-latest --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM",
@@ -675,8 +676,8 @@ function printNextJson() {
 }
 
 function printPreflight() {
-  const summary = buildSummary();
-  const blocking = summary.invalidSessionCount > 0 || summary.pendingCount > 0;
+  const preflight = buildPreflight();
+  const { summary, blocking } = preflight;
   console.log("# 수동 플레이 시작 전 점검");
   console.log(`- 로그: ${summary.logPath}${summary.logExists ? "" : " (아직 없음)"}`);
   console.log(`- 무효 세션: ${summary.invalidSessionCount}개`);
@@ -713,15 +714,51 @@ function printPreflight() {
     console.log("FAIL 새 수동 플레이 시작 전 정리 필요");
   } else {
     console.log("PASS 새 수동 플레이 시작 가능");
-    if (summary.next?.startNextCommandTemplate) {
+    if (preflight.nextStartCommandTemplate) {
       console.log("추천 시작 마커:");
-      console.log(summary.next.startNextCommandTemplate);
+      console.log(preflight.nextStartCommandTemplate);
       console.log("  GAME_SEED_HERE는 새 게임 시작 후 상단에 표시된 실제 시드로 바꾸세요.");
     }
   }
   console.log("");
   console.log(`판정: ${blocking ? "정리 필요" : "시작 가능"}`);
   if (blocking) process.exitCode = 1;
+}
+
+function buildPreflight() {
+  const summary = buildSummary();
+  const blockingReasons = [
+    ...(summary.invalidSessionCount > 0 ? ["invalidSessions"] : []),
+    ...(summary.pendingCount > 0 ? ["pendingStartMarkers"] : []),
+  ];
+  const blocking = blockingReasons.length > 0;
+  return {
+    schemaVersion: 1,
+    logPath: summary.logPath,
+    logExists: summary.logExists,
+    canStart: !blocking,
+    blocking,
+    blockingReasons,
+    invalidSessionCount: summary.invalidSessionCount,
+    invalidSessions: summary.invalidSessions,
+    pendingCount: summary.pendingCount,
+    pending: summary.pending,
+    totalMinutes: summary.totalMinutes,
+    requiredMinutes: summary.requiredMinutes,
+    remainingMinutes: summary.remainingMinutes,
+    targetRowsPassed: summary.targetRowsPassed,
+    targetRowsTotal: summary.targetRowsTotal,
+    targetRowsRemaining: summary.targetRowsRemaining,
+    next: summary.next,
+    nextStartCommandTemplate: summary.next?.startNextCommandTemplate ?? "",
+    summary,
+  };
+}
+
+function printPreflightJson() {
+  const preflight = buildPreflight();
+  console.log(`${JSON.stringify(preflight, null, 2)}`);
+  if (preflight.blocking) process.exitCode = 1;
 }
 
 function pendingSessions(log) {
@@ -1005,7 +1042,8 @@ if (args.pending === "true") {
 }
 
 if (args.preflight === "true") {
-  printPreflight();
+  if (args.json === "true" || args["preflight-json"] === "true") printPreflightJson();
+  else printPreflight();
   process.exit(process.exitCode ?? 0);
 }
 
@@ -1032,6 +1070,11 @@ if (args["next-json"] === "true") {
 if (args["pending-json"] === "true") {
   printPendingJson();
   process.exit(0);
+}
+
+if (args["preflight-json"] === "true") {
+  printPreflightJson();
+  process.exit(process.exitCode ?? 0);
 }
 
 if (args["start-next"] === "true") {

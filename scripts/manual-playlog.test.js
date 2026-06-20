@@ -76,6 +76,7 @@ describe("manual-playlog plan", () => {
 
     expect(output).toContain("사용법:");
     expect(output).toContain("--preflight              # 새 수동 세션 시작 전 무효/미완료 마커 점검");
+    expect(output).toContain("--preflight-json         # --preflight 결과를 JSON으로 출력");
     expect(output).toContain("--summary-json        # --summary --json과 동일");
     expect(output).toContain("--plan-json           # --plan --json과 동일");
     expect(output).toContain("--next-json           # --next --json과 동일");
@@ -90,6 +91,18 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("추천 시작 마커:");
     expect(output).toContain(`yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)}`);
     expect(output).toContain("판정: 시작 가능");
+  });
+
+  it("preflight-json은 시작 가능 여부와 다음 시작 명령을 구조화해서 출력한다", () => {
+    const out = makeTempPath("preflight-json-empty.json");
+    const preflight = JSON.parse(runManualPlaylog([`--out=${out}`, "--preflight-json"]));
+
+    expect(preflight.canStart).toBe(true);
+    expect(preflight.blockingReasons).toEqual([]);
+    expect(preflight.pendingCount).toBe(0);
+    expect(preflight.invalidSessionCount).toBe(0);
+    expect(preflight.next.label).toBe("입문자 무전설 40R 클리어");
+    expect(preflight.nextStartCommandTemplate).toBe(`yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)}`);
   });
 
   it("preflight는 미완료 시작 마커가 있으면 먼저 finish하도록 실패한다", () => {
@@ -108,6 +121,25 @@ describe("manual-playlog plan", () => {
     expect(failed.stdout).toContain("마무리 템플릿: yarn manual-playlog --finish='novice-1-PENDING-SEED-20260620T020000000Z'");
     expect(failed.stdout).toContain("FAIL 새 수동 플레이 시작 전 정리 필요");
     expect(failed.stdout).toContain("판정: 정리 필요");
+  });
+
+  it("preflight-json은 미완료 시작 마커가 있으면 실패 코드와 blocking 이유를 출력한다", () => {
+    const out = makeTempPath("preflight-json-pending.json");
+    runManualPlaylog([
+      `--out=${out}`,
+      "--start-next",
+      "--seed=PENDING-SEED",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+    ]);
+
+    const failed = runManualPlaylogFailure([`--out=${out}`, "--preflight-json"]);
+    const preflight = JSON.parse(failed.stdout);
+
+    expect(failed.status).toBe(1);
+    expect(preflight.canStart).toBe(false);
+    expect(preflight.blockingReasons).toEqual(["pendingStartMarkers"]);
+    expect(preflight.pendingCount).toBe(1);
+    expect(preflight.pending[0].finishCommandTemplate).toContain("yarn manual-playlog --finish='novice-1-PENDING-SEED-20260620T020000000Z'");
   });
 
   it("빈 실제 로그에는 목표 세션 6개와 총 120분 보충 계획이 나온다", () => {
