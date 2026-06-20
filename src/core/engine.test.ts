@@ -137,6 +137,18 @@ describe("조합", () => {
     expect(g.legendCommandAttackMult()).toBeCloseTo(1.24);
   });
 
+  it("중급자는 5전설 이상부터 전설 지휘 누적 한도 보너스를 받는다", () => {
+    const g = new Game("INTERMEDIATE-LIMIT-COMMAND", "intermediate");
+    const baseLimit = g.diff.enemyLimit;
+    give(g, "solar_avatar", 4);
+    expect(g.legendCommandEnemyLimitBonus()).toBe(0);
+    expect(g.enemyLimit()).toBe(baseLimit);
+
+    give(g, "chrono_marshal", 1);
+    expect(g.legendCommandEnemyLimitBonus()).toBe(12);
+    expect(g.enemyLimit()).toBe(baseLimit + 12);
+  });
+
   it("일반 난이도는 1~2전설부터 지휘 보너스를 받는다", () => {
     const g = new Game("NORMAL-COMMAND", "normal");
     expect(g.legendCommandAttackMult()).toBe(1);

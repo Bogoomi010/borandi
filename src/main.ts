@@ -557,7 +557,7 @@ function renderGameToText(): string {
     resources: {
       life: s.life, gold: s.gold,
       enemyPressure: s.enemies.length,
-      enemyLimit: game.diff.enemyLimit,
+      enemyLimit: game.enemyLimit(),
       breakTicks: s.breakTicks,
     },
     unitSummary: {
@@ -565,6 +565,7 @@ function renderGameToText(): string {
       gradeCounts,
       legendOrBetter,
       legendCommandAttackBonusPct: Math.round((game.legendCommandAttackMult() - 1) * 100),
+      legendCommandEnemyLimitBonus: game.legendCommandEnemyLimitBonus(),
       maxGrade,
     },
     boss: {
@@ -639,7 +640,7 @@ if (import.meta.env.DEV) {
           gold: game.state.gold,
           unitCap: game.diff.unitCap,
           enemyPressure: game.state.enemies.length,
-          enemyLimit: game.diff.enemyLimit,
+          enemyLimit: game.enemyLimit(),
           units: game.state.units.map((u) => ({ uid: u.uid, locked: u.locked, ...unitInfo(u.defId) })),
           selectors: game.state.pendingSelectors.map((s) => ({
             id: s.id,

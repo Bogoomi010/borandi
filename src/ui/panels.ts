@@ -40,7 +40,7 @@ export function renderTopbar(ctx: AppCtx) {
   root.appendChild(stat("맵", `${stage.id}. ${stage.name}`));
   root.appendChild(stat("현재 판", "선택 맵 고정 · 40R 보스까지", "mapgoal"));
   root.appendChild(stat("라운드", `${Math.min(s.round, FINAL_ROUND)}/${FINAL_ROUND}`));
-  root.appendChild(stat("적 누적", `${s.enemies.length}/${diff.enemyLimit}`, "life"));
+  root.appendChild(stat("적 누적", `${s.enemies.length}/${ctx.game.enemyLimit()}`, "life"));
   root.appendChild(stat("골드", String(s.gold), "gold"));
   root.appendChild(stat("난이도", diff.name));
   const proofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
@@ -550,7 +550,7 @@ export function renderActionbar(ctx: AppCtx) {
 
   const inBreak = s.breakTicks > 0;
   const alive = s.enemies.length;
-  const limit = DIFFICULTY_BY_ID[s.difficulty].enemyLimit;
+  const limit = ctx.game.enemyLimit();
   const legendOrBetter = s.units
     .filter((u) => GRADE_ORDER.indexOf(UNIT_BY_ID[u.defId].grade) >= GRADE_ORDER.indexOf("legend"))
     .length;

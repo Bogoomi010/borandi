@@ -49,6 +49,7 @@ const INITIAL_BREAK_TICKS = 200;
 const LEGEND_COMMAND_THRESHOLD = 5;
 const LEGEND_COMMAND_STEP = 0.08;
 const LEGEND_COMMAND_MAX = 0.24;
+const INTERMEDIATE_LEGEND_COMMAND_LIMIT_BONUS = 12;
 
 export interface ActionResult { ok: boolean; reason?: string; }
 
@@ -470,7 +471,7 @@ export class Game {
     const s = this.state;
     if (s.round > FINAL_ROUND) { this.endGame(true); return; } // 모든 라운드 생존 → 승리
     // 다음 라운드가 시작되는 순간 루프에 쌓인 적이 임계 이상이면 패배
-    if (s.enemies.length >= this.diff.enemyLimit) {
+    if (s.enemies.length >= this.enemyLimit()) {
       this.log("system", `누적 적 ${s.enemies.length}마리 — 방어선 붕괴`);
       this.endGame(false);
       return;
@@ -590,16 +591,29 @@ export class Game {
 
   private upLv(id: string): number { return this.state.upgrades[id] ?? 0; }
 
-  legendCommandAttackMult(): number {
-    const count = this.state.units.filter((u) => {
+  private legendOrBetterCount(): number {
+    return this.state.units.filter((u) => {
       const grade = UNIT_BY_ID[u.defId].grade;
       return grade === "legend" || grade === "hidden";
     }).length;
+  }
+
+  legendCommandAttackMult(): number {
+    const count = this.legendOrBetterCount();
     if (this.state.difficulty === "normal") {
       return 1 + Math.min(LEGEND_COMMAND_STEP * 2, count * LEGEND_COMMAND_STEP);
     }
     const stacks = Math.max(0, count - LEGEND_COMMAND_THRESHOLD + 1);
     return 1 + Math.min(LEGEND_COMMAND_MAX, stacks * LEGEND_COMMAND_STEP);
+  }
+
+  legendCommandEnemyLimitBonus(): number {
+    if (this.state.difficulty !== "intermediate") return 0;
+    return this.legendOrBetterCount() >= LEGEND_COMMAND_THRESHOLD ? INTERMEDIATE_LEGEND_COMMAND_LIMIT_BONUS : 0;
+  }
+
+  enemyLimit(): number {
+    return this.diff.enemyLimit + this.legendCommandEnemyLimitBonus();
   }
 
   /** 사거리/시야 radius 안에서 타게팅 우선순위에 따른 적 1기 (없으면 null) */

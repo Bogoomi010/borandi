@@ -11,11 +11,11 @@ export const DIFFICULTIES: DifficultyDef[] = [
   },
   {
     id: "intermediate", name: "중급자",
-    unitCap: 36, enemyHpMult: 5.6, enemyLimit: 52, goldMult: 0.92, startGold: 90, startLife: 18,
+    unitCap: 36, enemyHpMult: 5.6, enemyLimit: 40, goldMult: 0.92, startGold: 90, startLife: 18,
   },
   {
     id: "expert", name: "고수",
-    unitCap: 34, enemyHpMult: 10.5, enemyLimit: 48, goldMult: 0.88, startGold: 85, startLife: 14,
+    unitCap: 34, enemyHpMult: 10.5, enemyLimit: 40, goldMult: 0.88, startGold: 85, startLife: 14,
   },
   {
     id: "master", name: "초고수",
