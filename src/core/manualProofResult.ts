@@ -32,6 +32,11 @@ export function manualProofResultTarget(r: ResultSummary): string {
   return "수동 플레이 시간에는 포함되지만 목표 결과 증거 조건과는 다릅니다.";
 }
 
+export function manualProofResultLogNote(r: ResultSummary): string {
+  const result = r.cleared ? "clear" : "loss";
+  return `${manualProofResultTarget(r)} · ${r.difficulty} ${result}, ${r.legendOrBetterCount}전설 이상`;
+}
+
 export function manualProofResultChecklist(r: ResultSummary): ManualProofCheck[] {
   const playedMinutes = (r.wallSeconds ?? 0) / 60;
   const finalRound = r.reachedRound >= FINAL_ROUND;

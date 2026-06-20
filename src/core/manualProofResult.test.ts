@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DifficultyId, Grade, ResultSummary } from "./types";
-import { manualProofResultChecklist, manualProofResultTarget } from "./manualProofResult";
+import { manualProofResultChecklist, manualProofResultLogNote, manualProofResultTarget } from "./manualProofResult";
 
 function summary(args: {
   difficultyId: DifficultyId;
@@ -81,5 +81,13 @@ describe("수동 결과 증거 판정", () => {
       ok: true,
       detail: "패배",
     });
+  });
+
+  it("로그 note에는 목표 증거 판정 라벨을 포함한다", () => {
+    const target = summary({ difficultyId: "normal", cleared: true, legendOrBetterCount: 2 });
+    const filler = summary({ difficultyId: "normal", cleared: false, legendOrBetterCount: 0, reachedRound: 32 });
+
+    expect(manualProofResultLogNote(target)).toBe("일반 1~2전설 40R 클리어 증거 · normal clear, 2전설 이상");
+    expect(manualProofResultLogNote(filler)).toBe("수동 플레이 시간에는 포함되지만 목표 결과 증거 조건과는 다릅니다. · normal loss, 0전설 이상");
   });
 });

@@ -28,7 +28,7 @@ import { FAMILY_COLOR, GRADE_COLOR } from "./board";
 import { initialNewRunStageId, loadProfile, maxSelectableStageId } from "./settings";
 import { FINAL_ROUND } from "../data/waves";
 import { manualProofTargetFor, type ManualProofTargetStatus } from "../core/manualProof";
-import { manualProofResultChecklist, manualProofResultTarget } from "../core/manualProofResult";
+import { manualProofResultChecklist, manualProofResultLogNote, manualProofResultTarget } from "../core/manualProofResult";
 import {
   manualStartCommand as buildManualStartCommand,
   manualDryRunCommand,
@@ -154,7 +154,7 @@ export function manualPlaylogCommand(r: ResultSummary): string {
   ];
   if (r.manualStartedAt) args.push(`--startedAt=${shellArg(r.manualStartedAt)}`);
   if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
-  args.push(`--notes=${shellArg(`${r.difficulty} ${result}, ${r.legendOrBetterCount}전설 이상`)}`);
+  args.push(`--notes=${shellArg(manualProofResultLogNote(r))}`);
   return args.join(" ");
 }
 
@@ -177,7 +177,7 @@ export function manualPlaylogFinishCommand(r: ResultSummary): string {
     `--stateChecksum=${shellArg(r.stateChecksum)}`,
   ];
   if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
-  args.push(`--notes=${shellArg(`${r.difficulty} ${result}, ${r.legendOrBetterCount}전설 이상`)}`);
+  args.push(`--notes=${shellArg(manualProofResultLogNote(r))}`);
   return args.join(" ");
 }
 
@@ -198,7 +198,7 @@ export function manualPlaylogFinishLatestCommand(r: ResultSummary): string {
     `--stateChecksum=${shellArg(r.stateChecksum)}`,
   ];
   if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
-  args.push(`--notes=${shellArg(`${r.difficulty} ${result}, ${r.legendOrBetterCount}전설 이상`)}`);
+  args.push(`--notes=${shellArg(manualProofResultLogNote(r))}`);
   return args.join(" ");
 }
 
