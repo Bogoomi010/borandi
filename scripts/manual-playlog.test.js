@@ -420,6 +420,25 @@ describe("manual-playlog plan", () => {
         maxGrade: "hero",
       },
     });
+    expect(next.resultFieldChecklist).toEqual(expect.arrayContaining([
+      expect.objectContaining({ field: "seed", expected: "실제 게임 시드" }),
+      expect.objectContaining({ field: "startedAt", expected: "실제 시작 시각" }),
+      expect.objectContaining({ field: "endedAt", source: "결과 화면 RESULT_ENDED_AT" }),
+      expect.objectContaining({ field: "dataVersion", expected: "0.8.4" }),
+      expect.objectContaining({ field: "stateChecksum", expected: "8자리 checksum" }),
+      expect.objectContaining({ field: "result", expected: "clear" }),
+      expect.objectContaining({ field: "round", expected: "40" }),
+      expect.objectContaining({ field: "legends", expected: "0" }),
+      expect.objectContaining({ field: "maxGrade", expected: "hero" }),
+      expect.objectContaining({ field: "minutes", expected: "12분 이상" }),
+    ]));
+    expect(next.startWorkflow).toEqual([
+      "게임에서 다음 목표 난이도로 새 게임을 시작하고 상단의 실제 시드를 확인",
+      "추천 시작 검증 명령의 GAME_SEED_HERE를 실제 시드로 바꿔 --dry-run 실행",
+      "검증이 통과하면 같은 명령에서 --dry-run을 빼고 시작 마커 저장",
+      "12분 이상 실제로 플레이하고 목표 결과 조건 확인",
+      "결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 실행 후 실제 finish 저장",
+    ]);
     const text = runManualPlaylog([`--out=${out}`, "--next"]);
     expect(text).toContain("추천 시작 검증:");
     expect(text).toContain("yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
@@ -429,6 +448,11 @@ describe("manual-playlog plan", () => {
     expect(text).toContain("직접 시작 검증:");
     expect(text).toContain("직접 시작 마커:");
     expect(text).toContain("마무리 조건: result=clear round=40 legends=0 maxGrade=hero");
+    expect(text).toContain("실행 순서:");
+    expect(text).toContain("1. 게임에서 다음 목표 난이도로 새 게임을 시작하고 상단의 실제 시드를 확인");
+    expect(text).toContain("결과 기록 필드:");
+    expect(text).toContain("- stateChecksum: 결과 화면 RESULT_CHECKSUM (기대값: 8자리 checksum)");
+    expect(text).toContain("- minutes: 시작/종료 시각으로 계산된 실제 플레이 시간 (기대값: 12분 이상)");
     expect(text).toContain("--seed=GAME_SEED_HERE");
   });
 

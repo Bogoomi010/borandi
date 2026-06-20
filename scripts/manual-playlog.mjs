@@ -923,6 +923,8 @@ function buildNextFromSummary(summary) {
         startNextDryRunCommandTemplate: dryRunCommandTemplate(startNextCommandTemplate(nextStep)),
       }
       : null,
+    resultFieldChecklist: manualResultFieldChecklist(blockedByPendingStartMarkers ? null : nextStep),
+    startWorkflow: manualStartWorkflow(),
   };
 }
 
@@ -970,6 +972,16 @@ function printNext() {
       console.log("직접 시작 마커:");
       console.log(next.next.startCommandTemplate);
       console.log("  GAME_SEED_HERE는 새 게임 시작 후 상단에 표시된 실제 시드로 바꾸세요.");
+    }
+    console.log("");
+    console.log("실행 순서:");
+    next.startWorkflow.forEach((step, index) => {
+      console.log(`${index + 1}. ${step}`);
+    });
+    console.log("");
+    console.log("결과 기록 필드:");
+    for (const item of next.resultFieldChecklist) {
+      console.log(`- ${item.field}: ${item.source} (기대값: ${item.expected})`);
     }
   }
   console.log("");
