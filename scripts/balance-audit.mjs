@@ -108,15 +108,48 @@ function isExampleManualSession(session) {
 }
 
 function realManualSessions(manual) {
+  return sessionValidationEntries(manual)
+    .filter((entry) => entry.issues.length === 0)
+    .map((entry) => entry.session);
+}
+
+function sessionValidationEntries(manual) {
   if (!manual || isExampleManualLog(manual)) return [];
   const seenChecksums = new Set();
-  return (manual.sessions ?? []).filter((s) => {
-    if (isExampleManualSession(s) || !hasValidManualTiming(s) || !hasCompleteManualMetadata(s)) return false;
-    const checksum = String(s.stateChecksum).toLowerCase();
-    if (seenChecksums.has(checksum)) return false;
-    seenChecksums.add(checksum);
-    return true;
-  });
+  return (manual.sessions ?? [])
+    .filter((s) => !isExampleManualSession(s))
+    .map((session, index) => {
+      const issues = [];
+      if (!hasValidManualTiming(session)) {
+        issues.push("startedAt/endedAt와 기록 시간이 맞지 않음");
+      }
+      if (!hasCompleteManualMetadata(session)) {
+        issues.push("필수 결과 메타데이터 누락 또는 모순");
+      }
+      const checksum = String(session.stateChecksum ?? "").toLowerCase();
+      if (issues.length === 0) {
+        if (seenChecksums.has(checksum)) {
+          issues.push("stateChecksum 중복");
+        } else {
+          seenChecksums.add(checksum);
+        }
+      }
+      return { index, session, issues };
+    });
+}
+
+function invalidManualSessions(manual) {
+  return sessionValidationEntries(manual)
+    .filter((entry) => entry.issues.length > 0)
+    .map(({ index, session, issues }) => ({
+      index,
+      difficulty: String(session.difficulty ?? ""),
+      result: sessionResult(session) || "",
+      round: Number(session.round ?? 0),
+      seed: String(session.seed ?? ""),
+      checksum: String(session.stateChecksum ?? "").slice(0, 8),
+      issues,
+    }));
 }
 
 function countNonExampleManualSessions(manual) {
@@ -140,6 +173,23 @@ function pendingManualEvidence(pendingSessions) {
       const startedAt = s.startedAt ?? "시작없음";
       const finish = ` finish=${s.finishCommandTemplate ?? pendingFinishCommandTemplate(s)}`;
       return `${id} ${difficulty} stage=${stage} seed=${seed} startedAt=${startedAt}${finish}`;
+    })
+    .join("; ");
+}
+
+function invalidManualEvidence(invalidSessions) {
+  if (invalidSessions.length === 0) return "무효 세션 없음";
+  return invalidSessions
+    .map((session) => {
+      const label = [
+        `#${session.index + 1}`,
+        session.difficulty || "difficulty?",
+        session.result || "result?",
+        `${session.round || "?"}R`,
+        session.seed ? `seed=${session.seed}` : "",
+        session.checksum ? `#${session.checksum}` : "",
+      ].filter(Boolean).join(" ");
+      return `${label}: ${session.issues.join(", ")}`;
     })
     .join("; ");
 }
@@ -523,6 +573,7 @@ function buildRows(balance, browser, direct, manual) {
   const manualCoversMinimumMinutes = REQUIRED_DIFFICULTIES.every((d) => (manualMinutesByDiff.get(d) ?? 0) >= MIN_MANUAL_MINUTES_PER_DIFFICULTY);
   const manualSessionCount = countNonExampleManualSessions(manual);
   const validManualSessionCount = realManualSessions(manual).length;
+  const invalidManual = invalidManualSessions(manual);
   const pendingManual = pendingManualSessions(manual);
   const pendingManualText = `pending ${pendingManual.length}개`;
   const noviceManual = manualSessions(manual, "novice");
@@ -541,10 +592,16 @@ function buildRows(balance, browser, direct, manual) {
   rows.push({
     req: "사람이 직접 2시간 플레이",
     evidence: manual
-      ? `${isExampleManualLog(manual) ? "예시 로그 제외, " : ""}증거검증 ${validManualSessionCount}/${manualSessionCount}세션, ${manualTotalMinutes.toFixed(1)}분, 난이도별 ${manualDifficultyMinutesText}, ${pendingManualText}`
+      ? `${isExampleManualLog(manual) ? "예시 로그 제외, " : ""}증거검증 ${validManualSessionCount}/${manualSessionCount}세션, 무효 ${invalidManual.length}개, ${manualTotalMinutes.toFixed(1)}분, 난이도별 ${manualDifficultyMinutesText}, ${pendingManualText}`
       : "아직 실제 수동 플레이 기록 없음",
     pass: !!manual && manualTotalMinutes >= 120 && manualCoversAll && manualCoversMinimumMinutes,
     missing: !manual || manualTotalMinutes < 120 || !manualCoversAll || !manualCoversMinimumMinutes,
+  });
+  rows.push({
+    req: "수동: 무효 세션 없음",
+    evidence: manual ? invalidManualEvidence(invalidManual) : "수동 로그 없음",
+    pass: invalidManual.length === 0,
+    missing: !!manual && invalidManual.length > 0,
   });
   rows.push({
     req: "수동: 시작 마커 미완료 없음",

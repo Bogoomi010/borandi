@@ -150,6 +150,41 @@ function manualWithPendingStart() {
   return manual;
 }
 
+function manualWithInvalidSessions() {
+  const manual = completeManual();
+  manual.sessions.push({
+    source: "human-playtest",
+    difficulty: "normal",
+    minutes: 20,
+    result: "clear",
+    stage: 1,
+    round: 40,
+    seed: "BAD-TIME",
+    legends: 1,
+    maxGrade: "legend",
+    dataVersion: "0.8.0",
+    stateChecksum: "bad00001",
+    startedAt: "2026-01-01T07:00:00.000Z",
+    endedAt: "2026-01-01T07:01:00.000Z",
+  });
+  manual.sessions.push({
+    source: "human-playtest",
+    difficulty: "expert",
+    minutes: 20,
+    result: "clear",
+    stage: 1,
+    round: 40,
+    seed: "DUP-SEED",
+    legends: 6,
+    maxGrade: "legend",
+    dataVersion: "0.8.0",
+    stateChecksum: "00000001",
+    startedAt: "2026-01-01T08:00:00.000Z",
+    endedAt: "2026-01-01T08:20:00.000Z",
+  });
+  return manual;
+}
+
 function writeCompleteInputs({ manual = completeManual() } = {}) {
   return {
     balance: writeJson("balance.json", completeBalance()),
@@ -230,5 +265,26 @@ describe("balance-audit assert", () => {
     expect(failed.stdout).toContain("--result=clear --round=40 --legends=1 --maxGrade=legend");
     expect(failed.stdout).toContain("--endedAt=RESULT_ENDED_AT");
     expect(failed.stderr).toContain("수동: 시작 마커 미완료 없음");
+  });
+
+  it("수동 로그에 무효 세션이 있으면 감사에서 사유를 출력하고 실패한다", () => {
+    const paths = writeCompleteInputs({ manual: manualWithInvalidSessions() });
+
+    const failed = runAuditFailure([
+      `--balance=${paths.balance}`,
+      `--browser=${paths.browser}`,
+      `--direct=${paths.direct}`,
+      `--manual=${paths.manual}`,
+      "--assert",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | 증거검증 6/8세션, 무효 2개");
+    expect(failed.stdout).toContain("수동: 무효 세션 없음 | MISSING");
+    expect(failed.stdout).toContain("#7 normal clear 40R seed=BAD-TIME #bad00001");
+    expect(failed.stdout).toContain("startedAt/endedAt와 기록 시간이 맞지 않음");
+    expect(failed.stdout).toContain("#8 expert clear 40R seed=DUP-SEED #00000001");
+    expect(failed.stdout).toContain("stateChecksum 중복");
+    expect(failed.stderr).toContain("수동: 무효 세션 없음");
   });
 });
