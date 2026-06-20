@@ -77,6 +77,8 @@ describe("balance-proof require-complete", () => {
     expect(result.status).toBe(1);
     expect(result.stdout).toContain("$ yarn manual-playlog");
     expect(result.stdout).not.toContain("$ yarn balance ");
+    expect(result.stderr).toContain("추천 시작 검증: yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
+    expect(result.stderr).toContain("--dry-run");
     expect(result.stderr).toContain("추천 시작 마커: yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
     expect(result.stderr).toContain("yarn exited with 1");
   });
