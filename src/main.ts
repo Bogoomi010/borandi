@@ -35,6 +35,7 @@ import { UPGRADES, upgradeCost } from "./data/upgrades";
 import { GRADE_ORDER, type DifficultyId, type Grade } from "./core/types";
 import { MANUAL_PROOF_TARGET_SECONDS, manualProofRemainingSeconds, manualProofTargetFor } from "./core/manualProof";
 import {
+  manualDryRunCommand,
   manualStartCommand as buildManualStartCommand,
   manualStartNextCommand as buildManualStartNextCommand,
 } from "./core/manualProofCommands";
@@ -575,10 +576,14 @@ function renderGameToText(): string {
     startedAt: ctx.runStartedAt,
     notes: manualProofTarget.label,
   };
+  const manualStartCommand = buildManualStartCommand(manualStartInput);
+  const manualStartNextCommand = buildManualStartNextCommand(manualStartInput);
   const manualProofCommands = ctx.scene === "game"
     ? {
-        start: buildManualStartCommand(manualStartInput),
-        startNext: buildManualStartNextCommand(manualStartInput),
+        start: manualStartCommand,
+        startDryRun: manualDryRunCommand(manualStartCommand),
+        startNext: manualStartNextCommand,
+        startNextDryRun: manualDryRunCommand(manualStartNextCommand),
         result: null as string | null,
         resultDryRun: null as string | null,
         resultThenNext: null as string | null,
