@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   manualDryRunCommand,
+  manualNextCommand,
+  manualNextJsonCommand,
   manualPendingIdCommand,
+  manualPlanCommand,
+  manualPlanJsonCommand,
+  manualPreflightCommand,
+  manualPreflightJsonCommand,
+  manualSheetCommand,
   manualStartCommand,
   manualStartId,
   manualStartNextCommand,
+  manualSummaryCommand,
+  manualSummaryJsonCommand,
   shellArg,
 } from "./manualProofCommands";
 
@@ -43,6 +52,18 @@ describe("수동 증거 시작 명령", () => {
     const pending = manualPendingIdCommand(input);
 
     expect(pending).toBe(`yarn manual-playlog --pending-id=${shellArg(id)}`);
+  });
+
+  it("수동 proof 상태 명령 세트를 제공한다", () => {
+    expect(manualPreflightCommand()).toBe("yarn manual-playlog --preflight");
+    expect(manualPreflightJsonCommand()).toBe("yarn --silent manual-playlog --preflight-json");
+    expect(manualNextCommand()).toBe("yarn manual-playlog --next");
+    expect(manualNextJsonCommand()).toBe("yarn --silent manual-playlog --next-json");
+    expect(manualSummaryCommand()).toBe("yarn manual-playlog --summary");
+    expect(manualSummaryJsonCommand()).toBe("yarn --silent manual-playlog --summary-json");
+    expect(manualPlanCommand()).toBe("yarn manual-playlog --plan");
+    expect(manualPlanJsonCommand()).toBe("yarn --silent manual-playlog --plan-json");
+    expect(manualSheetCommand()).toBe("yarn manual-playlog --sheet");
   });
 
   it("dry-run 명령은 로그 쓰기 전에 같은 결과 명령을 검증한다", () => {

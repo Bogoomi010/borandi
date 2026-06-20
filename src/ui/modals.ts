@@ -32,9 +32,17 @@ import { manualProofResultChecklist, manualProofResultLogNote, manualProofResult
 import {
   manualStartCommand as buildManualStartCommand,
   manualDryRunCommand,
+  manualNextCommand,
+  manualNextJsonCommand,
   manualPendingIdCommand as buildManualPendingIdCommand,
+  manualPlanCommand,
+  manualPreflightCommand,
+  manualPreflightJsonCommand,
+  manualSheetCommand,
   manualStartId,
   manualStartNextCommand as buildManualStartNextCommand,
+  manualSummaryCommand,
+  manualSummaryJsonCommand,
   shellArg,
 } from "../core/manualProofCommands";
 
@@ -702,16 +710,17 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const currentFinishCheckpointDryRunCommand = currentCheckpointSummary ? manualPlaylogFinishDryRunCommand(currentCheckpointSummary) : "";
     const currentFinishLatestCheckpointCommand = currentCheckpointSummary ? manualPlaylogFinishLatestCommand(currentCheckpointSummary) : "";
     const currentFinishLatestCheckpointDryRunCommand = currentCheckpointSummary ? manualPlaylogFinishLatestDryRunCommand(currentCheckpointSummary) : "";
-    const summaryCommand = "yarn manual-playlog --summary";
-    const planCommand = "yarn manual-playlog --plan";
-    const sheetCommand = "yarn manual-playlog --sheet";
-    const nextCommand = "yarn manual-playlog --next";
+    const summaryCommand = manualSummaryCommand();
+    const planCommand = manualPlanCommand();
+    const sheetCommand = manualSheetCommand();
+    const nextCommand = manualNextCommand();
+    const nextJsonCommand = manualNextJsonCommand();
     const startNextCommand = currentStartNextCommand || "yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE";
     const startNextDryRunCommand = manualDryRunCommand(startNextCommand);
     const pendingCommand = "yarn manual-playlog --pending";
-    const preflightCommand = "yarn manual-playlog --preflight";
-    const preflightJsonCommand = "yarn --silent manual-playlog --preflight-json";
-    const summaryJsonCommand = "yarn --silent manual-playlog --summary-json";
+    const preflightCommand = manualPreflightCommand();
+    const preflightJsonCommand = manualPreflightJsonCommand();
+    const summaryJsonCommand = manualSummaryJsonCommand();
     const primaryStartCheckCommand = currentStartNextDryRunCommand || preflightCommand;
     const primaryStartMarkerCommand = currentStartNextCommand || startNextCommand;
     const currentTarget = ctx?.scene === "game"
@@ -791,6 +800,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     body.appendChild(el("pre", "report", preflightJsonCommand));
     body.appendChild(el("pre", "report", pendingCommand));
     body.appendChild(el("pre", "report", nextCommand));
+    body.appendChild(el("pre", "report", nextJsonCommand));
     body.appendChild(el("pre", "report", startNextDryRunCommand));
     body.appendChild(el("pre", "report", startNextCommand));
     body.appendChild(el("pre", "report", summaryCommand));

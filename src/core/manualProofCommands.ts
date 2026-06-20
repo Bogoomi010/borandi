@@ -52,6 +52,42 @@ export function manualPendingIdCommand(input: ManualProofStartCommandInput): str
   return `yarn manual-playlog --pending-id=${shellArg(id)}`;
 }
 
+export function manualPreflightCommand(): string {
+  return "yarn manual-playlog --preflight";
+}
+
+export function manualPreflightJsonCommand(): string {
+  return "yarn --silent manual-playlog --preflight-json";
+}
+
+export function manualNextCommand(): string {
+  return "yarn manual-playlog --next";
+}
+
+export function manualNextJsonCommand(): string {
+  return "yarn --silent manual-playlog --next-json";
+}
+
+export function manualSummaryCommand(): string {
+  return "yarn manual-playlog --summary";
+}
+
+export function manualSummaryJsonCommand(): string {
+  return "yarn --silent manual-playlog --summary-json";
+}
+
+export function manualPlanCommand(): string {
+  return "yarn manual-playlog --plan";
+}
+
+export function manualPlanJsonCommand(): string {
+  return "yarn --silent manual-playlog --plan-json";
+}
+
+export function manualSheetCommand(): string {
+  return "yarn manual-playlog --sheet";
+}
+
 export function manualDryRunCommand(command: string): string {
   const separator = " && ";
   const separatorIndex = command.indexOf(separator);

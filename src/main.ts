@@ -37,9 +37,18 @@ import { GRADE_ORDER, type DifficultyId, type Grade } from "./core/types";
 import { MANUAL_PROOF_TARGET_SECONDS, manualProofReadyAt, manualProofRemainingSeconds, manualProofTargetFor } from "./core/manualProof";
 import {
   manualDryRunCommand,
+  manualNextCommand,
+  manualNextJsonCommand,
   manualPendingIdCommand as buildManualPendingIdCommand,
+  manualPlanCommand,
+  manualPlanJsonCommand,
+  manualPreflightCommand,
+  manualPreflightJsonCommand,
+  manualSheetCommand,
   manualStartCommand as buildManualStartCommand,
   manualStartNextCommand as buildManualStartNextCommand,
+  manualSummaryCommand,
+  manualSummaryJsonCommand,
 } from "./core/manualProofCommands";
 
 const settings = loadSettings();
@@ -593,6 +602,15 @@ function renderGameToText(): string {
         startNextDryRun: manualDryRunCommand(manualStartNextCommand),
         pendingId: manualPendingIdCommand,
         pendingIdJson: `${manualPendingIdCommand} --json`,
+        preflight: manualPreflightCommand(),
+        preflightJson: manualPreflightJsonCommand(),
+        next: manualNextCommand(),
+        nextJson: manualNextJsonCommand(),
+        summary: manualSummaryCommand(),
+        summaryJson: manualSummaryJsonCommand(),
+        plan: manualPlanCommand(),
+        planJson: manualPlanJsonCommand(),
+        sheet: manualSheetCommand(),
         result: null as string | null,
         resultDryRun: null as string | null,
         resultThenNext: null as string | null,
