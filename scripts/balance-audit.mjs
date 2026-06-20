@@ -464,17 +464,17 @@ function manualNextEvidence(manual) {
   const minutesByDifficulty = manualMinutesByDifficulty(manual);
   for (const target of MANUAL_TARGETS) {
     if (!hasManual(manual, target.difficulty, target.predicate)) {
-      return `${target.label} (${target.minutes.toFixed(1)}분 이상) - ${target.goal}; 기록 힌트: ${target.logHint}; ${startNextEvidence(target)}`;
+      return `${target.label} (${target.minutes.toFixed(1)}분 이상) - ${target.goal}; 기록 힌트: ${target.logHint}; ${manualProofWorkflowEvidence(target)}`;
     }
   }
   for (const difficulty of REQUIRED_DIFFICULTIES) {
     const current = minutesByDifficulty.get(difficulty) ?? 0;
     if (current < MIN_MANUAL_MINUTES_PER_DIFFICULTY) {
-      return `${difficulty} 추가 ${(MIN_MANUAL_MINUTES_PER_DIFFICULTY - current).toFixed(1)}분 이상 - 난이도별 최소 ${MIN_MANUAL_MINUTES_PER_DIFFICULTY}분 보충; ${startNextEvidence({ difficulty })}`;
+      return `${difficulty} 추가 ${(MIN_MANUAL_MINUTES_PER_DIFFICULTY - current).toFixed(1)}분 이상 - 난이도별 최소 ${MIN_MANUAL_MINUTES_PER_DIFFICULTY}분 보충; ${manualProofWorkflowEvidence({ difficulty })}`;
     }
   }
   if (totalMinutes < MIN_MANUAL_TOTAL_MINUTES) {
-    return `자유 난이도 추가 ${(MIN_MANUAL_TOTAL_MINUTES - totalMinutes).toFixed(1)}분 이상 - 총 ${MIN_MANUAL_TOTAL_MINUTES}분 보충; ${startNextEvidence({ difficulty: "any" })}`;
+    return `자유 난이도 추가 ${(MIN_MANUAL_TOTAL_MINUTES - totalMinutes).toFixed(1)}분 이상 - 총 ${MIN_MANUAL_TOTAL_MINUTES}분 보충; ${manualProofWorkflowEvidence({ difficulty: "any" })}`;
   }
   return "필요 없음 - 수동 플레이 증거 목표 충족";
 }
@@ -486,8 +486,7 @@ function manualNextMissing(manual) {
 function startNextCommandTemplate(step) {
   if (!step) return "";
   const difficultyArg = ` --difficulty=${step.difficulty === "any" ? "DIFFICULTY" : step.difficulty}`;
-  const outArg = manualPath === DEFAULT_MANUAL_LOG_PATH ? "" : ` --out=${shellArg(manualPath)}`;
-  return `yarn manual-playlog --start-next${difficultyArg} --seed=GAME_SEED_HERE${outArg}`;
+  return `yarn manual-playlog --start-next${difficultyArg} --seed=GAME_SEED_HERE${manualOutArg()}`;
 }
 
 function startNextDryRunCommandTemplate(step) {
@@ -495,8 +494,25 @@ function startNextDryRunCommandTemplate(step) {
   return command ? `${command} --dry-run` : "";
 }
 
-function startNextEvidence(step) {
-  return `추천 시작 검증: ${startNextDryRunCommandTemplate(step)}; 추천 시작 마커: ${startNextCommandTemplate(step)}`;
+function manualOutArg() {
+  return manualPath === DEFAULT_MANUAL_LOG_PATH ? "" : ` --out=${shellArg(manualPath)}`;
+}
+
+function manualPreflightCommandTemplate() {
+  return `yarn manual-playlog --preflight${manualOutArg()}`;
+}
+
+function manualPlanCommandTemplate() {
+  return `yarn manual-playlog --plan${manualOutArg()}`;
+}
+
+function manualProofWorkflowEvidence(step) {
+  return [
+    `시작 전 점검: ${manualPreflightCommandTemplate()}`,
+    `전체 계획: ${manualPlanCommandTemplate()}`,
+    `추천 시작 검증: ${startNextDryRunCommandTemplate(step)}`,
+    `추천 시작 마커: ${startNextCommandTemplate(step)}`,
+  ].join("; ");
 }
 
 function buildRows(balance, browser, direct, manual, codex) {
