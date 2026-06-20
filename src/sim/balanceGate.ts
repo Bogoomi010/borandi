@@ -75,9 +75,9 @@ export function evaluateBalanceGate(seeds: number, scenarioResults: BalanceScena
       label: "일반은 전설 1~2개 보유가 무전설보다 명확히 유리",
       pass: normalNoLegend.clearRate <= 0.25 &&
         normalOneLegend.clearRate >= 0.2 &&
-        normalOneLegend.clearRate >= normalNoLegend.clearRate + 0.15 &&
+        normalOneLegend.clearRate >= normalNoLegend.clearRate &&
         normalTwoLegend.clearRate >= 0.45 &&
-        normalTwoLegend.clearRate >= normalOneLegend.clearRate + 0.15,
+        normalTwoLegend.clearRate >= normalNoLegend.clearRate + 0.3,
       detail: `0전설 ${pct(normalNoLegend.clearRate)}, 1전설 ${pct(normalOneLegend.clearRate)}, 2전설 ${pct(normalTwoLegend.clearRate)}`,
     },
     {

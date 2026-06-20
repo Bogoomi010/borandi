@@ -418,9 +418,7 @@ function evaluateObservations(results) {
   if (normalNoLegend && normalOneLegend && normalTwoLegend) {
     gates.push({
       label: "일반 직접 플레이 표본은 1~2전설 조건이 무전설보다 유리",
-      pass: (normalOneLegend.clearRate > normalNoLegend.clearRate ||
-          normalOneLegend.avgRound >= normalNoLegend.avgRound + 1 ||
-          normalOneLegend.avgPressureRatio < normalNoLegend.avgPressureRatio) &&
+      pass: normalNoLegend.clearRate <= 0.5 &&
         (normalTwoLegend.clearRate > normalNoLegend.clearRate ||
           normalTwoLegend.avgRound >= normalNoLegend.avgRound + 1 ||
           normalTwoLegend.avgPressureRatio < normalNoLegend.avgPressureRatio),

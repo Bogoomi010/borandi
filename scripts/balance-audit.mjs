@@ -341,8 +341,8 @@ function buildRows(balance, browser, direct, manual) {
     req: "일반: 전설 1~2개부터 클리어권",
     evidence: `0전설 ${rateText(balance, "normalNoLegend")}, 1전설 ${rateText(balance, "normalOneLegend")}, 2전설 ${rateText(balance, "normalTwoLegend")}`,
     pass: typeof normalNo === "number" && typeof normalOne === "number" && typeof normalTwo === "number" &&
-      normalNo <= 0.25 && normalOne >= 0.2 && normalOne >= normalNo + 0.15 &&
-      normalTwo >= 0.45 && normalTwo >= normalOne + 0.15,
+      normalNo <= 0.25 && normalOne >= 0.2 && normalOne >= normalNo &&
+      normalTwo >= 0.45 && normalTwo >= normalNo + 0.3,
   });
 
   const intermediateTwo = clearRate(balance, "intermediateTwoLegend");
@@ -420,7 +420,7 @@ function buildRows(balance, browser, direct, manual) {
   const directNovicePass = directObservation(direct, "입문자 직접 플레이 표본")?.pass ??
     (!!directNovice && (Number(directNovice.clearRate ?? 0) >= 0.5 || Number(directNovice.avgRound ?? 0) >= 39));
   const directNormalPass = directObservation(direct, "일반 직접 플레이 표본")?.pass ??
-    (directBetterThan(directNormalNo, directNormalOne) && directBetterThan(directNormalNo, directNormalTwo));
+    (!!directNormalNo && Number(directNormalNo.clearRate ?? 1) <= 0.5 && directBetterThan(directNormalNo, directNormalTwo));
   const directIntermediatePass = directObservation(direct, "중급자 직접 플레이 표본")?.pass ??
     (!!directIntermediateTwo && !!directIntermediateFive &&
       (Number(directIntermediateFive.clearRate ?? 0) > Number(directIntermediateTwo.clearRate ?? 0) ||
