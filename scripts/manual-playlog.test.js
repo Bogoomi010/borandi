@@ -98,6 +98,10 @@ describe("manual-playlog plan", () => {
     expect(output).toContain(`yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`);
     expect(output).toContain("추천 시작 마커:");
     expect(output).toContain(`yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)}`);
+    expect(output).toContain("실행 순서:");
+    expect(output).toContain("1. 게임에서 다음 목표 난이도로 새 게임을 시작하고 상단의 실제 시드를 확인");
+    expect(output).toContain("3. 검증이 통과하면 같은 명령에서 --dry-run을 빼고 시작 마커 저장");
+    expect(output).toContain("5. 결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 실행 후 실제 finish 저장");
     expect(output).toContain("판정: 시작 가능");
   });
 
@@ -112,6 +116,13 @@ describe("manual-playlog plan", () => {
     expect(preflight.next.label).toBe("입문자 무전설 40R 클리어");
     expect(preflight.nextStartCommandTemplate).toBe(`yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)}`);
     expect(preflight.nextStartDryRunCommandTemplate).toBe(`yarn manual-playlog --start-next --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`);
+    expect(preflight.startWorkflow).toEqual([
+      "게임에서 다음 목표 난이도로 새 게임을 시작하고 상단의 실제 시드를 확인",
+      "추천 시작 검증 명령의 GAME_SEED_HERE를 실제 시드로 바꿔 --dry-run 실행",
+      "검증이 통과하면 같은 명령에서 --dry-run을 빼고 시작 마커 저장",
+      "12분 이상 실제로 플레이하고 목표 결과 조건 확인",
+      "결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 실행 후 실제 finish 저장",
+    ]);
   });
 
   it("preflight는 미완료 시작 마커가 있으면 먼저 finish하도록 실패한다", () => {

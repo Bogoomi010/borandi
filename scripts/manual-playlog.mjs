@@ -750,6 +750,16 @@ function printNextJson() {
   console.log(`${JSON.stringify(buildNext(), null, 2)}`);
 }
 
+function manualStartWorkflow() {
+  return [
+    "게임에서 다음 목표 난이도로 새 게임을 시작하고 상단의 실제 시드를 확인",
+    "추천 시작 검증 명령의 GAME_SEED_HERE를 실제 시드로 바꿔 --dry-run 실행",
+    "검증이 통과하면 같은 명령에서 --dry-run을 빼고 시작 마커 저장",
+    "12분 이상 실제로 플레이하고 목표 결과 조건 확인",
+    "결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 실행 후 실제 finish 저장",
+  ];
+}
+
 function printPreflight() {
   const preflight = buildPreflight();
   const { summary, blocking } = preflight;
@@ -802,6 +812,11 @@ function printPreflight() {
       console.log(preflight.nextStartCommandTemplate);
       console.log("  GAME_SEED_HERE는 새 게임 시작 후 상단에 표시된 실제 시드로 바꾸세요.");
     }
+    console.log("");
+    console.log("실행 순서:");
+    manualStartWorkflow().forEach((step, index) => {
+      console.log(`${index + 1}. ${step}`);
+    });
   }
   console.log("");
   console.log(`판정: ${blocking ? "정리 필요" : "시작 가능"}`);
@@ -836,6 +851,7 @@ function buildPreflight() {
     next: summary.next,
     nextStartCommandTemplate: summary.next?.startNextCommandTemplate ?? "",
     nextStartDryRunCommandTemplate: summary.next?.startNextDryRunCommandTemplate ?? "",
+    startWorkflow: manualStartWorkflow(),
     summary,
   };
 }
