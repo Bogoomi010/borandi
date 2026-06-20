@@ -838,6 +838,7 @@ function printPreflight() {
     console.log(`- Codex 직접 조작 보조 시간: ${summary.codexDirectSessionCount}세션, ${summary.codexDirectMinutes.toFixed(1)}분 (사람 120분 증거에는 미포함)`);
   }
   console.log(`- 목표 세션: ${summary.targetRowsPassed}/${summary.targetRowsTotal}개 완료, 남은 ${summary.targetRowsRemaining}개`);
+  console.log(`- 남은 수집 계획: ${preflight.remainingPlanStepCount}단계`);
   console.log("");
   if (summary.invalidSessionCount > 0) {
     console.log("INVALID 먼저 고쳐야 하는 세션:");
@@ -886,6 +887,15 @@ function printPreflight() {
     manualStartWorkflow().forEach((step, index) => {
       console.log(`${index + 1}. ${step}`);
     });
+    console.log("");
+    console.log("전체 수집 계획:");
+    console.log(preflight.planCommandTemplate);
+    if (preflight.remainingPlanPreview.length > 0) {
+      console.log("남은 계획 첫 항목:");
+      const first = preflight.remainingPlanPreview[0];
+      console.log(`- ${first.label} (${first.minutes.toFixed(1)}분 이상)`);
+      console.log(`  목표: ${first.goal}`);
+    }
   }
   console.log("");
   console.log(`판정: ${blocking ? "정리 필요" : "시작 가능"}`);
@@ -894,6 +904,7 @@ function printPreflight() {
 
 function buildPreflight() {
   const summary = buildSummary();
+  const plan = buildPlanFromSummary(summary);
   const blockingReasons = [
     ...(summary.invalidSessionCount > 0 ? ["invalidSessions"] : []),
     ...(summary.pendingCount > 0 ? ["pendingStartMarkers"] : []),
@@ -920,6 +931,9 @@ function buildPreflight() {
     next: summary.next,
     nextStartCommandTemplate: summary.next?.startNextCommandTemplate ?? "",
     nextStartDryRunCommandTemplate: summary.next?.startNextDryRunCommandTemplate ?? "",
+    planCommandTemplate: `yarn manual-playlog --plan${outPathArg()}`,
+    remainingPlanStepCount: plan.steps.length,
+    remainingPlanPreview: plan.steps.slice(0, 3),
     startWorkflow: manualStartWorkflow(),
     summary,
   };
