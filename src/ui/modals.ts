@@ -27,7 +27,7 @@ import {
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
 import { defaultNewRunStageId, loadProfile } from "./settings";
 import { FINAL_ROUND } from "../data/waves";
-import { manualProofTargetFor } from "../core/manualProof";
+import { manualProofTargetFor, type ManualProofTargetStatus } from "../core/manualProof";
 import { manualProofResultChecklist, manualProofResultTarget } from "../core/manualProofResult";
 import {
   manualStartCommand as buildManualStartCommand,
@@ -111,6 +111,16 @@ function manualStartNextCommand(ctx: AppCtx): string {
     seed: s.seed,
     startedAt: ctx.runStartedAt,
   });
+}
+
+function currentRunManualProofNote(target: ManualProofTargetStatus): string {
+  if (target.state === "ok") {
+    return "현재 보유 조건은 목표에 맞습니다. 12분 이상 실제 플레이 후 결과 화면의 기록 명령으로 저장하세요.";
+  }
+  if (target.state === "warn") {
+    return "현재 보유 조건은 이 목표 증거로 인정되기 어렵습니다. 결과는 실제 플레이 시간으로 남길 수 있지만 목표 세션은 다시 필요할 수 있습니다.";
+  }
+  return "아직 목표 결과까지 확인해야 합니다. 12분 이상 플레이한 뒤 결과 화면 체크리스트에서 최종 충족 여부를 확인하세요.";
 }
 
 export function manualPlaylogCommand(r: ResultSummary): string {
@@ -626,6 +636,27 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     body.appendChild(el("h3", "", "현재 증거 버전"));
     body.appendChild(el("pre", "report", `DATA_VERSION ${dataVersion}`));
     body.appendChild(el("div", "modal-note", "결과 기록이나 --finish 명령의 --dataVersion, --stateChecksum, --endedAt은 결과 화면에 표시된 실제 값을 그대로 사용하세요."));
+    if (ctx?.scene === "game") {
+      const s = ctx.game.state;
+      const legends = legendOrBetterCount(ctx);
+      const currentTarget = manualProofTargetFor(s.difficulty, legends);
+      body.appendChild(el("h3", "", "현재 판 목표 상태"));
+      const statusTable = el("table", "kv-table");
+      const rows = [
+        ["난이도", DIFFICULTIES.find((d) => d.id === s.difficulty)?.name ?? s.difficulty],
+        ["전설/히든", String(legends)],
+        ["목표", currentTarget.label],
+        ["조건", currentTarget.status],
+      ];
+      for (const [k, v] of rows) {
+        const tr = el("tr");
+        tr.appendChild(el("td", "", k));
+        tr.appendChild(el("td", "", v));
+        statusTable.appendChild(tr);
+      }
+      body.appendChild(statusTable);
+      body.appendChild(el("div", currentTarget.state === "warn" ? "result-hint" : "modal-note", currentRunManualProofNote(currentTarget)));
+    }
     if (currentStartCommand) {
       body.appendChild(el("h3", "", "현재 판 시작 마커"));
       if (currentStartNextCommand) {
