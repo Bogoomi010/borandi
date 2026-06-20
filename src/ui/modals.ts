@@ -722,7 +722,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       "div",
       currentStartNextCommand ? "result-proof-ok" : "result-hint",
       currentStartNextCommand
-        ? "현재 판의 실제 시드로 다음 필요 수동 세션 시작 검증과 시작 마커를 바로 실행할 수 있습니다."
+        ? "현재 판의 실제 시드로 다음 필요 수동 세션 dry-run 검증을 먼저 실행하세요. 검증이 PASS일 때만 시작 마커를 저장합니다."
         : "새 게임을 시작하기 전에 시작 전 점검을 먼저 실행하고, 출력된 다음 목표 난이도로 새 게임을 시작하세요.",
     ));
     body.appendChild(el("h3", "", "1. 시작 전 검증"));

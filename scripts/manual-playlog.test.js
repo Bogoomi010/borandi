@@ -103,6 +103,14 @@ describe("manual-playlog plan", () => {
     expect(readme).not.toContain("고수 40R 5전설 이하 실패");
   });
 
+  it("인게임 수동 증거 모달은 start-next 저장 전에 dry-run PASS를 요구한다", () => {
+    const modalSource = readFileSync("src/ui/modals.ts", "utf8");
+
+    expect(modalSource).toContain("현재 판의 실제 시드로 다음 필요 수동 세션 dry-run 검증을 먼저 실행하세요.");
+    expect(modalSource).toContain("검증이 PASS일 때만 시작 마커를 저장합니다.");
+    expect(modalSource).not.toContain("다음 필요 수동 세션 시작 검증과 시작 마커를 바로 실행할 수 있습니다.");
+  });
+
   it("preflight는 정리할 마커가 없으면 다음 시작 마커를 보여주고 성공한다", () => {
     const out = makeTempPath("preflight-empty.json");
     const output = runManualPlaylog([`--out=${out}`, "--preflight"]);
