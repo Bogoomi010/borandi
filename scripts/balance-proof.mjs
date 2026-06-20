@@ -70,6 +70,24 @@ function writeTextFile(path, text) {
   writeFileSync(path, text, "utf8");
 }
 
+async function writeManualGuidanceArtifacts() {
+  const manualSheet = await runCapture("yarn", [
+    "manual-playlog",
+    `--out=${manualPath}`,
+    "--sheet",
+  ]);
+  writeTextFile(manualSheetPath, manualSheet);
+  console.log(`\n수동 플레이 시트 저장: ${manualSheetPath}`);
+  const manualPlan = await runCapture("yarn", [
+    "--silent",
+    "manual-playlog",
+    `--out=${manualPath}`,
+    "--plan-json",
+  ]);
+  writeTextFile(manualPlanPath, manualPlan);
+  console.log(`수동 플레이 계획 JSON 저장: ${manualPlanPath}`);
+}
+
 async function canReachServer() {
   let timer = null;
   try {
@@ -146,6 +164,7 @@ async function stopDevServer(child) {
 let devServer = null;
 try {
   if (requireComplete) {
+    await writeManualGuidanceArtifacts();
     await run("yarn", ["manual-playlog", `--out=${manualPath}`, "--assert"]);
   }
 
@@ -183,21 +202,7 @@ try {
     `--out=${auditPath}`,
     ...(requireComplete ? ["--assert"] : []),
   ]);
-  const manualSheet = await runCapture("yarn", [
-    "manual-playlog",
-    `--out=${manualPath}`,
-    "--sheet",
-  ]);
-  writeTextFile(manualSheetPath, manualSheet);
-  console.log(`\n수동 플레이 시트 저장: ${manualSheetPath}`);
-  const manualPlan = await runCapture("yarn", [
-    "--silent",
-    "manual-playlog",
-    `--out=${manualPath}`,
-    "--plan-json",
-  ]);
-  writeTextFile(manualPlanPath, manualPlan);
-  console.log(`수동 플레이 계획 JSON 저장: ${manualPlanPath}`);
+  if (!requireComplete) await writeManualGuidanceArtifacts();
 
   console.log(requireComplete
     ? `\n밸런스 완료 증거 검증 완료: ${auditPath}`

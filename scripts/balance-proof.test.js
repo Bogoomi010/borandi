@@ -137,6 +137,8 @@ exit 0
 
   it("수동 증거가 없으면 자동 게이트를 시작하기 전에 실패한다", () => {
     const manualPath = join(tempDir, "missing-manual.json");
+    const manualSheet = join(tempDir, "missing-manual-sheet.md");
+    const manualPlan = join(tempDir, "missing-manual-plan.json");
     const result = spawnSync(process.execPath, [
       "scripts/balance-proof.mjs",
       "--require-complete",
@@ -146,6 +148,8 @@ exit 0
       `--direct=${join(tempDir, "direct.json")}`,
       `--out=${join(tempDir, "audit.md")}`,
       `--screenshots=${join(tempDir, "shots")}`,
+      `--manual-sheet=${manualSheet}`,
+      `--manual-plan=${manualPlan}`,
       "--port=59999",
     ], {
       cwd: process.cwd(),
@@ -155,6 +159,10 @@ exit 0
     expect(result.status).toBe(1);
     expect(result.stdout).toContain("$ yarn manual-playlog");
     expect(result.stdout).not.toContain("$ yarn balance ");
+    expect(readFileSync(manualSheet, "utf8")).toContain("# 수동 밸런스 플레이 시트");
+    expect(JSON.parse(readFileSync(manualPlan, "utf8"))).toMatchObject({ passed: false });
+    expect(result.stdout).toContain(`수동 플레이 시트 저장: ${manualSheet}`);
+    expect(result.stdout).toContain(`수동 플레이 계획 JSON 저장: ${manualPlan}`);
     expect(result.stderr).toContain(`시작 전 점검: yarn manual-playlog --preflight --out='${manualPath}'`);
     expect(result.stderr).toContain(`전체 수집 계획: yarn manual-playlog --plan --out='${manualPath}'`);
     expect(result.stderr).toContain("추천 시작 검증: yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
