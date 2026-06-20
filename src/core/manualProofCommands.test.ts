@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  manualDryRunCommand,
   manualStartCommand,
   manualStartId,
   manualStartNextCommand,
@@ -34,5 +35,12 @@ describe("수동 증거 시작 명령", () => {
     expect(startNext).toContain("yarn manual-playlog --start-next");
     expect(startNext).not.toContain("--notes=");
     expect(manualStartCommand(input)).toContain(`--notes=${shellArg(input.notes)}`);
+  });
+
+  it("dry-run 명령은 로그 쓰기 전에 같은 결과 명령을 검증한다", () => {
+    const command = "yarn manual-playlog --finish='run-1' --result=clear && yarn manual-playlog --next";
+
+    expect(manualDryRunCommand("yarn manual-playlog --result=loss")).toBe("yarn manual-playlog --result=loss --dry-run");
+    expect(manualDryRunCommand(command)).toBe("yarn manual-playlog --finish='run-1' --result=clear --dry-run && yarn manual-playlog --next");
   });
 });

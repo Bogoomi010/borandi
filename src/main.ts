@@ -11,8 +11,11 @@ import { renderMenubar } from "./ui/menu";
 import { toast, anyModalOpen, closeTopModal, confirmModal } from "./ui/widgets";
 import {
   manualPlaylogCommand,
+  manualPlaylogDryRunCommand,
   manualPlaylogFinishCommand,
+  manualPlaylogFinishDryRunCommand,
   manualPlaylogFinishLatestCommand,
+  manualPlaylogFinishLatestDryRunCommand,
   manualPlaylogFinishLatestThenNextCommand,
   manualPlaylogThenNextCommand,
   maybeShowResult,
@@ -558,9 +561,12 @@ function renderGameToText(): string {
         start: buildManualStartCommand(manualStartInput),
         startNext: buildManualStartNextCommand(manualStartInput),
         result: null as string | null,
+        resultDryRun: null as string | null,
         resultThenNext: null as string | null,
         finish: null as string | null,
+        finishDryRun: null as string | null,
         finishLatest: null as string | null,
+        finishLatestDryRun: null as string | null,
         finishLatestThenNext: null as string | null,
       }
     : null;
@@ -573,9 +579,12 @@ function renderGameToText(): string {
     summary.unlockedNextStage = ctx.lastRunUnlockedNext;
     summary.wallSeconds = Math.max(1, Math.round((endedAtMs - ctx.runStartedAtMs) / 1000));
     manualProofCommands.result = manualPlaylogCommand(summary);
+    manualProofCommands.resultDryRun = manualPlaylogDryRunCommand(summary);
     manualProofCommands.resultThenNext = manualPlaylogThenNextCommand(summary);
     manualProofCommands.finish = manualPlaylogFinishCommand(summary);
+    manualProofCommands.finishDryRun = manualPlaylogFinishDryRunCommand(summary);
     manualProofCommands.finishLatest = manualPlaylogFinishLatestCommand(summary);
+    manualProofCommands.finishLatestDryRun = manualPlaylogFinishLatestDryRunCommand(summary);
     manualProofCommands.finishLatestThenNext = manualPlaylogFinishLatestThenNextCommand(summary);
   }
   return JSON.stringify({

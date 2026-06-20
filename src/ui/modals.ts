@@ -31,6 +31,7 @@ import { manualProofTargetFor } from "../core/manualProof";
 import { manualProofResultChecklist, manualProofResultTarget } from "../core/manualProofResult";
 import {
   manualStartCommand as buildManualStartCommand,
+  manualDryRunCommand,
   manualStartId,
   manualStartNextCommand as buildManualStartNextCommand,
   shellArg,
@@ -134,6 +135,10 @@ export function manualPlaylogCommand(r: ResultSummary): string {
   return args.join(" ");
 }
 
+export function manualPlaylogDryRunCommand(r: ResultSummary): string {
+  return manualDryRunCommand(manualPlaylogCommand(r));
+}
+
 export function manualPlaylogFinishCommand(r: ResultSummary): string {
   const startedAt = r.manualStartedAt ?? r.playedAt;
   const id = manualStartId(r.difficultyId, r.stageId, r.seed, startedAt);
@@ -153,6 +158,10 @@ export function manualPlaylogFinishCommand(r: ResultSummary): string {
   return args.join(" ");
 }
 
+export function manualPlaylogFinishDryRunCommand(r: ResultSummary): string {
+  return manualDryRunCommand(manualPlaylogFinishCommand(r));
+}
+
 export function manualPlaylogFinishLatestCommand(r: ResultSummary): string {
   const result = r.cleared ? "clear" : "loss";
   const args = [
@@ -168,6 +177,10 @@ export function manualPlaylogFinishLatestCommand(r: ResultSummary): string {
   if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
   args.push(`--notes=${shellArg(`${r.difficulty} ${result}, ${r.legendOrBetterCount}전설 이상`)}`);
   return args.join(" ");
+}
+
+export function manualPlaylogFinishLatestDryRunCommand(r: ResultSummary): string {
+  return manualDryRunCommand(manualPlaylogFinishLatestCommand(r));
 }
 
 export function manualPlaylogThenNextCommand(r: ResultSummary): string {
@@ -245,6 +258,14 @@ export function buildReportMarkdown(r: ResultSummary): string {
       "",
       `- 판정: ${proofTarget}`,
       "",
+      "## 저장 전 검증",
+      "",
+      "```bash",
+      manualPlaylogDryRunCommand(r),
+      "```",
+      "",
+      "## 실제 저장",
+      "",
       "```bash",
       manualPlaylogCommand(r),
       "```",
@@ -255,10 +276,22 @@ export function buildReportMarkdown(r: ResultSummary): string {
       manualPlaylogThenNextCommand(r),
       "```",
       "",
-      "## 시작 마커를 저장한 경우",
+      "## 시작 마커 저장 전 검증",
+      "",
+      "```bash",
+      manualPlaylogFinishDryRunCommand(r),
+      "```",
+      "",
+      "## 시작 마커로 기록",
       "",
       "```bash",
       manualPlaylogFinishCommand(r),
+      "```",
+      "",
+      "## 최근 시작 마커 저장 전 검증",
+      "",
+      "```bash",
+      manualPlaylogFinishLatestDryRunCommand(r),
       "```",
       "",
       "## 가장 최근 시작 마커로 기록",
@@ -347,17 +380,27 @@ export function maybeShowResult(ctx: AppCtx) {
 
     const row = el("div", "row-btns");
     const manualCommand = manualPlaylogCommand(summary);
+    const manualDryRunSaveCommand = manualPlaylogDryRunCommand(summary);
     const manualFinishCommand = manualPlaylogFinishCommand(summary);
+    const manualFinishDryRunCommand = manualPlaylogFinishDryRunCommand(summary);
     const manualFinishLatestCommand = manualPlaylogFinishLatestCommand(summary);
+    const manualFinishLatestDryRunCommand = manualPlaylogFinishLatestDryRunCommand(summary);
     const manualThenNextCommand = manualPlaylogThenNextCommand(summary);
     const manualFinishLatestThenNextCommand = manualPlaylogFinishLatestThenNextCommand(summary);
 
     body.appendChild(el("h3", "", "수동 플레이 로그"));
+    body.appendChild(el("h3", "", "저장 전 검증"));
+    body.appendChild(el("pre", "report", manualDryRunSaveCommand));
+    body.appendChild(el("h3", "", "실제 저장"));
     body.appendChild(el("pre", "report", manualCommand));
     body.appendChild(el("h3", "", "기록 후 다음 확인"));
     body.appendChild(el("pre", "report", manualThenNextCommand));
-    body.appendChild(el("h3", "", "시작 마커를 저장한 경우"));
+    body.appendChild(el("h3", "", "시작 마커 저장 전 검증"));
+    body.appendChild(el("pre", "report", manualFinishDryRunCommand));
+    body.appendChild(el("h3", "", "시작 마커로 기록"));
     body.appendChild(el("pre", "report", manualFinishCommand));
+    body.appendChild(el("h3", "", "최근 시작 마커 저장 전 검증"));
+    body.appendChild(el("pre", "report", manualFinishLatestDryRunCommand));
     body.appendChild(el("h3", "", "가장 최근 시작 마커로 기록"));
     body.appendChild(el("pre", "report", manualFinishLatestCommand));
     body.appendChild(el("h3", "", "최근 시작 마커 기록 후 다음 확인"));
@@ -376,6 +419,17 @@ export function maybeShowResult(ctx: AppCtx) {
       }
     };
     row.appendChild(exportBtn);
+
+    const copyDryRun = el("button", "", "검증 명령 복사");
+    copyDryRun.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualDryRunSaveCommand);
+        toast("저장 전 dry-run 검증 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
+      }
+    };
+    row.appendChild(copyDryRun);
 
     const copyLog = el("button", "", "로그 명령 복사");
     copyLog.onclick = async () => {

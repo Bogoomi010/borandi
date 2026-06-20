@@ -31,6 +31,8 @@ yarn browser-direct --json=output/browser-direct.json --screenshots=output/brows
                           # 실행 중인 yarn dev 서버에서 실제 소환/합성/조합/업그레이드 입력 흐름으로 2시드 이상 긴 밸런스 표본 수집
 yarn manual-playlog --difficulty=normal --minutes=24 --result=loss --stage=1 --round=39 --seed=RUN123 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --notes="후반 누적 압박"
                           # 사람이 직접 플레이한 수동 밸런스 세션을 output/manual-balance-playlog.json에 누적
+yarn manual-playlog --difficulty=normal --minutes=24 --result=loss --stage=1 --round=39 --seed=RUN123 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --notes="후반 누적 압박" --dry-run
+                          # 같은 결과 명령을 검증하고 미리보기만 출력, 로그 파일은 쓰지 않음
 yarn manual-playlog --start --id=RUN123 --difficulty=normal --stage=1 --seed=RUN123 --startedAt=2026-06-20T12:00:00.000Z
                           # 수동 플레이 시작 마커를 저장해 결과 화면을 놓쳐도 시작 시각 재사용
 yarn manual-playlog --finish=RUN123 --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT
@@ -72,6 +74,7 @@ yarn check                # npm 의존성 없이 Node만으로 코어 스모크 
 `yarn balance-audit`는 `balance`, `browser-balance`, `browser-direct` JSON의 `dataVersion`이 현재 `src/data/version.ts`의 `DATA_VERSION`과 같은지 확인한다. 또한 `browser-direct` JSON의 시나리오 범위, strict 통과 여부, 관찰 게이트도 확인해 실제 브라우저 입력 표본이 난이도별 목표와 같은 방향인지 검사한다.
 수동 플레이 로그는 `docs/manual-balance-playlog.example.json` 형식을 따른다. 예시 파일은 `example: true`로 표시되어 감사 증거에서 제외된다. `yarn balance-audit`는 시작/종료 시각, 결과, 맵, 라운드, 시드, 전설 수, 최고 등급, 데이터 버전, 상태 체크섬이 완전한 세션만 세며, 전설 수와 최고 등급이 서로 일치해야 한다. 수동 세션의 데이터 버전은 현재 `src/data/version.ts`의 `DATA_VERSION`과 같아야 하며, 예전 밸런스 버전의 플레이 로그는 무효 세션으로 표시된다. 중복 상태 체크섬은 한 번만 카운트한다. 총 120분 이상, 각 난이도 최소 12분 이상을 요구한다. 또한 입문자 40R 무전설 클리어, 일반 40R 1~2전설 클리어, 중급자 40R 5전설 이상 클리어, 고수 40R 5전설 이하 실패 + 40R 6전설 이상 클리어, 초고수 실패 기록은 각각 12분 이상 진행된 목표 결과 세션이어야 한다.
 게임 결과 화면과 결과 리포트에는 현재 세션의 실제 경과 시간을 넣은 `yarn manual-playlog` 명령이 함께 표시된다.
+결과 화면에는 같은 결과를 저장하지 않고 검증하는 `--dry-run` 명령도 함께 표시되며, 이 명령은 pending 시작 마커를 닫지 않는다.
 결과 화면의 `기록+다음 복사` 버튼은 이번 결과를 기록한 뒤 바로 `yarn manual-playlog --next`까지 실행하는 명령을 복사한다. `yarn manual-playlog --next`와 `--plan`은 다음 세션의 시작 마커 명령 템플릿과 마감 조건을 보여주며, `--next-json`/`--plan-json`도 같은 `finishTemplate`을 제공한다. `yarn manual-playlog --start-next --seed=...`는 다음 필요 세션의 난이도와 목표 메모를 자동으로 채워 시작 마커를 저장하고, 목표 조건에 맞는 finish 명령 예시를 출력한다.
 `Tools > 수동 밸런스 증거`는 현재 판의 `yarn manual-playlog --start` 명령도 보여준다. 시작 마커를 저장해두면 결과 화면을 놓친 경우에도 `--finish=<id>` 또는 `--finish-latest` 명령으로 같은 시작 시각을 재사용해 세션을 기록할 수 있다. `yarn manual-playlog --summary`는 finish되지 않은 시작 마커도 함께 보여준다. `yarn balance-audit --assert`는 미완료 시작 마커가 남아 있으면 실패하므로, 시작한 실제 플레이는 완료 세션으로 닫아야 한다. 감사표에는 다음으로 채워야 할 수동 플레이 세션도 함께 표시된다.
 

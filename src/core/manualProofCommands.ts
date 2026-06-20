@@ -46,3 +46,10 @@ export function manualStartNextCommand(input: ManualProofStartCommandInput): str
     `--startedAt=${shellArg(input.startedAt)}`,
   ].join(" ");
 }
+
+export function manualDryRunCommand(command: string): string {
+  const separator = " && ";
+  const separatorIndex = command.indexOf(separator);
+  if (separatorIndex < 0) return `${command} --dry-run`;
+  return `${command.slice(0, separatorIndex)} --dry-run${command.slice(separatorIndex)}`;
+}
