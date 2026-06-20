@@ -15,6 +15,7 @@ const outPath = String(args.out ?? DEFAULT_MANUAL_LOG_PATH);
 const difficulties = ["novice", "normal", "intermediate", "expert", "master"];
 const results = ["clear", "loss", "quit"];
 const grades = ["common", "rare", "hero", "legend", "hidden"];
+const sessionSources = ["human-playtest", "codex-direct-playtest"];
 const FINAL_ROUND = 40;
 const PENDING_TARGET_MINUTES = 12;
 const CURRENT_DATA_VERSION = readCurrentDataVersion();
@@ -64,6 +65,8 @@ function usage() {
     "                        # --next/--plan 출력에는 다음 세션 시작 마커 명령 템플릿도 포함",
     "  --assert              # 수동 증거가 모두 충족되지 않으면 실패 코드로 종료",
     "  --notes=...",
+    "  --source=human-playtest|codex-direct-playtest",
+    "                          # 사람이 직접 플레이한 증거와 Codex 브라우저 직접 조작 증거를 구분",
     "  --startedAt=ISO --endedAt=ISO",
   ].join("\n");
 }
@@ -297,7 +300,8 @@ function targetEvidence(sessions, difficulty, predicate) {
   if (matched.length === 0) return "증거 없음";
   return matched.map((session) => {
     const checksumText = String(session.stateChecksum ?? "").slice(0, 8);
-    return `${sessionResult(session)} ${session.round}R ${legendCount(session)}전설+ ${sessionMinutes(session).toFixed(1)}분 #${checksumText}`;
+    const source = String(session.source ?? "source?");
+    return `${sessionResult(session)} ${session.round}R ${legendCount(session)}전설+ ${sessionMinutes(session).toFixed(1)}분 ${source} #${checksumText}`;
   }).join("; ");
 }
 
@@ -307,6 +311,24 @@ function shellArg(value) {
 
 function outPathArg() {
   return outPath === DEFAULT_MANUAL_LOG_PATH ? "" : ` --out=${shellArg(outPath)}`;
+}
+
+function normalizeSessionSource(value) {
+  const source = String(value ?? "human-playtest");
+  if (!sessionSources.includes(source)) {
+    fail(`--source 값은 ${sessionSources.join("|")} 중 하나여야 합니다.`);
+  }
+  return source;
+}
+
+function startSourceForSession(source) {
+  return `${source}-start`;
+}
+
+function sessionSourceForPending(session) {
+  const pendingSource = String(session?.source ?? "");
+  if (pendingSource === "codex-direct-playtest-start") return "codex-direct-playtest";
+  return "human-playtest";
 }
 
 function startCommandTemplate(step) {
@@ -1057,7 +1079,7 @@ function isDryRun() {
   return args["dry-run"] === "true";
 }
 
-function savePendingSession({ difficulty, stage, seed, startedAt, id, notes }) {
+function savePendingSession({ difficulty, stage, seed, startedAt, id, notes, source }) {
   const log = readJson(outPath);
   log.schemaVersion = 1;
   log.source = "manual-playlog";
@@ -1067,7 +1089,7 @@ function savePendingSession({ difficulty, stage, seed, startedAt, id, notes }) {
   log.pendingSessions = log.pendingSessions ?? [];
   log.pendingSessions.push({
     id,
-    source: "human-playtest-start",
+    source: startSourceForSession(source),
     difficulty,
     stage,
     seed,
@@ -1080,7 +1102,7 @@ function savePendingSession({ difficulty, stage, seed, startedAt, id, notes }) {
   writeFileSync(outPath, `${JSON.stringify(log, null, 2)}\n`, "utf8");
 }
 
-function printStartSaved({ id, startedAt, next, dryRun = false }) {
+function printStartSaved({ id, startedAt, source, next, dryRun = false }) {
   console.log(dryRun
     ? `DRY-RUN 수동 플레이 시작 마커 검증 통과: ${outPath}`
     : `수동 플레이 시작 마커 저장: ${outPath}`);
@@ -1090,6 +1112,7 @@ function printStartSaved({ id, startedAt, next, dryRun = false }) {
     if (next.logHint) console.log(`- 기록 조건: ${next.logHint}`);
   }
   console.log(`- id: ${id}`);
+  if (source) console.log(`- 출처: ${source}`);
   console.log(`- 시작: ${startedAt.toISOString()}`);
   if (dryRun) {
     console.log("- 로그 쓰기: 안 함");
@@ -1172,6 +1195,7 @@ function startManualSession() {
   const seed = requireStartSeed();
   const startedAt = parseDate("startedAt", args.startedAt) ?? new Date();
   const id = String(args.id ?? makePendingId({ difficulty, stage, seed, startedAt: startedAt.toISOString() }));
+  const source = normalizeSessionSource(args.source);
   if (!id.trim()) fail("--id 값이 비어 있습니다.");
 
   if (!isDryRun()) {
@@ -1182,10 +1206,11 @@ function startManualSession() {
       seed,
       startedAt,
       notes: args.notes ? String(args.notes) : "",
+      source,
     });
   }
 
-  printStartSaved({ id, startedAt, dryRun: isDryRun() });
+  printStartSaved({ id, startedAt, source, dryRun: isDryRun() });
 }
 
 function startNextManualSession() {
@@ -1210,6 +1235,7 @@ function startNextManualSession() {
   const seed = requireStartSeed();
   const startedAt = parseDate("startedAt", args.startedAt) ?? new Date();
   const id = String(args.id ?? makePendingId({ difficulty, stage, seed, startedAt: startedAt.toISOString() }));
+  const source = normalizeSessionSource(args.source);
   if (!id.trim()) fail("--id 값이 비어 있습니다.");
   if (!isDryRun()) {
     savePendingSession({
@@ -1219,9 +1245,10 @@ function startNextManualSession() {
       seed,
       startedAt,
       notes: args.notes ? String(args.notes) : String(next.label),
+      source,
     });
   }
-  printStartSaved({ id, startedAt, next, dryRun: isDryRun() });
+  printStartSaved({ id, startedAt, source, next, dryRun: isDryRun() });
 }
 
 if (args.summary === "true" || args.status === "true") {
@@ -1393,9 +1420,12 @@ const autoPendingFinish = requestedFinishId
 const finishId = requestedFinishId || (autoPendingFinish ? String(autoPendingFinish.id) : "");
 const linkedPendingSession = requestedPendingFinish ?? autoPendingFinish;
 const linkedTargetPlan = targetPlanForPendingSession(linkedPendingSession);
+const sessionSource = args.source === undefined
+  ? sessionSourceForPending(linkedPendingSession)
+  : normalizeSessionSource(args.source);
 
 const session = {
-  source: "human-playtest",
+  source: sessionSource,
   difficulty,
   ...(minutes !== undefined ? { minutes } : { seconds: computedSeconds }),
   startedAt: startedAt.toISOString(),

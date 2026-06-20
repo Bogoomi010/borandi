@@ -359,8 +359,9 @@ function manualEvidence(sessions) {
       const round = s.round !== undefined ? `${s.round}R` : "라운드 없음";
       const legends = `${legendCount(s)}전설 이상`;
       const minutes = `${sessionMinutes(s).toFixed(1)}분`;
+      const source = String(s.source ?? "source?");
       const checksum = s.stateChecksum ? `#${s.stateChecksum}` : "체크섬 없음";
-      return `${s.difficulty} ${result} ${round} ${legends} ${minutes} ${checksum}`;
+      return `${s.difficulty} ${result} ${round} ${legends} ${minutes} ${source} ${checksum}`;
     })
     .join("; ");
 }

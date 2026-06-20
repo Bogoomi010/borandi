@@ -88,6 +88,7 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("--plan-json           # --plan --json과 동일");
     expect(output).toContain("--next-json           # --next --json과 동일");
     expect(output).toContain("--pending-json        # --pending --json과 동일");
+    expect(output).toContain("--source=human-playtest|codex-direct-playtest");
   });
 
   it("preflight는 정리할 마커가 없으면 다음 시작 마커를 보여주고 성공한다", () => {
@@ -124,6 +125,52 @@ describe("manual-playlog plan", () => {
       "12분 이상 실제로 플레이하고 목표 결과 조건 확인",
       "결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 실행 후 실제 finish 저장",
     ]);
+  });
+
+  it("codex 직접 플레이 출처는 start-next 마커와 finish 결과에 보존된다", () => {
+    const out = makeTempPath("codex-direct-source.json");
+    const startedAt = "2026-06-20T02:00:00.000Z";
+    const endedAt = "2026-06-20T02:12:30.000Z";
+
+    const startOutput = runManualPlaylog([
+      `--out=${out}`,
+      "--start-next",
+      "--difficulty=novice",
+      "--seed=CODEX-DIRECT-SEED",
+      `--startedAt=${startedAt}`,
+      "--source=codex-direct-playtest",
+    ]);
+    expect(startOutput).toContain("- 출처: codex-direct-playtest");
+
+    expect(readJson(out).pendingSessions[0]).toMatchObject({
+      source: "codex-direct-playtest-start",
+      difficulty: "novice",
+      seed: "CODEX-DIRECT-SEED",
+    });
+
+    runManualPlaylog([
+      `--out=${out}`,
+      "--finish-latest",
+      "--result=clear",
+      "--round=40",
+      "--legends=0",
+      "--maxGrade=hero",
+      `--dataVersion=${CURRENT_DATA_VERSION}`,
+      "--stateChecksum=2000abcd",
+      `--endedAt=${endedAt}`,
+    ]);
+
+    const log = readJson(out);
+    expect(log.pendingSessions).toEqual([]);
+    expect(log.sessions[0]).toMatchObject({
+      source: "codex-direct-playtest",
+      difficulty: "novice",
+      seconds: 750,
+      result: "clear",
+      round: 40,
+      legends: 0,
+      stateChecksum: "2000abcd",
+    });
   });
 
   it("preflight는 미완료 시작 마커가 있으면 먼저 finish하도록 실패한다", () => {
