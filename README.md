@@ -77,6 +77,7 @@ yarn check                # npm 의존성 없이 Node만으로 코어 스모크 
 결과 화면에는 같은 결과를 저장하지 않고 검증하는 `--dry-run` 명령도 함께 표시되며, 이 명령은 pending 시작 마커를 닫지 않는다.
 결과 화면의 `기록+다음 복사` 버튼은 이번 결과를 기록한 뒤 바로 `yarn manual-playlog --next`까지 실행하는 명령을 복사한다. `yarn manual-playlog --next`와 `--plan`은 다음 세션의 시작 마커 명령 템플릿과 마감 조건을 보여주며, `--next-json`/`--plan-json`도 같은 `finishTemplate`을 제공한다. `yarn manual-playlog --start-next --seed=...`는 다음 필요 세션의 난이도와 목표 메모를 자동으로 채워 시작 마커를 저장하고, 목표 조건에 맞는 finish 명령 예시를 출력한다.
 `Tools > 수동 밸런스 증거`는 현재 판의 `yarn manual-playlog --start` 명령도 보여준다. 시작 마커를 저장해두면 결과 화면을 놓친 경우에도 `--finish=<id>` 또는 `--finish-latest` 명령으로 같은 시작 시각을 재사용해 세션을 기록할 수 있다. `yarn manual-playlog --summary`는 finish되지 않은 시작 마커도 함께 보여준다. `yarn balance-audit --assert`는 미완료 시작 마커가 남아 있으면 실패하므로, 시작한 실제 플레이는 완료 세션으로 닫아야 한다. 감사표에는 다음으로 채워야 할 수동 플레이 세션도 함께 표시된다.
+`yarn manual-playlog --pending`과 `--summary`는 시작 마커별 경과 시간과 12분 목표까지 남은 시간을 보여준다.
 무효 수동 세션이 남아 있으면 `--start`와 `--start-next`가 새 시작 마커를 만들지 않으므로, `yarn manual-playlog --summary`의 INVALID 사유를 먼저 정리해야 한다.
 
 ## 데스크탑 게임 구성

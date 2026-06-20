@@ -16,6 +16,7 @@ const difficulties = ["novice", "normal", "intermediate", "expert", "master"];
 const results = ["clear", "loss", "quit"];
 const grades = ["common", "rare", "hero", "legend", "hidden"];
 const FINAL_ROUND = 40;
+const PENDING_TARGET_MINUTES = 12;
 const CURRENT_DATA_VERSION = readCurrentDataVersion();
 
 function usage() {
@@ -578,6 +579,7 @@ function printSummary() {
     console.log("PENDING 아직 finish되지 않은 시작 마커:");
     for (const session of summary.pending) {
       console.log(`  - ${session.id}: ${session.difficulty} stage=${session.stage} seed=${session.seed} startedAt=${session.startedAt}`);
+      console.log(`    경과: ${pendingTimingLabel(session)}`);
       if (session.finishCommandTemplate) {
         console.log(`    마무리 템플릿: ${session.finishCommandTemplate}`);
       }
@@ -724,6 +726,7 @@ function printPreflight() {
     console.log("PENDING 새 시작 전에 먼저 finish해야 하는 시작 마커:");
     for (const session of summary.pending) {
       console.log(`  - ${session.id}: ${session.difficulty} stage=${session.stage} seed=${session.seed} startedAt=${session.startedAt}`);
+      console.log(`    경과: ${pendingTimingLabel(session)}`);
       if (session.finishCommandTemplate) {
         console.log(`    마무리 템플릿: ${session.finishCommandTemplate}`);
       }
@@ -791,10 +794,36 @@ function targetPlanForPendingSession(session) {
   return targetPlans.find((target) => target.label === notes) ?? null;
 }
 
+function pendingTiming(startedAt) {
+  const startedAtMs = new Date(String(startedAt ?? "")).getTime();
+  const nowMs = Date.now();
+  const elapsedSeconds = Number.isFinite(startedAtMs)
+    ? Math.max(0, Math.floor((nowMs - startedAtMs) / 1000))
+    : 0;
+  const elapsedMinutes = elapsedSeconds / 60;
+  const remainingTargetMinutes = Math.max(0, PENDING_TARGET_MINUTES - elapsedMinutes);
+  return {
+    elapsedSeconds,
+    elapsedMinutes: Number(elapsedMinutes.toFixed(1)),
+    targetMinutes: PENDING_TARGET_MINUTES,
+    remainingTargetMinutes: Number(remainingTargetMinutes.toFixed(1)),
+    targetReady: elapsedMinutes >= PENDING_TARGET_MINUTES,
+  };
+}
+
+function pendingTimingLabel(session) {
+  if (session.targetReady) {
+    return `12분 목표 충족 (${session.elapsedMinutes.toFixed(1)}분 경과)`;
+  }
+  return `12분까지 ${session.remainingTargetMinutes.toFixed(1)}분 남음 (${session.elapsedMinutes.toFixed(1)}분 경과)`;
+}
+
 function pendingSessionWithCommands(session) {
   const id = String(session.id ?? "");
+  const timing = pendingTiming(session.startedAt);
   return {
     ...session,
+    ...timing,
     finishCommandTemplate: id
       ? finishCommandTemplate({ id, next: targetPlanForPendingSession(session) })
       : "",
@@ -849,6 +878,7 @@ function printPending() {
   }
   for (const session of pending.pending) {
     console.log(`- ${session.id}: ${session.difficulty} stage=${session.stage} seed=${session.seed} startedAt=${session.startedAt}`);
+    console.log(`  경과: ${pendingTimingLabel(session)}`);
     if (session.finishCommandTemplate) {
       console.log(`  마무리 템플릿: ${session.finishCommandTemplate}`);
     }

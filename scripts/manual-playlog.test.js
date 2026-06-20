@@ -124,6 +124,7 @@ describe("manual-playlog plan", () => {
 
     expect(failed.status).toBe(1);
     expect(failed.stdout).toContain("PENDING 새 시작 전에 먼저 finish해야 하는 시작 마커:");
+    expect(failed.stdout).toContain("경과: 12분 목표 충족");
     expect(failed.stdout).toContain("마무리 템플릿: yarn manual-playlog --finish='novice-1-PENDING-SEED-20260620T020000000Z'");
     expect(failed.stdout).toContain("FAIL 새 수동 플레이 시작 전 정리 필요");
     expect(failed.stdout).toContain("판정: 정리 필요");
@@ -146,6 +147,43 @@ describe("manual-playlog plan", () => {
     expect(preflight.blockingReasons).toEqual(["pendingStartMarkers"]);
     expect(preflight.pendingCount).toBe(1);
     expect(preflight.pending[0].finishCommandTemplate).toContain("yarn manual-playlog --finish='novice-1-PENDING-SEED-20260620T020000000Z'");
+    expect(preflight.pending[0]).toMatchObject({
+      targetMinutes: 12,
+      remainingTargetMinutes: 0,
+      targetReady: true,
+    });
+    expect(preflight.pending[0].elapsedMinutes).toBeGreaterThanOrEqual(12);
+  });
+
+  it("pending은 시작 마커의 12분 목표까지 남은 시간을 보여준다", () => {
+    const out = makeTempPath("pending-timer.json");
+    const startedAt = new Date(Date.now() - 5 * 60_000).toISOString();
+    runManualPlaylog([
+      `--out=${out}`,
+      "--start",
+      "--id=timer-run",
+      "--difficulty=normal",
+      "--stage=1",
+      "--seed=TIMER-SEED",
+      `--startedAt=${startedAt}`,
+    ]);
+
+    const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+    const text = runManualPlaylog([`--out=${out}`, "--pending"]);
+
+    expect(pending.pending).toHaveLength(1);
+    expect(pending.pending[0]).toMatchObject({
+      id: "timer-run",
+      targetMinutes: 12,
+      targetReady: false,
+    });
+    expect(pending.pending[0].elapsedMinutes).toBeGreaterThanOrEqual(4.9);
+    expect(pending.pending[0].elapsedMinutes).toBeLessThan(6);
+    expect(pending.pending[0].remainingTargetMinutes).toBeGreaterThan(6);
+    expect(pending.pending[0].remainingTargetMinutes).toBeLessThanOrEqual(7.1);
+    expect(text).toContain("timer-run");
+    expect(text).toContain("경과: 12분까지");
+    expect(text).toContain("분 남음");
   });
 
   it("빈 실제 로그에는 목표 세션 6개와 총 120분 보충 계획이 나온다", () => {
@@ -851,6 +889,7 @@ describe("manual-playlog plan", () => {
     expect(planBeforeFinish.current.pendingCount).toBe(1);
     const summaryText = runManualPlaylog([`--out=${out}`, "--summary"]);
     expect(summaryText).toContain("PENDING 아직 finish되지 않은 시작 마커");
+    expect(summaryText).toContain("경과: 12분 목표 충족");
     expect(summaryText).toContain("마무리 템플릿: yarn manual-playlog --finish='normal-run-1'");
 
     const finishOutput = runManualPlaylog([
