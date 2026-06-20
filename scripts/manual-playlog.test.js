@@ -520,6 +520,7 @@ describe("manual-playlog plan", () => {
     const log = readJson(out);
     const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
     expect(output).toContain("- 연결된 시작 마커: novice-1-DIRECT-SEED-20260620T020000000Z");
+    expect(output).toContain("- 시작 마커 목표: 입문자 무전설 40R 클리어 충족");
     expect(pending.pending).toHaveLength(0);
     expect(log.sessions).toHaveLength(1);
     expect(log.sessions[0]).toMatchObject({
@@ -527,6 +528,49 @@ describe("manual-playlog plan", () => {
       difficulty: "novice",
       seed: "DIRECT-SEED",
       seconds: 900,
+    });
+  });
+
+  it("시작 마커 목표를 못 채운 결과도 저장하되 미충족을 즉시 출력한다", () => {
+    const out = makeTempPath("pending-direct-save-miss.json");
+    runManualPlaylog([
+      `--out=${out}`,
+      "--start-next",
+      "--seed=MISS-SEED",
+      "--startedAt=2026-06-20T03:00:00.000Z",
+    ]);
+
+    const output = runManualPlaylog([
+      `--out=${out}`,
+      "--difficulty=novice",
+      "--seconds=900",
+      "--result=loss",
+      "--stage=1",
+      "--round=20",
+      "--seed=MISS-SEED",
+      "--legends=0",
+      "--maxGrade=hero",
+      "--dataVersion=0.8.0",
+      "--stateChecksum=20000013",
+      "--startedAt=2026-06-20T03:00:00.000Z",
+      "--endedAt=2026-06-20T03:15:00.000Z",
+    ]);
+
+    const log = readJson(out);
+    const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+    const next = JSON.parse(runManualPlaylog([`--out=${out}`, "--next-json"]));
+    expect(output).toContain("- 연결된 시작 마커: novice-1-MISS-SEED-20260620T030000000Z");
+    expect(output).toContain("- 시작 마커 목표: 입문자 무전설 40R 클리어 미충족");
+    expect(output).toContain("이 세션은 실제 플레이 시간으로 저장됐지만 목표 증거 행은 아직 남아 있습니다.");
+    expect(pending.pending).toHaveLength(0);
+    expect(log.sessions[0]).toMatchObject({
+      pendingSessionId: "novice-1-MISS-SEED-20260620T030000000Z",
+      result: "loss",
+      round: 20,
+    });
+    expect(next.next).toMatchObject({
+      difficulty: "novice",
+      label: "입문자 무전설 40R 클리어",
     });
   });
 

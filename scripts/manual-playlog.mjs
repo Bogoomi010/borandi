@@ -296,6 +296,7 @@ const targetPlans = [
     minutes: 12,
     goal: "전설 없이 40R 최종 보스 클리어",
     logHint: "result=clear round=40 legends=0 maxGrade=hero 이하",
+    predicate: (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) === 0,
   },
   {
     label: "일반 1~2전설 40R 클리어",
@@ -303,6 +304,7 @@ const targetPlans = [
     minutes: 12,
     goal: "전설 1~2개로 40R 최종 보스 클리어",
     logHint: "result=clear round=40 legends=1~2 maxGrade=legend",
+    predicate: (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 1 && legendCount(session) <= 2,
   },
   {
     label: "중급자 5전설 이상 40R 클리어",
@@ -310,6 +312,7 @@ const targetPlans = [
     minutes: 12,
     goal: "전설 5개 이상으로 40R 최종 보스 클리어",
     logHint: "result=clear round=40 legends>=5 maxGrade=legend|hidden",
+    predicate: (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 5,
   },
   {
     label: "고수 5전설 이하 40R 실패",
@@ -317,6 +320,7 @@ const targetPlans = [
     minutes: 12,
     goal: "전설 5개 이하 조건으로 40R까지 버틴 뒤 실패",
     logHint: "result=loss round=40 legends<=5",
+    predicate: (session) => isTargetLength(session) && isLoss(session) && reachedFinalRound(session) && legendCount(session) <= 5,
   },
   {
     label: "고수 6전설 이상 40R 클리어",
@@ -324,6 +328,7 @@ const targetPlans = [
     minutes: 12,
     goal: "전설 6개 이상 성장 조건으로 40R 최종 보스 클리어",
     logHint: "result=clear round=40 legends>=6 maxGrade=legend|hidden",
+    predicate: (session) => isTargetLength(session) && isClear(session) && reachedFinalRound(session) && legendCount(session) >= 6,
   },
   {
     label: "초고수 실패 기록",
@@ -331,6 +336,7 @@ const targetPlans = [
     minutes: 12,
     goal: "제한 없이 플레이하되 실패 결과 기록",
     logHint: "result=loss legends=최종값",
+    predicate: (session) => isTargetLength(session) && isLoss(session),
   },
 ];
 
@@ -663,7 +669,7 @@ function pendingSessions(log) {
 }
 
 function targetPlanForPendingSession(session) {
-  const notes = String(session.notes ?? "");
+  const notes = String(session?.notes ?? "");
   return targetPlans.find((target) => target.label === notes) ?? null;
 }
 
@@ -1041,6 +1047,8 @@ const autoPendingFinish = requestedFinishId
   ? null
   : findMatchingPendingSession(log, { difficulty, stage, seed, startedAt });
 const finishId = requestedFinishId || (autoPendingFinish ? String(autoPendingFinish.id) : "");
+const linkedPendingSession = requestedPendingFinish ?? autoPendingFinish;
+const linkedTargetPlan = targetPlanForPendingSession(linkedPendingSession);
 
 const session = {
   source: "human-playtest",
@@ -1082,6 +1090,11 @@ const missing = difficulties.filter((d) => !covered.has(d));
 console.log(`수동 플레이 로그 저장: ${outPath}`);
 console.log(`- 추가 세션: ${difficulty}, ${(minutes ?? computedSeconds / 60).toFixed(1)}분`);
 if (autoPendingFinish) console.log(`- 연결된 시작 마커: ${finishId}`);
+if (linkedTargetPlan) {
+  const targetMet = linkedTargetPlan.predicate(session);
+  console.log(`- 시작 마커 목표: ${linkedTargetPlan.label} ${targetMet ? "충족" : "미충족"}`);
+  if (!targetMet) console.log("- 이 세션은 실제 플레이 시간으로 저장됐지만 목표 증거 행은 아직 남아 있습니다.");
+}
 console.log(`- 누적 시간: ${total.toFixed(1)}분 / 120.0분`);
 console.log(`- 난이도 커버: ${[...covered].join(", ") || "없음"}`);
 console.log(`- 남은 난이도: ${missing.join(", ") || "없음"}`);
