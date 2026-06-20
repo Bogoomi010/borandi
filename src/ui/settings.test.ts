@@ -63,11 +63,20 @@ describe("프로필 맵 해금", () => {
     expect(loadProfile().unlockedStage).toBe(1);
   });
 
-  it("게임 시작 때 선택한 맵의 40라운드 최종 보스 클리어 후 다음 맵 선택 권한을 추가한다", () => {
+  it("게임 시작 때 선택한 맵의 40라운드 최종 보스 클리어 후 다음 새 게임의 맵 선택 권한만 추가한다", () => {
     const unlocked = profileRecordRun(true, "novice", FINAL_ROUND, 1, true);
 
     expect(unlocked).toBe(true);
     expect(loadProfile().unlockedStage).toBe(2);
+  });
+
+  it("해금 후에도 현재 판 맵을 바꾸는 값이 아니라 다음 새 게임에서 고를 수 있는 권한만 저장한다", () => {
+    expect(profileRecordRun(true, "novice", FINAL_ROUND, 1, true)).toBe(true);
+
+    const profile = loadProfile();
+    expect(profile.unlockedStage).toBe(2);
+    expect(playableStageId(1, profile.unlockedStage)).toBe(1);
+    expect(playableStageId(2, profile.unlockedStage)).toBe(2);
   });
 
   it("40라운드에 도달해도 패배한 판이면 다음 맵을 해금하지 않는다", () => {

@@ -534,6 +534,8 @@ function renderGameToText(): string {
       runGoal: "selected_map_round_1_to_40_final_boss",
       unlockRule: "clear_round_40_boss_on_current_unlocked_map",
       nextMapStartsInCurrentRun: false,
+      autoChangesAfterRoundOrBoss: false,
+      unlockAddsSelectionPermissionOnly: true,
       waypointCount: stage.waypoints.length,
       decorationCount: stage.decorations.length,
     },
@@ -541,6 +543,8 @@ function renderGameToText(): string {
       selectedAtNewGameStart: true,
       fixedUntilFinalBossRound: 40,
       changesBetweenRounds: false,
+      changesAfterFinalBossClear: false,
+      nextMapPermissionOnly: true,
       nextMapPermissionAppliesToNextNewGame: true,
     },
     manualProof: {
