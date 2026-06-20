@@ -93,6 +93,13 @@ function directBetterThan(base, improved) {
     Number(improved.avgPressureRatio ?? 1) < Number(base.avgPressureRatio ?? 1);
 }
 
+function directClearAccess(scenario, { minClearRate = 0.5, minAvgRound = 39.5, maxPressureRatio = 1 } = {}) {
+  return !!scenario && (
+    Number(scenario.clearRate ?? 0) >= minClearRate ||
+    (Number(scenario.avgRound ?? 0) >= minAvgRound && Number(scenario.avgPressureRatio ?? 1) < maxPressureRatio)
+  );
+}
+
 function manualMinutes(manual) {
   if (!manual) return 0;
   if (isExampleManualLog(manual)) return 0;
@@ -594,16 +601,17 @@ function buildRows(balance, browser, direct, manual, codex) {
   const directExpertOpen = directScenario(direct, "expertOpen");
   const directMaster = directScenario(direct, "masterOpen");
   const directNovicePass = directObservation(direct, "입문자 직접 플레이 표본")?.pass ??
-    (!!directNovice && (Number(directNovice.clearRate ?? 0) >= 0.5 || Number(directNovice.avgRound ?? 0) >= 39));
+    directClearAccess(directNovice, { minClearRate: 0.5, minAvgRound: 39 });
   const directNormalPass = directObservation(direct, "일반 직접 플레이 표본")?.pass ??
-    (!!directNormalNo && Number(directNormalNo.clearRate ?? 1) <= 0.5 && directBetterThan(directNormalNo, directNormalTwo));
+    (!!directNormalNo && Number(directNormalNo.clearRate ?? 1) <= 0.5 &&
+      (directClearAccess(directNormalOne) || directClearAccess(directNormalTwo)) &&
+      directBetterThan(directNormalNo, directNormalTwo));
   const directIntermediatePass = directObservation(direct, "중급자 직접 플레이 표본")?.pass ??
-    (!!directIntermediateTwo && !!directIntermediateFive &&
-      (Number(directIntermediateFive.clearRate ?? 0) > Number(directIntermediateTwo.clearRate ?? 0) ||
-        Number(directIntermediateFive.avgRound ?? 0) >= Number(directIntermediateTwo.avgRound ?? 0) + 1 ||
-        Number(directIntermediateFive.avgPressureRatio ?? 1) < Number(directIntermediateTwo.avgPressureRatio ?? 1)));
+    (!!directIntermediateTwo && Number(directIntermediateTwo.clearRate ?? 1) <= 0.1 &&
+      directClearAccess(directIntermediateFive) && directBetterThan(directIntermediateTwo, directIntermediateFive));
   const directExpertPass = directObservation(direct, "고수 직접 플레이 표본")?.pass ??
-    directBetterThan(directExpertFive, directExpertOpen);
+    (!!directExpertFive && Number(directExpertFive.clearRate ?? 1) <= 0.1 &&
+      directClearAccess(directExpertOpen) && directBetterThan(directExpertFive, directExpertOpen));
   const directMasterPass = directObservation(direct, "초고수 직접 플레이 표본")?.pass ??
     (!!directMaster && Number(directMaster.clearRate ?? 1) <= 0.1);
   rows.push({

@@ -275,6 +275,43 @@ describe("balance-audit assert", () => {
     expect(failed.stderr).toContain("브라우저 직접 플레이형 자동 표본 범위");
   });
 
+  it("관찰 배열이 없는 직접 입력 증거도 중급자 5전설 클리어권 기준을 요구한다", () => {
+    const direct = completeDirect();
+    direct.observations = [];
+    direct.passed = true;
+    for (const item of direct.scenarios) {
+      if (item.id === "intermediateTwoLegend") {
+        item.clearRate = 0;
+        item.avgRound = 37.5;
+        item.avgPressureRatio = 1.2;
+      }
+      if (item.id === "intermediateFiveLegend") {
+        item.clearRate = 0.33;
+        item.avgRound = 38.7;
+        item.avgPressureRatio = 0.9;
+      }
+    }
+    const paths = {
+      balance: writeJson("balance.json", completeBalance()),
+      browser: writeJson("browser.json", completeBrowser()),
+      direct: writeJson("direct.json", direct),
+      manual: writeJson("manual.json", completeManual()),
+    };
+
+    const failed = runAuditFailure([
+      `--balance=${paths.balance}`,
+      `--browser=${paths.browser}`,
+      `--direct=${paths.direct}`,
+      `--manual=${paths.manual}`,
+      "--assert",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stdout).toContain("브라우저 직접: 중급자 5전설 개선 | FAIL");
+    expect(failed.stdout).toContain("5전설 33.0%, 평균 38.7R");
+    expect(failed.stderr).toContain("브라우저 직접: 중급자 5전설 개선");
+  });
+
   it("현재 데이터 버전이 아닌 자동/브라우저 증거는 assert가 실패한다", () => {
     const staleBalance = completeBalance();
     const staleBrowser = completeBrowser();

@@ -491,6 +491,13 @@ function pct(n) {
   return `${(n * 100).toFixed(1)}%`;
 }
 
+function clearAccess(scenario, { minClearRate = 0.5, minAvgRound = 39.5, maxPressureRatio = 1 } = {}) {
+  return !!scenario && (
+    scenario.clearRate >= minClearRate ||
+    (scenario.avgRound >= minAvgRound && scenario.avgPressureRatio < maxPressureRatio)
+  );
+}
+
 function evaluateObservations(results) {
   const novice = scenarioById(results, "noviceHero");
   const normalNoLegend = scenarioById(results, "normalNoLegend");
@@ -506,7 +513,7 @@ function evaluateObservations(results) {
   if (novice) {
     gates.push({
       label: "입문자 직접 플레이 표본은 전설 없이 클리어권",
-      pass: novice.clearRate >= 0.5 || novice.avgRound >= 39,
+      pass: clearAccess(novice, { minClearRate: 0.5, minAvgRound: 39 }),
       detail: `${pct(novice.clearRate)}, 평균 ${novice.avgRound.toFixed(1)}R, 평균 전설 ${novice.avgLegendOrBetter.toFixed(1)}`,
     });
   }
@@ -514,6 +521,7 @@ function evaluateObservations(results) {
     gates.push({
       label: "일반 직접 플레이 표본은 1~2전설 조건이 무전설보다 유리",
       pass: normalNoLegend.clearRate <= 0.5 &&
+        (clearAccess(normalOneLegend) || clearAccess(normalTwoLegend)) &&
         (normalTwoLegend.clearRate > normalNoLegend.clearRate ||
           normalTwoLegend.avgRound >= normalNoLegend.avgRound + 1 ||
           normalTwoLegend.avgPressureRatio < normalNoLegend.avgPressureRatio),
@@ -523,18 +531,22 @@ function evaluateObservations(results) {
   if (intermediateTwoLegend && intermediateFiveLegend) {
     gates.push({
       label: "중급자 직접 플레이 표본은 5전설 조건이 2전설보다 유리",
-      pass: intermediateFiveLegend.clearRate > intermediateTwoLegend.clearRate ||
-        intermediateFiveLegend.avgRound >= intermediateTwoLegend.avgRound + 1 ||
-        intermediateFiveLegend.avgPressureRatio < intermediateTwoLegend.avgPressureRatio,
+      pass: intermediateTwoLegend.clearRate <= 0.1 &&
+        clearAccess(intermediateFiveLegend) &&
+        (intermediateFiveLegend.clearRate > intermediateTwoLegend.clearRate ||
+          intermediateFiveLegend.avgRound >= intermediateTwoLegend.avgRound + 1 ||
+          intermediateFiveLegend.avgPressureRatio < intermediateTwoLegend.avgPressureRatio),
       detail: `2전설 ${pct(intermediateTwoLegend.clearRate)} ${intermediateTwoLegend.avgRound.toFixed(1)}R 압박 ${pct(intermediateTwoLegend.avgPressureRatio)}, 5전설 ${pct(intermediateFiveLegend.clearRate)} ${intermediateFiveLegend.avgRound.toFixed(1)}R 압박 ${pct(intermediateFiveLegend.avgPressureRatio)}`,
     });
   }
   if (expertFiveLegend && expertOpen) {
     gates.push({
       label: "고수 직접 플레이 표본은 5전설보다 제한 없음이 유리",
-      pass: expertOpen.clearRate > expertFiveLegend.clearRate ||
-        expertOpen.avgRound >= expertFiveLegend.avgRound + 1 ||
-        expertOpen.avgPressureRatio < expertFiveLegend.avgPressureRatio,
+      pass: expertFiveLegend.clearRate <= 0.1 &&
+        clearAccess(expertOpen) &&
+        (expertOpen.clearRate > expertFiveLegend.clearRate ||
+          expertOpen.avgRound >= expertFiveLegend.avgRound + 1 ||
+          expertOpen.avgPressureRatio < expertFiveLegend.avgPressureRatio),
       detail: `5전설 ${pct(expertFiveLegend.clearRate)} ${expertFiveLegend.avgRound.toFixed(1)}R 압박 ${pct(expertFiveLegend.avgPressureRatio)}, 제한 없음 ${pct(expertOpen.clearRate)} ${expertOpen.avgRound.toFixed(1)}R 압박 ${pct(expertOpen.avgPressureRatio)}`,
     });
   }
