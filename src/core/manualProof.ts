@@ -6,6 +6,12 @@ export function manualProofRemainingSeconds(elapsedSeconds: number): number {
   return Math.max(0, MANUAL_PROOF_TARGET_SECONDS - Math.max(0, Math.floor(elapsedSeconds)));
 }
 
+export function manualProofReadyAt(startedAt: string): string | null {
+  const startedAtMs = new Date(startedAt).getTime();
+  if (!Number.isFinite(startedAtMs)) return null;
+  return new Date(startedAtMs + MANUAL_PROOF_TARGET_SECONDS * 1000).toISOString();
+}
+
 export interface ManualProofTargetStatus {
   label: string;
   status: string;

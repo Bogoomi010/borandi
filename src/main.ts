@@ -34,7 +34,7 @@ import { stageById } from "./data/stages";
 import { FINAL_ROUND, waveForRound } from "./data/waves";
 import { UPGRADES, upgradeCost } from "./data/upgrades";
 import { GRADE_ORDER, type DifficultyId, type Grade } from "./core/types";
-import { MANUAL_PROOF_TARGET_SECONDS, manualProofRemainingSeconds, manualProofTargetFor } from "./core/manualProof";
+import { MANUAL_PROOF_TARGET_SECONDS, manualProofReadyAt, manualProofRemainingSeconds, manualProofTargetFor } from "./core/manualProof";
 import {
   manualDryRunCommand,
   manualPendingIdCommand as buildManualPendingIdCommand,
@@ -564,6 +564,7 @@ function renderGameToText(): string {
   const wave = waveForRound(Math.min(s.round, FINAL_ROUND));
   const manualProofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
   const manualProofRemaining = manualProofRemainingSeconds(manualProofSeconds);
+  const manualProofTargetReadyAt = ctx.scene === "game" ? manualProofReadyAt(ctx.runStartedAt) : null;
   const gradeCounts: Record<Grade, number> = { common: 0, rare: 0, hero: 0, legend: 0, hidden: 0 };
   let maxGrade: Grade | null = null;
   for (const unit of s.units) {
@@ -668,6 +669,7 @@ function renderGameToText(): string {
     manualProof: {
       elapsedSeconds: manualProofSeconds,
       targetSeconds: MANUAL_PROOF_TARGET_SECONDS,
+      targetReadyAt: manualProofTargetReadyAt,
       remainingSeconds: manualProofRemaining,
       targetMet: manualProofRemaining === 0,
       targetLabel: manualProofTarget.label,
