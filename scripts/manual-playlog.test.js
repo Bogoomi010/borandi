@@ -123,6 +123,15 @@ describe("manual-playlog plan", () => {
     expect(text).toContain("--seed=GAME_SEED_HERE");
   });
 
+  it("summary도 다음 수동 세션의 추천 시작 마커를 출력한다", () => {
+    const out = makeTempPath("summary-next-marker.json");
+    const text = runManualPlaylog([`--out=${out}`, "--summary"]);
+
+    expect(text).toContain("추천 시작 마커:");
+    expect(text).toContain("yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
+    expect(text).toContain("GAME_SEED_HERE는 새 게임 시작 후 상단에 표시된 실제 시드로 바꾸세요.");
+  });
+
   it("start-next는 다음 필요 세션의 시작 마커를 바로 저장한다", () => {
     const out = makeTempPath("start-next.json");
     const output = runManualPlaylog([

@@ -466,6 +466,13 @@ function printSummary() {
     console.log(`${row.pass ? "PASS" : "MISSING"} ${row.label}: ${row.evidence}`);
     if (!row.pass) console.log(`  다음 필요: ${row.next}`);
   }
+  const next = buildNext();
+  if (next.next?.startNextCommandTemplate) {
+    console.log("");
+    console.log("추천 시작 마커:");
+    console.log(next.next.startNextCommandTemplate);
+    console.log("  GAME_SEED_HERE는 새 게임 시작 후 상단에 표시된 실제 시드로 바꾸세요.");
+  }
   console.log("");
   console.log(`판정: ${summary.passed ? "수동 증거 충족" : "수동 증거 미충족"}`);
 }
