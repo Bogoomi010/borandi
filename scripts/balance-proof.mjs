@@ -2,6 +2,8 @@
 // Runs the CLI gate, browser runtime gates, direct-input browser sampler, then audit.
 
 import { spawn } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 
 const args = Object.fromEntries(
   process.argv.slice(2).map((a) => {
@@ -18,6 +20,7 @@ const browserPath = String(args.browser ?? "output/browser-balance.json");
 const directPath = String(args.direct ?? "output/browser-direct.json");
 const manualPath = String(args.manual ?? "output/manual-balance-playlog.json");
 const auditPath = String(args.out ?? "output/balance-audit.md");
+const manualSheetPath = String(args["manual-sheet"] ?? "output/manual-balance-play-sheet.md");
 const browserScreenshots = String(args.screenshots ?? "output/browser-balance-shots");
 const directScreenshots = String(args["direct-screenshots"] ?? "output/browser-direct-shots");
 const directCodexLog = String(args["direct-codex-log"] ?? "output/codex-direct-playlog.json");
@@ -39,6 +42,31 @@ function run(command, commandArgs, options = {}) {
       else reject(new Error(`${command} exited with ${code}`));
     });
   });
+}
+
+function runCapture(command, commandArgs, options = {}) {
+  return new Promise((resolve, reject) => {
+    console.log(`\n$ ${[command, ...commandArgs].join(" ")}`);
+    const child = spawn(command, commandArgs, {
+      stdio: ["ignore", "pipe", "inherit"],
+      shell: false,
+      ...options,
+    });
+    let stdout = "";
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      if (code === 0) resolve(stdout);
+      else reject(new Error(`${command} exited with ${code}`));
+    });
+  });
+}
+
+function writeTextFile(path, text) {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, text, "utf8");
 }
 
 async function canReachServer() {
@@ -154,6 +182,13 @@ try {
     `--out=${auditPath}`,
     ...(requireComplete ? ["--assert"] : []),
   ]);
+  const manualSheet = await runCapture("yarn", [
+    "manual-playlog",
+    `--out=${manualPath}`,
+    "--sheet",
+  ]);
+  writeTextFile(manualSheetPath, manualSheet);
+  console.log(`\n수동 플레이 시트 저장: ${manualSheetPath}`);
 
   console.log(requireComplete
     ? `\n밸런스 완료 증거 검증 완료: ${auditPath}`
