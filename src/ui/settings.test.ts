@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { FINAL_STAGE } from "../data/stages";
 import { FINAL_ROUND } from "../data/waves";
+import { Game } from "../core/engine";
 import {
   canUnlockNextStage,
   defaultNewRunStageId,
@@ -84,6 +85,25 @@ describe("프로필 맵 해금", () => {
     expect(profile.unlockedStage).toBe(2);
     expect(playableStageId(1, profile.unlockedStage)).toBe(1);
     expect(playableStageId(2, profile.unlockedStage)).toBe(2);
+  });
+
+  it("40라운드 보스 클리어로 해금해도 현재 게임 객체의 맵은 바뀌지 않는다", () => {
+    const game = new Game("MAP-PERMISSION", "novice", 1);
+    game.state.cleared = true;
+    game.state.round = FINAL_ROUND;
+    game.state.bossKillSeconds[FINAL_ROUND] = 12.3;
+
+    const unlocked = profileRecordRun(
+      game.state.cleared,
+      game.state.difficulty,
+      game.state.round,
+      game.state.stageId,
+      game.state.bossKillSeconds[FINAL_ROUND] !== undefined,
+    );
+
+    expect(unlocked).toBe(true);
+    expect(game.state.stageId).toBe(1);
+    expect(loadProfile().unlockedStage).toBe(2);
   });
 
   it("새 게임 모달 기본 선택은 새로 해금된 다음 맵으로 자동 이동하지 않는다", () => {
