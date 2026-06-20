@@ -663,6 +663,51 @@ describe("manual-playlog plan", () => {
     expect(pending.pending).toHaveLength(0);
   });
 
+  it("start는 목표 notes 라벨을 해석해 목표 마무리 템플릿을 출력한다", () => {
+    const out = makeTempPath("start-target-notes.json");
+    const output = runManualPlaylog([
+      `--out=${out}`,
+      "--start",
+      "--id=direct-target-start",
+      "--difficulty=intermediate",
+      "--stage=1",
+      "--seed=TARGET-NOTES-SEED",
+      "--startedAt=2026-06-20T02:25:00.000Z",
+      "--notes=중급자 5전설 이상 40R 클리어",
+    ]);
+
+    const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+    expect(output).toContain("- 목표: 중급자 5전설 이상 40R 클리어");
+    expect(output).toContain("- 플레이 조건: 전설 5개 이상으로 40R 최종 보스 클리어");
+    expect(output).toContain("- 기록 조건: result=clear round=40 legends>=5 maxGrade=legend|hidden");
+    expect(output).toContain("yarn manual-playlog --finish='direct-target-start' --result=clear --round=40 --legends=5 --maxGrade=legend");
+    expect(pending.pending[0]).toMatchObject({
+      id: "direct-target-start",
+      difficulty: "intermediate",
+      notes: "중급자 5전설 이상 40R 클리어",
+    });
+    expect(pending.pending[0].finishCommandTemplate).toContain("--result=clear --round=40 --legends=5 --maxGrade=legend");
+  });
+
+  it("start는 목표 notes 라벨과 난이도가 다르면 거부한다", () => {
+    const out = makeTempPath("start-target-notes-wrong-difficulty.json");
+    const failed = runManualPlaylogFailure([
+      `--out=${out}`,
+      "--start",
+      "--id=wrong-target-start",
+      "--difficulty=normal",
+      "--stage=1",
+      "--seed=WRONG-TARGET-SEED",
+      "--startedAt=2026-06-20T02:25:00.000Z",
+      "--notes=중급자 5전설 이상 40R 클리어",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stderr).toContain("--notes 목표는 intermediate 난이도입니다");
+    expect(failed.stderr).toContain("--difficulty=normal와 함께 시작할 수 없습니다");
+    expect(JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"])).pending).toHaveLength(0);
+  });
+
   it("start-next는 비어 있는 out 파일도 새 로그처럼 처리한다", () => {
     const out = makeTempPath("start-next-empty-file.json");
     writeFileSync(out, "", "utf8");

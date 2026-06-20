@@ -913,6 +913,10 @@ function targetPlanForPendingSession(session) {
   return targetPlans.find((target) => target.label === notes) ?? null;
 }
 
+function targetPlanForNotes(notes) {
+  return targetPlans.find((target) => target.label === String(notes ?? "")) ?? null;
+}
+
 function pendingTiming(startedAt) {
   const startedAtMs = new Date(String(startedAt ?? "")).getTime();
   const nowMs = Date.now();
@@ -1216,7 +1220,12 @@ function startManualSession() {
   const startedAt = parseDate("startedAt", args.startedAt) ?? new Date();
   const id = String(args.id ?? makePendingId({ difficulty, stage, seed, startedAt: startedAt.toISOString() }));
   const source = normalizeSessionSource(args.source);
+  const notes = args.notes ? String(args.notes) : "";
+  const next = targetPlanForNotes(notes);
   if (!id.trim()) fail("--id 값이 비어 있습니다.");
+  if (next && next.difficulty !== difficulty) {
+    fail(`--notes 목표는 ${next.difficulty} 난이도입니다. --difficulty=${difficulty}와 함께 시작할 수 없습니다.`);
+  }
 
   if (!isDryRun()) {
     savePendingSession({
@@ -1225,12 +1234,12 @@ function startManualSession() {
       stage,
       seed,
       startedAt,
-      notes: args.notes ? String(args.notes) : "",
+      notes,
       source,
     });
   }
 
-  printStartSaved({ id, startedAt, source, dryRun: isDryRun() });
+  printStartSaved({ id, startedAt, source, next, dryRun: isDryRun() });
 }
 
 function startNextManualSession() {
