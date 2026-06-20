@@ -47,6 +47,7 @@ function usage() {
     "  --finish-latest --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --endedAt=RESULT_ENDED_AT",
     "                          # 가장 최근 시작 마커를 자동 선택해 결과 세션 저장",
     "  --finish                 # --finish-latest와 동일",
+    "  --dry-run                # 결과 세션을 검증하고 미리보기만 출력, 로그 파일은 쓰지 않음",
     "  --summary             # 현재 수동 로그 충족/미충족 항목만 출력",
     "  --summary --json      # 현재 수동 로그 상태를 JSON으로 출력",
     "  --summary-json        # --summary --json과 동일",
@@ -1109,6 +1110,7 @@ if (args.start === "true") {
 
 const explicitFinishId = typeof args.finish === "string" && args.finish !== "true" ? args.finish : "";
 const finishLatest = args["finish-latest"] === "true" || args.finish === "true";
+const dryRun = args["dry-run"] === "true";
 const finishLog = explicitFinishId || finishLatest ? readJson(outPath) : null;
 const latestPending = finishLatest ? latestPendingSession(finishLog) : null;
 const requestedFinishId = explicitFinishId || (latestPending ? String(latestPending.id) : "");
@@ -1224,6 +1226,31 @@ log.schemaVersion = 1;
 log.source = "manual-playlog";
 if (log.sessions.some((s) => String(s.stateChecksum ?? "").toLowerCase() === stateChecksum.toLowerCase())) {
   fail(`이미 같은 결과 체크섬이 기록되어 있습니다: ${stateChecksum.toLowerCase()}`);
+}
+if (dryRun) {
+  const previewLog = {
+    ...log,
+    schemaVersion: 1,
+    source: "manual-playlog",
+    sessions: [...log.sessions, session],
+    pendingSessions: finishId
+      ? pendingSessions(log).filter((pending) => String(pending.id) !== finishId)
+      : log.pendingSessions,
+  };
+  previewLog.totalMinutes = sessionsTotalMinutes(previewLog);
+  console.log(`DRY RUN 수동 플레이 로그 검증 통과: ${outPath}`);
+  console.log("- 저장하지 않음: --dry-run");
+  console.log(`- 추가 예정 세션: ${difficulty}, ${(minutes ?? computedSeconds / 60).toFixed(1)}분`);
+  if (finishId) console.log(`- 연결 예정 시작 마커: ${finishId}`);
+  if (linkedTargetPlan) {
+    const targetMet = linkedTargetPlan.predicate(session);
+    console.log(`- 시작 마커 목표: ${linkedTargetPlan.label} ${targetMet ? "충족" : "미충족"}`);
+  }
+  console.log(`- 미리보기 누적 시간: ${previewLog.totalMinutes.toFixed(1)}분 / 120.0분`);
+  console.log(`- 상태 체크섬: ${stateChecksum.toLowerCase()}`);
+  console.log("- 세션 JSON:");
+  console.log(JSON.stringify(session, null, 2));
+  process.exit(0);
 }
 log.sessions.push(session);
 if (finishId) {

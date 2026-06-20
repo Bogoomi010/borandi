@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -571,6 +571,72 @@ describe("manual-playlog plan", () => {
     expect(failed.stdout).toContain("수동 증거 미충족");
     expect(failed.stderr).toContain("다음 필요 세션: 입문자 무전설 40R 클리어");
     expect(failed.stderr).toContain("추천 시작 마커: yarn manual-playlog --start-next --seed=GAME_SEED_HERE");
+  });
+
+  it("dry-run 직접 저장은 검증 미리보기만 출력하고 로그 파일을 만들지 않는다", () => {
+    const out = makeTempPath("dry-run-direct.json");
+
+    const output = runManualPlaylog([
+      `--out=${out}`,
+      "--dry-run",
+      "--difficulty=novice",
+      "--seconds=900",
+      "--result=clear",
+      "--stage=1",
+      "--round=40",
+      "--seed=DRY-RUN",
+      "--legends=0",
+      "--maxGrade=hero",
+      `--dataVersion=${CURRENT_DATA_VERSION}`,
+      "--stateChecksum=20000020",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+      "--endedAt=2026-06-20T02:15:00.000Z",
+    ]);
+
+    expect(output).toContain("DRY RUN 수동 플레이 로그 검증 통과");
+    expect(output).toContain("- 저장하지 않음: --dry-run");
+    expect(output).toContain("- 추가 예정 세션: novice, 15.0분");
+    expect(output).toContain("- 상태 체크섬: 20000020");
+    expect(output).toContain('"seed": "DRY-RUN"');
+    expect(existsSync(out)).toBe(false);
+  });
+
+  it("dry-run finish는 시작 마커를 닫지 않고 세션도 저장하지 않는다", () => {
+    const out = makeTempPath("dry-run-finish.json");
+    runManualPlaylog([
+      `--out=${out}`,
+      "--start",
+      "--id=dry-run-finish",
+      "--difficulty=normal",
+      "--stage=1",
+      "--seed=DRY-FINISH",
+      "--startedAt=2026-06-20T00:00:00.000Z",
+    ]);
+
+    const output = runManualPlaylog([
+      `--out=${out}`,
+      "--finish=dry-run-finish",
+      "--dry-run",
+      "--result=clear",
+      "--round=40",
+      "--legends=1",
+      "--maxGrade=legend",
+      `--dataVersion=${CURRENT_DATA_VERSION}`,
+      "--stateChecksum=20000021",
+      "--endedAt=2026-06-20T00:15:00.000Z",
+    ]);
+
+    const log = readJson(out);
+    const pending = JSON.parse(runManualPlaylog([`--out=${out}`, "--pending-json"]));
+    expect(output).toContain("DRY RUN 수동 플레이 로그 검증 통과");
+    expect(output).toContain("- 연결 예정 시작 마커: dry-run-finish");
+    expect(output).toContain('"pendingSessionId": "dry-run-finish"');
+    expect(log.sessions).toEqual([]);
+    expect(pending.pending).toHaveLength(1);
+    expect(pending.pending[0]).toMatchObject({
+      id: "dry-run-finish",
+      seed: "DRY-FINISH",
+    });
   });
 
   it("직접 저장은 현재 데이터 버전이 아닌 결과를 즉시 거부한다", () => {
