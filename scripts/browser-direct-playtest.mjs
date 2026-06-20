@@ -178,6 +178,7 @@ function codexDirectSession({ scenario, seed, simulatedSeconds, final, endedAt }
     source: "codex-direct-playtest",
     difficulty: final.difficulty?.id ?? scenario.difficulty,
     seconds: Math.round(simulatedSeconds),
+    minutes: Number((simulatedSeconds / 60).toFixed(2)),
     startedAt: new Date(new Date(endedAt).getTime() - Math.round(simulatedSeconds) * 1000).toISOString(),
     endedAt,
     result,
