@@ -16,6 +16,8 @@ const url = String(args.url ?? "http://127.0.0.1:1421/");
 const seeds = Math.max(1, Number(args.seeds ?? 6));
 const maxRound = Math.max(1, Number(args["max-round"] ?? 40));
 const stepMs = Math.max(250, Number(args["step-ms"] ?? 5000));
+const realTime = args["real-time"] === "true";
+const timingMode = realTime ? "real-time" : "simulated";
 const outPath = typeof args.json === "string" && args.json !== "true" ? args.json : "";
 const screenshotDir = typeof args.screenshots === "string" && args.screenshots !== "true" ? args.screenshots : "";
 const codexLogPath = typeof args["codex-log"] === "string" && args["codex-log"] !== "true" ? args["codex-log"] : "";
@@ -32,8 +34,12 @@ const SUMMON_COST = 20;
 
 const PLAYTEST_SCOPE = [
   "DEV 스폰 고정 조건이 아니라 실제 소환/선택권/합성/조합/업그레이드 입력을 반복한다.",
-  "브라우저 런타임의 실제 Game, render_game_to_text, advanceTime, ctx.act 경로를 사용한다.",
-  "자동으로 누적한 시뮬레이션 플레이 시간을 기록하되, 요청된 2시간 수동 플레이를 대체하지 않는 보조 증거로 취급한다.",
+  realTime
+    ? "브라우저 런타임의 실제 Game, render_game_to_text, requestAnimationFrame, ctx.act 경로를 사용하고 step마다 실제 wall-clock으로 기다린다."
+    : "브라우저 런타임의 실제 Game, render_game_to_text, advanceTime, ctx.act 경로를 사용한다.",
+  realTime
+    ? "실제 wall-clock 기반 Codex 직접 조작 시간을 기록하되, 요청된 human-playtest 2시간 수동 플레이를 대체하지 않는 보조 증거로 취급한다."
+    : "자동으로 누적한 시뮬레이션 플레이 시간을 기록하되, 요청된 2시간 수동 플레이를 대체하지 않는 보조 증거로 취급한다.",
 ];
 
 function readCurrentDataVersion() {
@@ -172,8 +178,8 @@ function inputCountsArg(inputCounts) {
     .join(",");
 }
 
-function manualPlaylogCommand({ scenario, seed, simulatedSeconds, final, endedAt }) {
-  const session = codexDirectSession({ scenario, seed, simulatedSeconds, final, endedAt });
+function manualPlaylogCommand({ scenario, seed, playSeconds, simulatedSeconds, final, endedAt }) {
+  const session = codexDirectSession({ scenario, seed, playSeconds, simulatedSeconds, final, endedAt });
   return [
     "yarn manual-playlog",
     "--source=codex-direct-playtest",
@@ -195,18 +201,22 @@ function manualPlaylogCommand({ scenario, seed, simulatedSeconds, final, endedAt
   ].join(" ");
 }
 
-function codexDirectSession({ scenario, seed, simulatedSeconds, final, endedAt }) {
+function codexDirectSession({ scenario, seed, playSeconds, simulatedSeconds, final, endedAt }) {
   const result = final.cleared ? "clear" : "loss";
   const stage = final.stage?.current ?? 1;
   const legends = final.unitSummary.legendOrBetter;
   const maxGrade = final.unitSummary.maxGrade ?? "common";
-  const notes = `Codex browser-direct ${scenario.id}: ${scenario.expectation}`;
+  const loggedSeconds = Number.isFinite(playSeconds) ? playSeconds : simulatedSeconds;
+  const notes = `Codex browser-direct ${scenario.id} (${timingMode}): ${scenario.expectation}`;
   return {
     source: "codex-direct-playtest",
     difficulty: final.difficulty?.id ?? scenario.difficulty,
-    seconds: Math.round(simulatedSeconds),
-    minutes: Number((simulatedSeconds / 60).toFixed(2)),
-    startedAt: new Date(new Date(endedAt).getTime() - Math.round(simulatedSeconds) * 1000).toISOString(),
+    seconds: Math.round(loggedSeconds),
+    minutes: Number((loggedSeconds / 60).toFixed(2)),
+    simulatedSeconds: Number(simulatedSeconds.toFixed(3)),
+    wallClockBased: realTime,
+    timingMode,
+    startedAt: new Date(new Date(endedAt).getTime() - Math.round(loggedSeconds) * 1000).toISOString(),
     endedAt,
     result,
     stage,
@@ -420,7 +430,11 @@ async function playScenarioSeed(page, scenario, seedIndex) {
       const latest = await readSnapshot(page);
       if (latest.enemyPressure === 0) await act(page, "startWave");
     }
-    await page.evaluate((ms) => window.advanceTime(ms), stepMs);
+    if (realTime) {
+      await page.waitForTimeout(stepMs);
+    } else {
+      await page.evaluate((ms) => window.advanceTime(ms), stepMs);
+    }
     const state = await readState(page);
     if (state.round !== lastRound || state.mode === "ended" || state.round % 10 === 0) {
       lastRound = state.round;
@@ -443,6 +457,8 @@ async function playScenarioSeed(page, scenario, seedIndex) {
   const wallClockEndedAt = new Date();
   const endedAt = wallClockEndedAt.toISOString();
   const wallClockSeconds = Number(((wallClockEndedAt.getTime() - wallClockStartedMs) / 1000).toFixed(3));
+  const simulatedSeconds = steps * (stepMs / 1000);
+  const playSeconds = realTime ? wallClockSeconds : simulatedSeconds;
   const final = {
     dataVersion: finalState.dataVersion,
     stateChecksum: finalState.stateChecksum,
@@ -461,7 +477,9 @@ async function playScenarioSeed(page, scenario, seedIndex) {
   return {
     seed,
     steps,
-    simulatedSeconds: steps * (stepMs / 1000),
+    simulatedSeconds,
+    playSeconds,
+    timingMode,
     wallClockStartedAt: wallClockStartedAt.toISOString(),
     wallClockEndedAt: endedAt,
     wallClockSeconds,
@@ -470,14 +488,16 @@ async function playScenarioSeed(page, scenario, seedIndex) {
     codexDirectSession: codexDirectSession({
       scenario,
       seed,
-      simulatedSeconds: steps * (stepMs / 1000),
+      playSeconds,
+      simulatedSeconds,
       final,
       endedAt,
     }),
     codexDirectPlaylogCommand: manualPlaylogCommand({
       scenario,
       seed,
-      simulatedSeconds: steps * (stepMs / 1000),
+      playSeconds,
+      simulatedSeconds,
       final,
       endedAt,
     }),
@@ -497,6 +517,7 @@ function summarizeScenario(scenario, runs) {
     ? clearedRuns.reduce((sum, r) => sum + r.final.round, 0) / clearedRuns.length
     : 0;
   const totalSimulatedSeconds = runs.reduce((sum, r) => sum + r.simulatedSeconds, 0);
+  const totalPlaySeconds = runs.reduce((sum, r) => sum + Number(r.playSeconds ?? r.simulatedSeconds ?? 0), 0);
   const totalWallClockSeconds = runs.reduce((sum, r) => sum + Number(r.wallClockSeconds ?? 0), 0);
   const avgPressureRatio = runs.reduce((sum, r) => {
     const [current, limit] = r.final.pressure.split("/").map((v) => Number(v));
@@ -514,7 +535,9 @@ function summarizeScenario(scenario, runs) {
     avgClearedLegendOrBetter: avgClearedLegend,
     avgClearedRound,
     totalSimulatedSeconds,
+    totalPlaySeconds,
     avgSimulatedSeconds: totalSimulatedSeconds / runs.length,
+    avgPlaySeconds: totalPlaySeconds / runs.length,
     totalWallClockSeconds,
     avgWallClockSeconds: totalWallClockSeconds / runs.length,
     avgPressureRatio,
@@ -647,7 +670,8 @@ try {
     for (let i = 0; i < seeds; i++) {
       const run = await playScenarioSeed(page, scenario, i);
       runs.push(run);
-      console.log(`${scenario.label} #${i + 1}: ${run.final.mode} ${run.final.round}R, cleared ${run.final.cleared}, legends ${run.final.unitSummary.legendOrBetter}, pressure ${run.final.pressure}, simulated ${(run.simulatedSeconds / 60).toFixed(1)}m`);
+      const timingLabel = realTime ? "wall" : "simulated";
+      console.log(`${scenario.label} #${i + 1}: ${run.final.mode} ${run.final.round}R, cleared ${run.final.cleared}, legends ${run.final.unitSummary.legendOrBetter}, pressure ${run.final.pressure}, ${timingLabel} ${(run.playSeconds / 60).toFixed(1)}m`);
     }
     const summary = summarizeScenario(scenario, runs);
     results.push(summary);
@@ -677,7 +701,10 @@ try {
     seeds,
     maxRound,
     stepMs,
+    timingMode,
+    realTime,
     totalSimulatedSeconds: results.reduce((sum, r) => sum + r.totalSimulatedSeconds, 0),
+    totalPlaySeconds: results.reduce((sum, r) => sum + r.totalPlaySeconds, 0),
     totalWallClockSeconds: results.reduce((sum, r) => sum + Number(r.totalWallClockSeconds ?? 0), 0),
     scope: PLAYTEST_SCOPE,
     scenarios: results,
@@ -696,7 +723,7 @@ try {
     writeFileSync(codexLogPath, JSON.stringify(codexDirectLog(results), null, 2), "utf8");
     console.log(`Codex 직접 조작 보조 로그 저장: ${codexLogPath}`);
   }
-  console.log(`실제 실행 시간: ${(wallClockSeconds / 60).toFixed(2)}분, 시뮬레이션 시간: ${(payload.totalSimulatedSeconds / 3600).toFixed(2)}시간`);
+  console.log(`실제 실행 시간: ${(wallClockSeconds / 60).toFixed(2)}분, 기록 플레이 시간: ${(payload.totalPlaySeconds / 60).toFixed(2)}분, 시뮬레이션 시간: ${(payload.totalSimulatedSeconds / 3600).toFixed(2)}시간`);
   if (strict && !payload.passed) process.exitCode = 1;
 } finally {
   await browser.close();
