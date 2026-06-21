@@ -33,6 +33,29 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
+function splitPaths(value) {
+  return String(value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function readCodexJson(pathValue) {
+  const paths = splitPaths(pathValue);
+  if (paths.length === 0) return null;
+  if (paths.length === 1) return readJson(paths[0]);
+  const loaded = paths
+    .filter((path) => existsSync(path))
+    .map((path) => ({ path, json: JSON.parse(readFileSync(path, "utf8")) }));
+  if (loaded.length === 0) return null;
+  return {
+    schemaVersion: 1,
+    kind: "combined-codex-direct-playlog",
+    combinedFrom: loaded.map((entry) => entry.path),
+    sessions: loaded.flatMap((entry) => entry.json.sessions ?? []),
+  };
+}
+
 function readCurrentDataVersion() {
   try {
     const source = readFileSync("src/data/version.ts", "utf8");
@@ -972,7 +995,7 @@ const balance = readJson(balancePath);
 const browser = readJson(browserPath);
 const direct = readJson(directPath);
 const manual = readJson(manualPath);
-const codex = codexPath === manualPath ? null : readJson(codexPath);
+const codex = codexPath === manualPath ? null : readCodexJson(codexPath);
 const rows = buildRows(balance, browser, direct, manual, codex);
 const markdown = buildMarkdown(balance, browser, direct, manual, codex);
 

@@ -536,6 +536,28 @@ describe("balance-audit assert", () => {
     expect(failed.stderr).toContain("사람이 직접 2시간 플레이");
   });
 
+  it("쉼표로 구분한 여러 codex 직접 조작 로그를 합산해 표시한다", () => {
+    const paths = writeCompleteInputs({ manual: null });
+    const codex = codexDirectOnlyManual();
+    const codexA = writeJson("codex-direct-a.json", { sessions: codex.sessions.slice(0, 3) });
+    const codexB = writeJson("codex-direct-b.json", { sessions: codex.sessions.slice(3) });
+
+    const failed = runAuditFailure([
+      `--balance=${paths.balance}`,
+      `--browser=${paths.browser}`,
+      `--direct=${paths.direct}`,
+      `--manual=${paths.manual}`,
+      `--codex=${codexA},${codexB}`,
+      "--assert",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stdout).toContain(`codex-direct-playlog: ${codexA},${codexB} (loaded)`);
+    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | MISSING | 아직 실제 수동 플레이 기록 없음");
+    expect(failed.stdout).toContain("Codex 직접 조작 보조 증거 분리 | PASS | codex-direct 6세션 120.0분, human 집계 0.0분에는 미포함");
+    expect(failed.stderr).toContain("사람이 직접 2시간 플레이");
+  });
+
   it("수동 시작 마커가 미완료로 남아 있으면 assert가 실패한다", () => {
     const paths = writeCompleteInputs({ manual: manualWithPendingStart() });
 
