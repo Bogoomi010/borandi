@@ -268,6 +268,15 @@ export function manualPlaylogResultExportJson(r: ResultSummary): string {
   }, null, 2);
 }
 
+function manualPlaylogResultEmbeddedJsonCommand(json: string, dryRun: boolean): string {
+  const marker = "BORANDI_MANUAL_RESULT_JSON";
+  return [
+    `cat <<'${marker}' | yarn manual-playlog --from-result=-${dryRun ? " --dry-run" : ""}`,
+    json,
+    marker,
+  ].join("\n");
+}
+
 function mapPermissionMessage(r: ResultSummary): string {
   const finalBossCleared = r.cleared &&
     r.reachedRound >= FINAL_ROUND &&
@@ -473,6 +482,8 @@ export function maybeShowResult(ctx: AppCtx) {
     const manualResultJson = manualPlaylogResultExportJson(summary);
     const manualClipboardDryRunCommand = "yarn manual-playlog --from-clipboard --dry-run";
     const manualClipboardCommand = "yarn manual-playlog --from-clipboard";
+    const manualEmbeddedJsonDryRunCommand = manualPlaylogResultEmbeddedJsonCommand(manualResultJson, true);
+    const manualEmbeddedJsonCommand = manualPlaylogResultEmbeddedJsonCommand(manualResultJson, false);
 
     body.appendChild(el("h3", "", "수동 플레이 로그"));
     body.appendChild(el("h3", "", "결과 JSON 저장 후 검증"));
@@ -536,6 +547,28 @@ export function maybeShowResult(ctx: AppCtx) {
       }
     };
     row.appendChild(copyJsonBtn);
+
+    const copyEmbeddedJsonDryRun = el("button", "", "JSON포함 검증 복사");
+    copyEmbeddedJsonDryRun.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualEmbeddedJsonDryRunCommand);
+        toast("JSON 포함 검증 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn");
+      }
+    };
+    row.appendChild(copyEmbeddedJsonDryRun);
+
+    const copyEmbeddedJsonSave = el("button", "", "JSON포함 저장 복사");
+    copyEmbeddedJsonSave.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualEmbeddedJsonCommand);
+        toast("JSON 포함 저장 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn");
+      }
+    };
+    row.appendChild(copyEmbeddedJsonSave);
 
     const copyDryRun = el("button", "", "검증 명령 복사");
     copyDryRun.onclick = async () => {
