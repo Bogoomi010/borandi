@@ -1,7 +1,7 @@
 import type { UnitDef } from "../core/types";
 
 // 오리지널 "차원 균열" 세계관 유닛. 에셋 없이 도형+색으로 표현한다.
-// 등급 기대 DPS 가이드: 일반 ~13, 희귀 ~29, 영웅 ~65, 전설 ~145, 히든 ~230
+// 등급 기대 DPS 가이드: 일반 ~13, 희귀 ~29, 영웅 ~65, 전설 ~270, 히든 ~420
 
 export const UNITS: UnitDef[] = [
   // ===== 일반 (common) =====
@@ -124,41 +124,41 @@ export const UNITS: UnitDef[] = [
   {
     id: "solar_avatar", name: "태양 화신", grade: "legend", family: "flame",
     roles: ["waveClear"], attackType: "magic",
-    attack: 95, attackSpeed: 1.5, range: 170, targeting: "first",
-    splashRadius: 70, desc: "태양의 불꽃이 전장을 뒤덮는다.",
+    attack: 165, attackSpeed: 1.6, range: 170, targeting: "first",
+    splashRadius: 86, desc: "태양의 불꽃이 전장을 뒤덮는다.",
   },
   {
     id: "chrono_marshal", name: "시간의 집정관", grade: "legend", family: "frost",
     roles: ["hold", "debuff"], attackType: "magic",
-    attack: 80, attackSpeed: 1.2, range: 160, targeting: "first",
-    slowPct: 0.35, slowDuration: 2.5, stunChance: 0.12, stunDuration: 1.0,
+    attack: 127, attackSpeed: 1.3, range: 160, targeting: "first",
+    slowPct: 0.42, slowDuration: 2.7, stunChance: 0.16, stunDuration: 1.0,
     desc: "시간을 늦춰 적을 묶는다.",
   },
   {
     id: "titan_slayer", name: "거신 사냥꾼", grade: "legend", family: "iron",
     roles: ["bossKiller"], attackType: "physical",
-    attack: 200, attackSpeed: 0.8, range: 140, targeting: "highestHp",
-    bossDamageBonus: 0.8, desc: "거신의 천적.",
+    attack: 340, attackSpeed: 0.9, range: 140, targeting: "highestHp",
+    bossDamageBonus: 1.1, desc: "거신의 천적.",
   },
   {
     id: "ancient_world_tree", name: "고대 세계수", grade: "legend", family: "forest",
     roles: ["waveClear", "economy"], attackType: "magic",
-    attack: 90, attackSpeed: 1.3, range: 165, targeting: "first",
-    splashRadius: 55, killGoldBonus: 8, desc: "숲의 태초부터 자라온 거목.",
+    attack: 159, attackSpeed: 1.4, range: 165, targeting: "first",
+    splashRadius: 74, killGoldBonus: 14, desc: "숲의 태초부터 자라온 거목.",
   },
 
   // ===== 히든 (hidden) =====
   {
     id: "rift_singularity", name: "균열 특이점", grade: "hidden", family: "void",
     roles: ["debuff", "bossKiller"], attackType: "true",
-    attack: 150, attackSpeed: 1.4, range: 180, targeting: "highestHp",
-    armorBreakPct: 0.15, damageAmpPct: 0.1, desc: "모든 방어를 무시하는 특이점.",
+    attack: 220, attackSpeed: 1.5, range: 180, targeting: "highestHp",
+    armorBreakPct: 0.2, damageAmpPct: 0.14, desc: "모든 방어를 무시하는 특이점.",
   },
   {
     id: "prism_dragon", name: "프리즘 용", grade: "hidden", family: "storm",
     roles: ["waveClear", "bossKiller"], attackType: "true",
-    attack: 120, attackSpeed: 1.8, range: 170, targeting: "first",
-    splashRadius: 60, desc: "여섯 빛깔 숨결을 내뿜는다.",
+    attack: 185, attackSpeed: 2.0, range: 170, targeting: "first",
+    splashRadius: 78, desc: "여섯 빛깔 숨결을 내뿜는다.",
   },
 ];
 

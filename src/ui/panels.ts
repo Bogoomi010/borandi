@@ -6,39 +6,92 @@ import { GRADE_LABEL, FAMILY_LABEL, ROLE_LABEL, GRADE_ORDER, type Grade } from "
 import { UNIT_BY_ID } from "../data/units";
 import { analyzeRecipes, bossOutlook } from "../core/advisor";
 import { MISSION_BY_ID } from "../data/missions";
-import { waveForRound, FINAL_ROUND } from "../data/waves";
+import { waveForRound, FINAL_ROUND, BOSS_ROUND_LIST } from "../data/waves";
+import { FINAL_STAGE, stageById } from "../data/stages";
 import { UPGRADES, upgradeCost } from "../data/upgrades";
 import { SUMMON_COST, SELL_REFUND, DIFFICULTY_BY_ID } from "../data/difficulty";
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
-import { openSelectorModal } from "./modals";
-import { LOSE_THRESHOLD } from "../core/engine";
+import { openManualProofGuideModal, openSelectorModal } from "./modals";
+import { MANUAL_PROOF_TARGET_SECONDS, manualProofFinishReadiness, manualProofReadyAt, manualProofRemainingSeconds, manualProofTargetFor } from "../core/manualProof";
 
 // ---------- 상단 상태바 ----------
 
 // COMPONENT: Topbar - updates round, enemy count, gold, difficulty, speed, pause, and save status.
+function clockText(seconds: number): string {
+  const safe = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safe / 60);
+  const rest = safe % 60;
+  return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
+function clockTimeText(iso: string | null): string {
+  if (!iso) return "계산 불가";
+  return new Date(iso).toLocaleTimeString("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
+function inputCountsForProof(ctx: AppCtx): Record<string, number> {
+  return ctx.game.state.inputHistory.reduce<Record<string, number>>((counts, input) => {
+    counts[input.type] = (counts[input.type] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
 export function renderTopbar(ctx: AppCtx) {
   const root = document.getElementById("topbar")!;
   root.innerHTML = "";
   const s = ctx.game.state;
   const diff = DIFFICULTY_BY_ID[s.difficulty];
 
-  const stat = (label: string, value: string, cls = "", icon = "") => {
-    const d = el("div", "stat");
-    if (icon) d.dataset.icon = icon;
+  const stat = (label: string, value: string, cls = "", onClick?: () => void) => {
+    const d = el("div", `stat ${onClick ? "clickable" : ""}`);
     d.appendChild(el("span", "label", label));
     d.appendChild(el("span", `value ${cls}`, value));
+    if (onClick) {
+      d.title = "수동 밸런스 증거 안내 열기";
+      d.onclick = onClick;
+    }
     return d;
   };
 
-  root.appendChild(stat("라운드", `${Math.min(s.round, FINAL_ROUND)}/${FINAL_ROUND}`, "", "target"));
-  root.appendChild(stat("적 누적", `${s.enemies.length}/${LOSE_THRESHOLD}`, "life", "damage"));
-  root.appendChild(stat("골드", String(s.gold), "gold", "gold"));
-  root.appendChild(stat("난이도", diff.name, "", "passive"));
-  root.appendChild(stat("시드", s.seed, "", "skill"));
+  const stage = stageById(s.stageId);
+  root.appendChild(stat("맵", `${stage.id}. ${stage.name}`));
+  root.appendChild(stat("현재 판", "선택 맵 고정 · 40R 보스까지", "mapgoal"));
+  root.appendChild(stat("맵선택", `전체 ${FINAL_STAGE}`));
+  root.appendChild(stat("라운드", `${Math.min(s.round, FINAL_ROUND)}/${FINAL_ROUND}`));
+  root.appendChild(stat("적 누적", `${s.enemies.length}/${ctx.game.enemyLimit()}`, "life"));
+  root.appendChild(stat("골드", String(s.gold), "gold"));
+  root.appendChild(stat("난이도", diff.name));
+  const legendOrBetter = s.units
+    .filter((u) => GRADE_ORDER.indexOf(UNIT_BY_ID[u.defId].grade) >= GRADE_ORDER.indexOf("legend"))
+    .length;
+  const proofTarget = manualProofTargetFor(s.difficulty, legendOrBetter);
+  const proofConditionClass = proofTarget.state === "ok"
+    ? "proof-ok"
+    : proofTarget.state === "warn" ? "proof-warn" : "proof-wait";
+  const proofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
+  const proofRemainingSeconds = manualProofRemainingSeconds(proofSeconds);
+  const proofReadiness = manualProofFinishReadiness({
+    elapsedSeconds: proofSeconds,
+    inputCount: s.inputHistory.length,
+    inputCounts: inputCountsForProof(ctx),
+  });
+  const proofText = proofReadiness.ready
+    ? "저장조건 충족"
+    : proofSeconds >= MANUAL_PROOF_TARGET_SECONDS
+      ? "12:00+ · 입력조건 확인"
+    : `${clockText(proofSeconds)}/12:00 · ${clockText(proofRemainingSeconds)} 남음`;
+  root.appendChild(stat("수동증거", proofText, proofReadiness.ready ? "proof-ok" : "proof-wait", () => openManualProofGuideModal(ctx)));
+  root.appendChild(stat("증거조건", proofTarget.status, proofConditionClass, () => openManualProofGuideModal(ctx)));
+  root.appendChild(stat("시드", s.seed));
 
-  const nextBoss = [10, 20, 30, 40].find((r) => r >= s.round);
+  const nextBoss = BOSS_ROUND_LIST.find((r) => r >= s.round);
   if (nextBoss !== undefined) {
-    root.appendChild(stat("다음 보스", `${nextBoss}R (${nextBoss - s.round}라운드 후)`, "boss", "target"));
+    root.appendChild(stat("다음 보스", `${nextBoss}R (${nextBoss - s.round}라운드 후)`, "boss"));
   }
 
   if (s.pendingSelectors.length > 0) {
@@ -725,16 +778,39 @@ export function renderActionbar(ctx: AppCtx) {
     onClick: () => openUpgradeModal(ctx),
   }));
 
+  root.appendChild(btn("수동증거", "시작마커/목표", {
+    disabled: ended,
+    onClick: () => openManualProofGuideModal(ctx),
+  }));
+
   root.appendChild(el("div", "gap"));
 
   const inBreak = s.breakTicks > 0;
   const alive = s.enemies.length;
+  const limit = ctx.game.enemyLimit();
+  const legendOrBetter = s.units
+    .filter((u) => GRADE_ORDER.indexOf(UNIT_BY_ID[u.defId].grade) >= GRADE_ORDER.indexOf("legend"))
+    .length;
+  const proofTarget = manualProofTargetFor(s.difficulty, legendOrBetter);
+  const proofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
+  const proofRemainingSeconds = manualProofRemainingSeconds(proofSeconds);
+  const proofReadyAt = manualProofReadyAt(ctx.runStartedAt);
+  const proofReadiness = manualProofFinishReadiness({
+    elapsedSeconds: proofSeconds,
+    inputCount: s.inputHistory.length,
+    inputCounts: inputCountsForProof(ctx),
+  });
+  const proofTimeText = proofReadiness.ready
+    ? "저장조건 충족"
+    : proofRemainingSeconds === 0
+      ? `12분 충족 · ${proofReadiness.blockers.join(", ")}`
+    : `${clockText(proofRemainingSeconds)} 남음`;
   const phaseText = s.phase === "ended"
     ? (s.cleared ? "클리어!" : "게임 종료")
     : inBreak
-      ? `${s.round}라운드 대기 — 적 ${alive}/${LOSE_THRESHOLD}`
-      : `${s.round}라운드 진행 중 — 적 ${alive}/${LOSE_THRESHOLD}`;
-  root.appendChild(el("div", "", phaseText)).id = "phase-label";
+      ? `${s.round}라운드 대기 — 적 ${alive}/${limit}`
+      : `${s.round}라운드 진행 중 — 적 ${alive}/${limit}`;
+  root.appendChild(el("div", "", `${phaseText}\n증거목표: ${proofTarget.label}\n증거조건: ${proofTarget.status}\n수동시간: ${proofTimeText} · 12분기준 ${clockTimeText(proofReadyAt)}`)).id = "phase-label";
 
   // 진행 버튼 — 휴식 중에만 "다음 라운드 시작"
   if (inBreak && !ended) {

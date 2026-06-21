@@ -1,5 +1,9 @@
 import type { BossDef, WaveDef } from "../core/types";
 
+export const FINAL_ROUND = 40;
+export const BOSS_ROUNDS = [10, 20, 30, 40] as const;
+export const BOSS_ROUND_LIST = [...BOSS_ROUNDS];
+
 export const BOSSES: BossDef[] = [
   {
     id: "crack_golem", name: "균열 골렘", round: 10, slowResist: 0.5,
@@ -7,19 +11,19 @@ export const BOSSES: BossDef[] = [
     hint: "단단한 외피. 공허(방깎)와 강철(보스딜)이 유효하다. 감속 저항 50%.",
   },
   {
-    id: "void_matriarch", name: "공허 모체", round: 20, slowResist: 0.3,
+    id: "void_matriarch", name: "공허 모체", round: 20, slowResist: 0.35,
     weakness: "지속 화력 · 약화",
     hint: "체력이 높다. 피해 증폭과 꾸준한 화력이 필요하다.",
   },
   {
-    id: "storm_titan", name: "폭풍 거신", round: 30, slowResist: 0.2,
-    weakness: "홀딩 · 감속",
-    hint: "이동이 빠르다. 감속과 홀딩 없이는 통과당한다.",
+    id: "abyss_warden", name: "심연 감시자", round: 30, slowResist: 0.35,
+    weakness: "총합 화력 · 약화 · 홀딩",
+    hint: "후반 보스. 모든 축이 균형 있게 필요하다.",
   },
   {
-    id: "abyss_warden", name: "심연 감시자", round: 40, slowResist: 0.4,
-    weakness: "총합 화력 · 약화 · 홀딩",
-    hint: "최종 보스. 모든 축이 균형 있게 필요하다.",
+    id: "ancient_rift_lord", name: "고대 균열 군주", round: 40, slowResist: 0.45,
+    weakness: "최종 화력 · 방깎 · 보스딜",
+    hint: "40라운드 최종 보스. 처치해도 이번 판의 맵은 바뀌지 않고, 다음 새 게임부터 다음 맵을 선택할 수 있다.",
   },
 ];
 
@@ -31,85 +35,83 @@ export function bossForRound(round: number): BossDef | undefined {
   return BOSSES.find((b) => b.round === round);
 }
 
-// 1~10라운드는 샘플 데이터 팩 수치 그대로, 11~40라운드는 성장 곡선으로 생성한다.
-function buildWaves(): WaveDef[] {
-  const waves: WaveDef[] = [
-    { round: 1, type: "normal", enemyName: "균열 짐승", count: 12, hp: 22, speed: 1.0, armor: 0, goldReward: 30 },
-    { round: 2, type: "normal", enemyName: "균열 짐승", count: 14, hp: 28, speed: 1.0, armor: 0, goldReward: 34 },
-    { round: 3, type: "normal", enemyName: "균열 짐승", count: 16, hp: 35, speed: 1.05, armor: 0, goldReward: 38 },
-    { round: 4, type: "normal", enemyName: "균열 짐승", count: 18, hp: 44, speed: 1.05, armor: 0, goldReward: 42 },
-    { round: 5, type: "normal", enemyName: "균열 짐승", count: 20, hp: 55, speed: 1.1, armor: 0, goldReward: 50 },
-    { round: 6, type: "swarm", enemyName: "균열 날벌레", count: 28, hp: 38, speed: 1.25, armor: 0, goldReward: 55 },
-    { round: 7, type: "armored", enemyName: "石피 거북", count: 16, hp: 85, speed: 0.9, armor: 12, goldReward: 60 },
-    { round: 8, type: "normal", enemyName: "균열 짐승", count: 24, hp: 72, speed: 1.1, armor: 0, goldReward: 65 },
-    { round: 9, type: "mixed", enemyName: "혼합 무리", count: 24, hp: 82, speed: 1.15, armor: 6, goldReward: 70 },
-    {
-      round: 10, type: "boss", enemyName: "균열 골렘", count: 1, hp: 1450, speed: 0.7, armor: 30,
-      goldReward: 100, bossId: "crack_golem",
+const normalNames = [
+  "썩은 길목의 짐승", "잿빛 배회자", "죽은 풀 날벌레", "마녀불 무리",
+  "뿌리잠식 괴수", "묘지 파수꾼", "혈시장 약탈자", "영혼과실 박쥐떼",
+  "저주받은 과수원 군단", "부서진 울타리 기사", "영묘 갈림길 망령", "룬 미궁 추적자",
+];
+
+function normalWave(round: number): WaveDef {
+  const pattern = (round - 1) % 4;
+  const type = (["normal", "swarm", "armored", "mixed"] as const)[pattern];
+  const hpBase = Math.round(19 * Math.pow(1.105, round - 1));
+  const countBase = 12 + Math.floor(round * 1.35);
+  const armorBase = Math.floor(round * 1.45);
+  const name = normalNames[(round - 1) % normalNames.length];
+
+  if (type === "swarm") {
+    return {
+      round, type, enemyName: name, count: countBase + 12,
+      hp: Math.round(hpBase * 0.75), speed: 1.28, armor: Math.floor(armorBase * 0.35),
+      goldReward: 30 + round * 9,
+    };
+  }
+  if (type === "armored") {
+    return {
+      round, type, enemyName: name, count: countBase - 3,
+      hp: Math.round(hpBase * 1.45), speed: 0.9, armor: armorBase + 10,
+      goldReward: 34 + round * 10,
+    };
+  }
+  if (type === "mixed") {
+    return {
+      round, type, enemyName: name, count: countBase + 4,
+      hp: Math.round(hpBase * 1.15), speed: 1.1, armor: Math.floor(armorBase * 0.75),
+      goldReward: 36 + round * 10,
+    };
+  }
+  return {
+    round, type, enemyName: name, count: countBase,
+    hp: hpBase, speed: 1.0, armor: Math.floor(armorBase * 0.45),
+    goldReward: 28 + round * 9,
+  };
+}
+
+function bossWave(boss: BossDef): WaveDef {
+  const spec: Record<string, Omit<WaveDef, "round" | "type" | "enemyName" | "count" | "bossId">> = {
+    crack_golem: {
+      hp: 2600, speed: 0.72, armor: 30, goldReward: 180,
       reward: { selector: { grade: "rare", count: 1 } },
     },
-  ];
+    void_matriarch: {
+      hp: 8600, speed: 0.66, armor: 62, goldReward: 360,
+      reward: { selector: { grade: "hero", count: 1 } },
+    },
+    abyss_warden: {
+      hp: 21000, speed: 0.6, armor: 92, goldReward: 620,
+      reward: { selector: { grade: "hero", count: 1 } },
+    },
+    ancient_rift_lord: {
+      hp: 44000, speed: 0.56, armor: 125, goldReward: 1200,
+    },
+  };
+  return {
+    round: boss.round, type: "boss", enemyName: boss.name, count: 1, bossId: boss.id,
+    ...spec[boss.id],
+  };
+}
 
-  for (let r = 11; r <= 40; r++) {
-    if (r === 20) {
-      waves.push({
-        round: r, type: "boss", enemyName: "공허 모체", count: 1,
-        hp: 12000, speed: 0.65, armor: 60, goldReward: 200, bossId: "void_matriarch",
-        reward: { selector: { grade: "hero", count: 1 } },
-      });
-      continue;
-    }
-    if (r === 30) {
-      waves.push({
-        round: r, type: "boss", enemyName: "폭풍 거신", count: 1,
-        hp: 30000, speed: 0.8, armor: 80, goldReward: 400, bossId: "storm_titan",
-        reward: { selector: { grade: "legend", count: 1 } },
-      });
-      continue;
-    }
-    if (r === 40) {
-      waves.push({
-        round: r, type: "boss", enemyName: "심연 감시자", count: 1,
-        hp: 58000, speed: 0.55, armor: 120, goldReward: 600, bossId: "abyss_warden",
-      });
-      continue;
-    }
-
-    const baseHp = Math.round(72 * Math.pow(1.145, r - 8));
-    const baseCount = 20 + Math.floor((r - 10) / 2);
-    const gold = 70 + (r - 10) * 8;
-    const mod = r % 10;
-
-    if (mod === 3 || mod === 6) {
-      waves.push({
-        round: r, type: "swarm", enemyName: "균열 날벌레 떼",
-        count: Math.round(baseCount * 1.5), hp: Math.round(baseHp * 0.55),
-        speed: 1.3, armor: 0, goldReward: gold,
-      });
-    } else if (mod === 7) {
-      waves.push({
-        round: r, type: "armored", enemyName: "철갑 파수꾼",
-        count: Math.round(baseCount * 0.7), hp: Math.round(baseHp * 1.35),
-        speed: 0.85, armor: Math.round(15 + r * 1.2), goldReward: gold,
-      });
-    } else if (mod === 9 || mod === 4) {
-      waves.push({
-        round: r, type: "mixed", enemyName: "혼합 군단",
-        count: baseCount, hp: baseHp, speed: 1.15,
-        armor: Math.round(r * 0.6), goldReward: gold,
-      });
-    } else {
-      waves.push({
-        round: r, type: "normal", enemyName: "균열 짐승 무리",
-        count: baseCount, hp: baseHp, speed: 1.05, armor: 0, goldReward: gold,
-      });
-    }
+function buildWaves(): WaveDef[] {
+  const bosses = new Map(BOSSES.map((b) => [b.round, b]));
+  const waves: WaveDef[] = [];
+  for (let round = 1; round <= FINAL_ROUND; round++) {
+    const boss = bosses.get(round);
+    waves.push(boss ? bossWave(boss) : normalWave(round));
   }
   return waves;
 }
 
 export const WAVES: WaveDef[] = buildWaves();
-export const FINAL_ROUND = 40;
 
 export function waveForRound(round: number): WaveDef {
   const w = WAVES.find((x) => x.round === round);

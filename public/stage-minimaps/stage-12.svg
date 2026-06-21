@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200" role="img" aria-label="부서진 목책 미니맵">
+  <rect width="320" height="200" rx="16" fill="#2a211a"/>
+  <rect x="7" y="7" width="306" height="186" rx="12" fill="#7b5a39" fill-opacity=".08" stroke="#7b5a39" stroke-opacity=".28"/>
+  <path d="M 40 0 V 200 M 0 25 H 320" stroke="#4d3d2c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 80 0 V 200 M 0 50 H 320" stroke="#4d3d2c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 120 0 V 200 M 0 75 H 320" stroke="#4d3d2c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 160 0 V 200 M 0 100 H 320" stroke="#4d3d2c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 200 0 V 200 M 0 125 H 320" stroke="#4d3d2c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 240 0 V 200 M 0 150 H 320" stroke="#4d3d2c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 280 0 V 200 M 0 175 H 320" stroke="#4d3d2c" stroke-opacity=".18" stroke-width="1"/>
+  <circle cx="76.4" cy="60.1" r="5.8" fill="#9a7043" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="217.2" cy="60.1" r="5.8" fill="#8b94a4" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="141.1" cy="101.2" r="5.6" fill="#d5763a" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="51.7" cy="112.3" r="5.5" fill="#a66e3c" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <path d="M 46.9 44.1 L 273.2 44.1 L 273.2 154.1 L 239.1 154.1 L 239.1 76 L 199.5 76 L 199.5 154.1 L 157 154.1 L 157 76 L 115.6 76 L 115.6 154.1 L 46.9 154.1" fill="none" stroke="#05070b" stroke-opacity=".65" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 46.9 44.1 L 273.2 44.1 L 273.2 154.1 L 239.1 154.1 L 239.1 76 L 199.5 76 L 199.5 154.1 L 157 154.1 L 157 76 L 115.6 76 L 115.6 154.1 L 46.9 154.1" fill="none" stroke="#d7c08a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 46.9 44.1 L 273.2 44.1 L 273.2 154.1 L 239.1 154.1 L 239.1 76 L 199.5 76 L 199.5 154.1 L 157 154.1 L 157 76 L 115.6 76 L 115.6 154.1 L 46.9 154.1" fill="none" stroke="#fff1b8" stroke-opacity=".52" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="46.9" cy="44.1" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="273.2" cy="44.1" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="273.2" cy="154.1" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="239.1" cy="154.1" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="239.1" cy="76" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="199.5" cy="76" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="199.5" cy="154.1" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="157" cy="154.1" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="157" cy="76" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="115.6" cy="76" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="115.6" cy="154.1" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="46.9" cy="154.1" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="46.9" cy="44.1" r="6.2" fill="#6ee0a0" stroke="#0b0e16" stroke-width="1.5"/>
+  <circle cx="46.9" cy="154.1" r="6.2" fill="#e85c66" stroke="#0b0e16" stroke-width="1.5"/>
+  <text x="14" y="184" fill="#f3f6ff" font-family="Arial, sans-serif" font-size="13" font-weight="700">12. 부서진 목책</text>
+</svg>

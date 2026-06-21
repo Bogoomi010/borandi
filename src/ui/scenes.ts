@@ -11,8 +11,9 @@ import { GRADE_LABEL, FAMILY_LABEL, ROLE_LABEL, GRADE_ORDER, type Grade } from "
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
 import { listSlots, isTauri } from "../save/saveApi";
 import { APP_VERSION, DATA_VERSION } from "../data/version";
-import { DIFFICULTY_BY_ID } from "../data/difficulty";
+import { DIFFICULTIES, DIFFICULTY_BY_ID } from "../data/difficulty";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { STAGES } from "../data/stages";
 
 // ---------- 씬 전환 ----------
 
@@ -52,7 +53,7 @@ function buildTitle(ctx: AppCtx) {
   const h1 = el("h1");
   h1.innerHTML = "차원 균열<br>랜덤 디펜스";
   logo.appendChild(h1);
-  logo.appendChild(el("div", "title-sub", "랜덤 소환 · 조합 · 미션 · 보스 — 40라운드를 버텨라"));
+  logo.appendChild(el("div", "title-sub", "새 게임 시작 때 전체 맵 자유 선택 · 1~40R 같은 맵 고정"));
   inner.appendChild(logo);
 
   const menu = el("div", "title-menu");
@@ -331,8 +332,8 @@ export function openCollection(ctx: AppCtx) {
     };
     kv("플레이 횟수", String(profile.runs));
     kv("최고 도달", profile.bestRound > 0 ? `${profile.bestRound}R` : "-");
-    kv("입문 클리어", String(profile.clears["novice"] ?? 0));
-    kv("보통 클리어", String(profile.clears["normal"] ?? 0));
+    kv("선택 가능 맵", `${STAGES.length}/${STAGES.length}`);
+    for (const d of DIFFICULTIES) kv(`${d.name} 클리어`, String(profile.clears[d.id] ?? 0));
     kv("유닛 수집", `${profile.seenUnits.length}/${UNITS.length}`);
     kv("히든 조합 발견", `${profile.foundHiddenRecipes.length}/${RECIPES.filter((r) => r.visibility === "hidden").length}`);
     body.appendChild(stats);

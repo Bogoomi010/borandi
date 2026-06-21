@@ -1,7 +1,7 @@
 // 저장 계층: Tauri 환경이면 Rust command(SQLite), 아니면 localStorage fallback.
 // 게임 판정 로직은 절대 여기 두지 않는다.
 
-import type { GameInput, ResultSummary } from "../core/types";
+import type { DifficultyId, GameInput, ResultSummary } from "../core/types";
 import { SCHEMA_VERSION, APP_VERSION, DATA_VERSION } from "../data/version";
 import { invoke, isTauri as tauriRuntime } from "@tauri-apps/api/core";
 
@@ -11,7 +11,8 @@ export interface SaveRecord {
   dataVersion: string;
   savedAt: string;
   seed: string;
-  difficulty: "novice" | "normal";
+  difficulty: DifficultyId;
+  stageId: number;
   stateChecksum: string;
   tick: number;
   round: number;
@@ -25,6 +26,7 @@ export interface SlotMeta {
   savedAt: string;
   seed: string;
   difficulty: string;
+  stageId: number;
   round: number;
   life: number;
   maxGrade: string;
@@ -87,7 +89,7 @@ export async function listSlots(): Promise<SlotMeta[]> {
     if (r) {
       out.push({
         slotId, savedAt: r.savedAt, seed: r.seed, difficulty: r.difficulty,
-        round: r.round, life: r.life, maxGrade: r.maxGrade, dataVersion: r.dataVersion,
+        stageId: r.stageId ?? 1, round: r.round, life: r.life, maxGrade: r.maxGrade, dataVersion: r.dataVersion,
       });
     }
   }
@@ -139,7 +141,7 @@ export async function openAppDataDir(): Promise<void> {
 }
 
 export function makeSaveRecord(args: {
-  seed: string; difficulty: "novice" | "normal"; stateChecksum: string;
+  seed: string; difficulty: DifficultyId; stageId: number; stateChecksum: string;
   tick: number; round: number; life: number; maxGrade: string;
   inputHistory: GameInput[];
 }): SaveRecord {

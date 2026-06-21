@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200" role="img" aria-label="영혼열매 숲 미니맵">
+  <rect width="320" height="200" rx="16" fill="#1f2d20"/>
+  <rect x="7" y="7" width="306" height="186" rx="12" fill="#6f9f58" fill-opacity=".08" stroke="#6f9f58" stroke-opacity=".28"/>
+  <path d="M 40 0 V 200 M 0 25 H 320" stroke="#3f623e" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 80 0 V 200 M 0 50 H 320" stroke="#3f623e" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 120 0 V 200 M 0 75 H 320" stroke="#3f623e" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 160 0 V 200 M 0 100 H 320" stroke="#3f623e" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 200 0 V 200 M 0 125 H 320" stroke="#3f623e" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 240 0 V 200 M 0 150 H 320" stroke="#3f623e" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 280 0 V 200 M 0 175 H 320" stroke="#3f623e" stroke-opacity=".18" stroke-width="1"/>
+  <circle cx="118.6" cy="66.2" r="4.8" fill="#60d0c8" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="228.1" cy="76" r="4.4" fill="#60d0c8" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="68.1" cy="79.7" r="5.2" fill="#8dbc4a" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="178.3" cy="111.7" r="4.5" fill="#5fc2d8" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <path d="M 48.1 153.4 L 48.1 47.8 L 100.4 47.8 L 100.4 153.4 L 158.2 153.4 L 158.2 47.8 L 219 47.8 L 219 153.4 L 273.2 153.4" fill="none" stroke="#05070b" stroke-opacity=".65" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 48.1 153.4 L 48.1 47.8 L 100.4 47.8 L 100.4 153.4 L 158.2 153.4 L 158.2 47.8 L 219 47.8 L 219 153.4 L 273.2 153.4" fill="none" stroke="#d7c08a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 48.1 153.4 L 48.1 47.8 L 100.4 47.8 L 100.4 153.4 L 158.2 153.4 L 158.2 47.8 L 219 47.8 L 219 153.4 L 273.2 153.4" fill="none" stroke="#fff1b8" stroke-opacity=".52" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="48.1" cy="153.4" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="48.1" cy="47.8" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="100.4" cy="47.8" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="100.4" cy="153.4" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="158.2" cy="153.4" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="158.2" cy="47.8" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="219" cy="47.8" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="219" cy="153.4" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="273.2" cy="153.4" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="48.1" cy="153.4" r="6.2" fill="#6ee0a0" stroke="#0b0e16" stroke-width="1.5"/>
+  <circle cx="273.2" cy="153.4" r="6.2" fill="#e85c66" stroke="#0b0e16" stroke-width="1.5"/>
+  <text x="14" y="184" fill="#f3f6ff" font-family="Arial, sans-serif" font-size="13" font-weight="700">9. 영혼열매 숲</text>
+</svg>

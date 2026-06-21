@@ -1,0 +1,124 @@
+{
+  "canvas": {
+    "width": 2048,
+    "height": 1536,
+    "aspect_ratio": "4:3"
+  },
+  "sections": {
+    "RUINED HOUSES": [
+      "Broken wooden cottage",
+      "Abandoned stone house",
+      "Witch hut with purple lanterns",
+      "Corrupted house covered in roots",
+      "Noble ruined manor"
+    ],
+    "BLACKSMITH": [
+      "Dark stone forge with glowing furnace, weapon rack, hanging sign"
+    ],
+    "CRYPT": [
+      "Ancient mausoleum with large stone entrance, broken pillars, small glowing braziers"
+    ],
+    "CORRUPTED FARMLANDS": [
+      "Dead crops",
+      "Dark sprouts",
+      "Cursed soil"
+    ],
+    "GROUND TILES": [
+      "Dark dirt",
+      "Ash soil",
+      "Dead grass",
+      "Cracked stone",
+      "Corrupted soil",
+      "Blood-stained dirt",
+      "Rune-marked ground",
+      "Dirt-to-dead-grass transition"
+    ],
+    "TREES": [
+      "Twisted dead tree",
+      "Large cursed oak",
+      "Rotten tree",
+      "Soulfruit tree with glowing fruit"
+    ],
+    "BUSHES": [
+      "Thorn bush",
+      "Poison flower bush",
+      "Bloodberry bush"
+    ],
+    "SPECIAL TREE": [
+      "Ancient cursed tree with twisted roots and purple glowing runes"
+    ],
+    "LOGS & STUMPS": [
+      "Rotten log",
+      "Broken log",
+      "Hollow cursed log",
+      "Ancient stump",
+      "Glowing stump"
+    ],
+    "GRAVEYARD PROPS": [
+      "Tombstone",
+      "Broken tombstone",
+      "Skull pile",
+      "Coffin",
+      "Candle shrine"
+    ],
+    "DARK PLANTS": [
+      "Ghost flower",
+      "Poison flower",
+      "Blood rose",
+      "Black lily",
+      "Purple thorn flower",
+      "Pale funeral flower"
+    ],
+    "VILLAGE PROPS": [
+      "Wooden signpost",
+      "Lantern post",
+      "Crow mailbox",
+      "Notice board",
+      "Supply crate",
+      "Barrel",
+      "Sack",
+      "Potion jar",
+      "Wooden bench",
+      "Stone well",
+      "Bucket",
+      "Merchant cart",
+      "Clay urn",
+      "Ritual planter",
+      "Stone planter",
+      "Dark market stall",
+      "Ritual table",
+      "Lantern post"
+    ],
+    "ADVENTURER PROPS": [
+      "Weapon rack",
+      "Armor stand",
+      "Supply cart",
+      "Barricade",
+      "Potion bottle",
+      "Pickaxe",
+      "Shovel",
+      "Oil lantern",
+      "Wooden coffin"
+    ],
+    "SMALL DETAILS": [
+      "4 dark rocks",
+      "Tiny cursed sprout",
+      "Dead reeds",
+      "Dry grass tuft",
+      "Red mushroom cluster",
+      "Bone pile",
+      "Skull",
+      "Small candle",
+      "Rune stone",
+      "Bat",
+      "Crow feather",
+      "Spider web"
+    ],
+    "FENCES": [
+      "Rotten wooden fence",
+      "Iron spike fence",
+      "Chain fence",
+      "Cemetery gate"
+    ]
+  }
+}

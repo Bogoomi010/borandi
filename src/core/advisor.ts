@@ -4,7 +4,7 @@
 import type { GameState, RecipeDef, Role } from "./types";
 import { UNIT_BY_ID } from "../data/units";
 import { RECIPES } from "../data/recipes";
-import { bossForRound, waveForRound, FINAL_ROUND } from "../data/waves";
+import { bossForRound, waveForRound, FINAL_ROUND, BOSS_ROUND_LIST } from "../data/waves";
 
 export interface RecipeStatus {
   recipe: RecipeDef;
@@ -66,7 +66,7 @@ export function roleNeeds(state: GameState): Role[] {
   const needs: Role[] = [];
   if (counts.waveClear < 3) needs.push("waveClear");
   // 다음 보스가 가까우면 보스딜/약화 요구
-  const nextBossRound = [10, 20, 30, 40].find((r) => r >= state.round);
+  const nextBossRound = BOSS_ROUND_LIST.find((r) => r >= state.round);
   if (nextBossRound !== undefined && nextBossRound - state.round <= 3) {
     if (counts.bossKiller < 2) needs.push("bossKiller");
     if (counts.debuff < 1) needs.push("debuff");
@@ -137,7 +137,7 @@ export function bossOutlook(state: GameState): {
   round: number; name: string; weakness: string; hint: string;
   roundsLeft: number; risk: "ok" | "warn" | "bad"; riskText: string;
 } | null {
-  const nextBossRound = [10, 20, 30, 40].find((r) => r >= state.round);
+  const nextBossRound = BOSS_ROUND_LIST.find((r) => r >= state.round);
   if (nextBossRound === undefined) return null;
   const boss = bossForRound(nextBossRound);
   if (!boss) return null;

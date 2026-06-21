@@ -73,7 +73,7 @@ export const RECIPES: RecipeDef[] = [
       { unitId: "tempest_blademaster", count: 1 },
       { unitId: "flame_mage", count: 1 },
     ],
-    cost: { gold: 300 }, visibility: "visible", minRound: 18,
+    cost: { gold: 300 }, visibility: "visible", minRound: 12,
   },
   {
     id: "recipe_chrono_marshal", resultUnitId: "chrono_marshal",
@@ -82,7 +82,7 @@ export const RECIPES: RecipeDef[] = [
       { unitId: "abyss_oracle", count: 1 },
       { unitId: "ice_shaman", count: 1 },
     ],
-    cost: { gold: 300 }, visibility: "visible", minRound: 18,
+    cost: { gold: 300 }, visibility: "visible", minRound: 12,
   },
   {
     id: "recipe_titan_slayer", resultUnitId: "titan_slayer",
@@ -90,7 +90,7 @@ export const RECIPES: RecipeDef[] = [
       { unitId: "fortress_breaker", count: 2 },
       { unitId: "world_tree_sage", count: 1 },
     ],
-    cost: { gold: 350 }, visibility: "visible", minRound: 18,
+    cost: { gold: 350 }, visibility: "visible", minRound: 12,
   },
 
   // ===== 히든 조합 (도감 발견 전에는 도우미에 노출하지 않음) =====
@@ -100,7 +100,7 @@ export const RECIPES: RecipeDef[] = [
       { unitId: "abyss_oracle", count: 2 },
       { unitId: "chrono_marshal", count: 1 },
     ],
-    cost: { gold: 500 }, visibility: "hidden", minRound: 25,
+    cost: { gold: 500 }, visibility: "hidden", minRound: 14,
   },
   {
     id: "recipe_prism_dragon", resultUnitId: "prism_dragon",
@@ -109,7 +109,7 @@ export const RECIPES: RecipeDef[] = [
       { unitId: "titan_slayer", count: 1 },
       { unitId: "glacier_warden", count: 1 },
     ],
-    cost: { gold: 600 }, visibility: "hidden", minRound: 30,
+    cost: { gold: 600 }, visibility: "hidden", minRound: 14,
   },
 ];
 

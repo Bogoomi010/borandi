@@ -13,10 +13,16 @@ export function toast(text: string, kind: "info" | "warn" | "danger" | "ok" = "i
 
 export interface ModalHandle { close: () => void; el: HTMLElement; }
 
+function modalRoot(): HTMLElement {
+  const root = document.getElementById("modal-root")!;
+  if (root.parentElement !== document.body) document.body.appendChild(root);
+  return root;
+}
+
 /** 모달 열기. dismissable=false면 배경 클릭/Esc로 닫히지 않음 */
 // COMPONENT: ModalShell - shared backdrop and modal container mounted under #modal-root.
 export function openModal(build: (body: HTMLElement, close: () => void) => void, dismissable = true): ModalHandle {
-  const root = document.getElementById("modal-root")!;
+  const root = modalRoot();
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
   const modal = document.createElement("div");
@@ -38,7 +44,7 @@ export function anyModalOpen(): boolean {
 }
 
 export function closeTopModal() {
-  const root = document.getElementById("modal-root")!;
+  const root = modalRoot();
   root.lastElementChild?.remove();
 }
 

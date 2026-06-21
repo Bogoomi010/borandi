@@ -268,15 +268,21 @@ fn load_run_snapshot(db: tauri::State<'_, Db>, slot_id: String) -> CmdResult<Opt
 fn list_save_slots(db: tauri::State<'_, Db>) -> CmdResult<Vec<Value>> {
     let conn = db.0.lock().map_err(|e| CmdError::new("lock", e, true))?;
     let mut stmt = conn.prepare(
-        "SELECT slot_id, saved_at, seed, difficulty, round, life, max_grade, data_version
+        "SELECT slot_id, saved_at, seed, difficulty, round, life, max_grade, data_version, record
          FROM save_slots ORDER BY slot_id",
     )?;
     let rows = stmt.query_map([], |row| {
+        let record_raw: String = row.get(8)?;
+        let stage_id = serde_json::from_str::<Value>(&record_raw)
+            .ok()
+            .and_then(|v| v.get("stageId").and_then(|x| x.as_i64()))
+            .unwrap_or(1);
         Ok(serde_json::json!({
             "slotId": row.get::<_, String>(0)?,
             "savedAt": row.get::<_, String>(1)?,
             "seed": row.get::<_, String>(2)?,
             "difficulty": row.get::<_, String>(3)?,
+            "stageId": stage_id,
             "round": row.get::<_, i64>(4)?,
             "life": row.get::<_, i64>(5)?,
             "maxGrade": row.get::<_, String>(6)?,
@@ -428,6 +434,7 @@ mod tests {
             "savedAt": "2026-06-12T00:00:00Z",
             "seed": "TEST",
             "difficulty": "novice",
+            "stageId": 3,
             "round": 7,
             "life": 18,
             "maxGrade": "rare",

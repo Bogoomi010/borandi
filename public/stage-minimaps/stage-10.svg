@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200" role="img" aria-label="귀족 저택 폐허 미니맵">
+  <rect width="320" height="200" rx="16" fill="#252833"/>
+  <rect x="7" y="7" width="306" height="186" rx="12" fill="#8c93a6" fill-opacity=".08" stroke="#8c93a6" stroke-opacity=".28"/>
+  <path d="M 40 0 V 200 M 0 25 H 320" stroke="#515668" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 80 0 V 200 M 0 50 H 320" stroke="#515668" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 120 0 V 200 M 0 75 H 320" stroke="#515668" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 160 0 V 200 M 0 100 H 320" stroke="#515668" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 200 0 V 200 M 0 125 H 320" stroke="#515668" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 240 0 V 200 M 0 150 H 320" stroke="#515668" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 280 0 V 200 M 0 175 H 320" stroke="#515668" stroke-opacity=".18" stroke-width="1"/>
+  <circle cx="132.6" cy="77.3" r="7.6" fill="#bdc0c9" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="71.8" cy="140.5" r="5.3" fill="#8b94a4" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="233" cy="89.6" r="5.1" fill="#d3ca8a" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="177" cy="145.5" r="5" fill="#9a9488" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <path d="M 43.8 42.9 L 272.5 42.9 L 272.5 72.4 L 211.7 72.4 L 211.7 125.8 L 272.5 125.8 L 272.5 157.7 L 43.8 157.7 L 43.8 125.8 L 105.3 125.8 L 105.3 72.4 L 43.8 72.4" fill="none" stroke="#05070b" stroke-opacity=".65" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 43.8 42.9 L 272.5 42.9 L 272.5 72.4 L 211.7 72.4 L 211.7 125.8 L 272.5 125.8 L 272.5 157.7 L 43.8 157.7 L 43.8 125.8 L 105.3 125.8 L 105.3 72.4 L 43.8 72.4" fill="none" stroke="#d7c08a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 43.8 42.9 L 272.5 42.9 L 272.5 72.4 L 211.7 72.4 L 211.7 125.8 L 272.5 125.8 L 272.5 157.7 L 43.8 157.7 L 43.8 125.8 L 105.3 125.8 L 105.3 72.4 L 43.8 72.4" fill="none" stroke="#fff1b8" stroke-opacity=".52" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="43.8" cy="42.9" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="272.5" cy="42.9" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="272.5" cy="72.4" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="211.7" cy="72.4" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="211.7" cy="125.8" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="272.5" cy="125.8" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="272.5" cy="157.7" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="43.8" cy="157.7" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="43.8" cy="125.8" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="105.3" cy="125.8" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="105.3" cy="72.4" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="43.8" cy="72.4" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="43.8" cy="42.9" r="6.2" fill="#6ee0a0" stroke="#0b0e16" stroke-width="1.5"/>
+  <circle cx="43.8" cy="72.4" r="6.2" fill="#e85c66" stroke="#0b0e16" stroke-width="1.5"/>
+  <text x="14" y="184" fill="#f3f6ff" font-family="Arial, sans-serif" font-size="13" font-weight="700">10. 귀족 저택 폐허</text>
+</svg>
