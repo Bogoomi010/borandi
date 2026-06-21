@@ -41,6 +41,7 @@ import {
   manualSheetCommand,
   manualStartId,
   manualStartNextCommand as buildManualStartNextCommand,
+  manualStartValidateSaveCommand,
   manualSummaryCommand,
   manualSummaryJsonCommand,
   shellArg,
@@ -869,6 +870,12 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const currentPendingIdJsonCommand = currentPendingIdCommand ? `${currentPendingIdCommand} --json` : "";
     const currentStartDryRunCommand = currentStartCommand ? manualDryRunCommand(currentStartCommand) : "";
     const currentStartNextDryRunCommand = currentStartNextCommand ? manualDryRunCommand(currentStartNextCommand) : "";
+    const currentStartValidateSaveCommand = currentStartCommand
+      ? manualStartValidateSaveCommand(currentStartCommand, currentPendingIdCommand)
+      : "";
+    const currentStartNextValidateSaveCommand = currentStartNextCommand
+      ? manualStartValidateSaveCommand(currentStartNextCommand, currentPendingIdCommand)
+      : "";
     const currentCheckpointSummary = ctx?.scene === "game" ? currentManualProofSummary(ctx) : null;
     const currentFinishCheckpointCommand = currentCheckpointSummary ? manualPlaylogFinishCommand(currentCheckpointSummary) : "";
     const currentFinishCheckpointDryRunCommand = currentCheckpointSummary ? manualPlaylogFinishDryRunCommand(currentCheckpointSummary) : "";
@@ -906,6 +913,11 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       body.appendChild(el("h3", "", "3. 시작 마커 저장 확인"));
       body.appendChild(el("pre", "report", currentPendingIdCommand));
       body.appendChild(el("div", "modal-note", "시작 마커 저장 명령을 실행한 직후 이 확인 명령이 PASS 상태로 끝나는지 보고 12분 이상 플레이를 시작하세요."));
+    }
+    if (currentStartNextValidateSaveCommand || currentStartValidateSaveCommand) {
+      body.appendChild(el("h3", "", "한 번에 검증+저장+확인"));
+      body.appendChild(el("pre", "report", currentStartNextValidateSaveCommand || currentStartValidateSaveCommand));
+      body.appendChild(el("div", "modal-note", "위 명령은 dry-run 검증이 통과할 때만 시작 마커를 저장하고, 바로 pending-id 확인까지 실행합니다."));
     }
     body.appendChild(el("h3", "", "현재 증거 버전"));
     body.appendChild(el("pre", "report", `DATA_VERSION ${dataVersion}`));
@@ -1003,6 +1015,16 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
     const row = el("div", "row-btns");
     if (currentStartCommand) {
       if (currentStartNextCommand) {
+        const copyCurrentStartNextValidateSave = el("button", "", "현재 다음검증+마커 복사");
+        copyCurrentStartNextValidateSave.onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(currentStartNextValidateSaveCommand);
+            toast("현재 판의 다음 필요 세션 검증+저장+확인 명령을 복사했습니다", "ok");
+          } catch {
+            toast("복사 실패: 명령을 직접 선택하세요", "warn");
+          }
+        };
+        row.appendChild(copyCurrentStartNextValidateSave);
         const copyCurrentStartNextDryRun = el("button", "", "현재 다음검증 복사");
         copyCurrentStartNextDryRun.onclick = async () => {
           try {
@@ -1024,6 +1046,16 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
         };
         row.appendChild(copyCurrentStartNext);
       }
+      const copyStartValidateSave = el("button", "", "시작검증+마커 복사");
+      copyStartValidateSave.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(currentStartValidateSaveCommand);
+          toast("현재 판 시작 마커 검증+저장+확인 명령을 복사했습니다", "ok");
+        } catch {
+          toast("복사 실패: 명령을 직접 선택하세요", "warn");
+        }
+      };
+      row.appendChild(copyStartValidateSave);
       const copyStartDryRun = el("button", "", "시작검증 복사");
       copyStartDryRun.onclick = async () => {
         try {

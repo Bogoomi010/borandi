@@ -12,6 +12,7 @@ import {
   manualStartCommand,
   manualStartId,
   manualStartNextCommand,
+  manualStartValidateSaveCommand,
   manualSummaryCommand,
   manualSummaryJsonCommand,
   shellArg,
@@ -56,6 +57,14 @@ describe("수동 증거 시작 명령", () => {
     const pending = manualPendingIdCommand(input);
 
     expect(pending).toBe(`yarn manual-playlog --pending-id=${shellArg(id)}`);
+  });
+
+  it("시작 마커 검증, 저장, 확인을 한 명령으로 묶는다", () => {
+    const start = manualStartNextCommand(input);
+    const pending = manualPendingIdCommand(input);
+    const combined = manualStartValidateSaveCommand(start, pending);
+
+    expect(combined).toBe(`${manualDryRunCommand(start)} && ${start} && ${pending}`);
   });
 
   it("수동 proof 상태 명령 세트를 제공한다", () => {

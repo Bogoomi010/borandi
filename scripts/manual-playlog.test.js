@@ -128,6 +128,10 @@ describe("manual-playlog plan", () => {
 
     expect(modalSource).toContain("현재 판의 실제 시드로 다음 필요 수동 세션 dry-run 검증을 먼저 실행하세요.");
     expect(modalSource).toContain("검증이 PASS일 때만 시작 마커를 저장합니다.");
+    expect(modalSource).toContain("한 번에 검증+저장+확인");
+    expect(modalSource).toContain("dry-run 검증이 통과할 때만 시작 마커를 저장");
+    expect(modalSource).toContain("현재 다음검증+마커 복사");
+    expect(modalSource).toContain("시작검증+마커 복사");
     expect(modalSource).toContain("증거 JSON 내보내기");
     expect(modalSource).toContain("증거 JSON 복사");
     expect(modalSource).toContain("yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --dry-run");

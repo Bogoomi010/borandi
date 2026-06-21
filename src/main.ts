@@ -48,6 +48,7 @@ import {
   manualSheetCommand,
   manualStartCommand as buildManualStartCommand,
   manualStartNextCommand as buildManualStartNextCommand,
+  manualStartValidateSaveCommand,
   manualSummaryCommand,
   manualSummaryJsonCommand,
 } from "./core/manualProofCommands";
@@ -603,8 +604,10 @@ function renderGameToText(): string {
     ? {
         start: manualStartCommand,
         startDryRun: manualDryRunCommand(manualStartCommand),
+        startValidateSave: manualStartValidateSaveCommand(manualStartCommand, manualPendingIdCommand),
         startNext: manualStartNextCommand,
         startNextDryRun: manualDryRunCommand(manualStartNextCommand),
+        startNextValidateSave: manualStartValidateSaveCommand(manualStartNextCommand, manualPendingIdCommand),
         pendingId: manualPendingIdCommand,
         pendingIdJson: `${manualPendingIdCommand} --json`,
         preflight: manualPreflightCommand(),

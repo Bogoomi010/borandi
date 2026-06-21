@@ -53,6 +53,17 @@ export function manualPendingIdCommand(input: ManualProofStartCommandInput): str
   return `yarn manual-playlog --pending-id=${shellArg(id)}`;
 }
 
+export function manualStartValidateSaveCommand(
+  startCommand: string,
+  pendingIdCommand = "",
+): string {
+  return [
+    manualDryRunCommand(startCommand),
+    startCommand,
+    pendingIdCommand,
+  ].filter(Boolean).join(" && ");
+}
+
 export function manualPreflightCommand(): string {
   return "yarn manual-playlog --preflight";
 }
