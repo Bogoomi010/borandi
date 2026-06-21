@@ -157,6 +157,13 @@ function shellArg(value) {
   return `'${text.replace(/'/g, `'\\''`)}'`;
 }
 
+function inputTypesFromCounts(inputCounts) {
+  return Object.entries(inputCounts ?? {})
+    .filter(([, count]) => Number(count) > 0)
+    .map(([type]) => type)
+    .sort();
+}
+
 function manualPlaylogCommand({ scenario, seed, simulatedSeconds, final, endedAt }) {
   const session = codexDirectSession({ scenario, seed, simulatedSeconds, final, endedAt });
   return [
@@ -171,6 +178,7 @@ function manualPlaylogCommand({ scenario, seed, simulatedSeconds, final, endedAt
     `--legends=${session.legends}`,
     `--maxGrade=${shellArg(session.maxGrade)}`,
     `--inputCount=${session.inputCount}`,
+    ...(session.inputTypes.length > 0 ? [`--inputTypes=${shellArg(session.inputTypes.join(","))}`] : []),
     `--dataVersion=${shellArg(session.dataVersion)}`,
     `--stateChecksum=${shellArg(session.stateChecksum)}`,
     `--endedAt=${shellArg(session.endedAt)}`,
@@ -198,6 +206,7 @@ function codexDirectSession({ scenario, seed, simulatedSeconds, final, endedAt }
     legends,
     maxGrade,
     inputCount: Number(final.inputCount ?? 0),
+    inputTypes: inputTypesFromCounts(final.inputCounts),
     dataVersion: final.dataVersion,
     stateChecksum: final.stateChecksum,
     notes,
@@ -435,6 +444,7 @@ async function playScenarioSeed(page, scenario, seedIndex) {
     pressure: `${finalState.resources.enemyPressure}/${finalState.resources.enemyLimit}`,
     gold: finalState.resources.gold,
     inputCount: finalState.inputCount,
+    inputCounts: finalState.inputCounts,
     unitSummary: finalState.unitSummary,
     boss: finalState.boss,
   };

@@ -153,6 +153,10 @@ function currentRunManualProofNote(target: ManualProofTargetStatus): string {
   return "아직 목표 결과까지 확인해야 합니다. 12분 이상 플레이한 뒤 결과 화면 체크리스트에서 최종 충족 여부를 확인하세요.";
 }
 
+function manualInputTypes(r: ResultSummary): string {
+  return Object.keys(r.inputCounts).sort().join(",");
+}
+
 export function manualPlaylogCommand(r: ResultSummary): string {
   const seconds = Math.max(1, Math.round(r.wallSeconds ?? 0));
   const result = r.cleared ? "clear" : "loss";
@@ -170,6 +174,8 @@ export function manualPlaylogCommand(r: ResultSummary): string {
     `--stateChecksum=${shellArg(r.stateChecksum)}`,
     `--inputCount=${r.inputCount}`,
   ];
+  const inputTypes = manualInputTypes(r);
+  if (inputTypes) args.push(`--inputTypes=${shellArg(inputTypes)}`);
   if (r.manualStartedAt) args.push(`--startedAt=${shellArg(r.manualStartedAt)}`);
   if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
   args.push(`--notes=${shellArg(manualProofResultLogNote(r))}`);
@@ -195,6 +201,8 @@ export function manualPlaylogFinishCommand(r: ResultSummary): string {
     `--stateChecksum=${shellArg(r.stateChecksum)}`,
     `--inputCount=${r.inputCount}`,
   ];
+  const inputTypes = manualInputTypes(r);
+  if (inputTypes) args.push(`--inputTypes=${shellArg(inputTypes)}`);
   if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
   args.push(`--notes=${shellArg(manualProofResultLogNote(r))}`);
   return args.join(" ");
@@ -217,6 +225,8 @@ export function manualPlaylogFinishLatestCommand(r: ResultSummary): string {
     `--stateChecksum=${shellArg(r.stateChecksum)}`,
     `--inputCount=${r.inputCount}`,
   ];
+  const inputTypes = manualInputTypes(r);
+  if (inputTypes) args.push(`--inputTypes=${shellArg(inputTypes)}`);
   if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
   args.push(`--notes=${shellArg(manualProofResultLogNote(r))}`);
   return args.join(" ");
@@ -607,6 +617,7 @@ function appendManualResultFieldChecklist(body: HTMLElement, target?: ManualProo
     ["dataVersion", "결과 화면 RESULT_DATA_VERSION", DATA_VERSION],
     ["stateChecksum", "결과 화면 RESULT_CHECKSUM", "8자리 checksum"],
     ["inputCount", "결과 화면 플레이 입력 수", "12 이상"],
+    ["inputTypes", "결과 화면 플레이 입력 종류", "1개 이상"],
     ["result", "결과 화면 클리어/실패 상태", expected.result],
     ["round", "결과 화면 도달 라운드", expected.round],
     ["legends", "결과 화면 전설 이상 수", expected.legends],

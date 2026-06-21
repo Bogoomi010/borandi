@@ -17,6 +17,7 @@
       "dataVersion": "0.8.0",
       "stateChecksum": "11111111",
       "inputCount": 120,
+      "inputTypes": ["summon", "startWave", "craft", "upgrade"],
       "notes": "입문자 무전설 클리어 체감 기록 예시"
     },
     {
@@ -33,6 +34,7 @@
       "dataVersion": "0.8.0",
       "stateChecksum": "22222222",
       "inputCount": 140,
+      "inputTypes": ["summon", "startWave", "craft", "upgrade"],
       "notes": "일반 0전설/2전설 비교 체감 기록 예시"
     },
     {
@@ -49,6 +51,7 @@
       "dataVersion": "0.8.0",
       "stateChecksum": "33333333",
       "inputCount": 160,
+      "inputTypes": ["summon", "startWave", "craft", "upgrade"],
       "notes": "중급자 2전설/5전설 비교 체감 기록 예시"
     },
     {
@@ -65,6 +68,7 @@
       "dataVersion": "0.8.0",
       "stateChecksum": "44444444",
       "inputCount": 80,
+      "inputTypes": ["summon", "startWave", "craft", "upgrade"],
       "notes": "고수 5전설로는 후반 누적 압박이 남는 기록 예시"
     },
     {
@@ -81,6 +85,7 @@
       "dataVersion": "0.8.0",
       "stateChecksum": "55555555",
       "inputCount": 180,
+      "inputTypes": ["summon", "startWave", "craft", "upgrade"],
       "notes": "고수는 5전설보다 높은 성장에서 클리어권에 들어가는 기록 예시"
     },
     {
@@ -97,6 +102,7 @@
       "dataVersion": "0.8.0",
       "stateChecksum": "66666666",
       "inputCount": 60,
+      "inputTypes": ["summon", "startWave", "craft", "upgrade"],
       "notes": "초고수 난도 체감 기록 예시"
     }
   ]

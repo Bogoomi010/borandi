@@ -30,6 +30,7 @@ function session(index, difficulty, result, legends, maxGrade, round = 40, minut
     legends,
     maxGrade,
     inputCount: 12,
+    inputTypes: ["summon", "startWave"],
     dataVersion: "0.8.4",
     stateChecksum: `${(0x30000000 + index).toString(16)}`,
   };

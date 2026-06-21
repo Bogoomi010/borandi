@@ -27,7 +27,7 @@ const MIN_HUMAN_PLAYTEST_INPUT_COUNT = 12;
 function usage() {
   return [
     "사용법:",
-    "  yarn manual-playlog --difficulty=normal --minutes=24 --result=loss --stage=1 --round=39 --seed=RUN123 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --notes=\"2전설, 후반 누적 압박\"",
+    "  yarn manual-playlog --difficulty=normal --minutes=24 --result=loss --stage=1 --round=39 --seed=RUN123 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --inputTypes=summon,startWave --notes=\"2전설, 후반 누적 압박\"",
     "",
     "필수:",
     "  --difficulty=novice|normal|intermediate|expert|master",
@@ -39,6 +39,7 @@ function usage() {
     "  --dataVersion=...  # 결과 리포트의 데이터 버전",
     "  --stateChecksum=... # 결과 리포트의 상태 체크섬",
     `  --inputCount=...    # 결과 리포트의 성공한 플레이 입력 수, human-playtest는 ${MIN_HUMAN_PLAYTEST_INPUT_COUNT}회 이상`,
+    "  --inputTypes=...    # 결과 리포트의 플레이 입력 종류, 예: summon,startWave,craft",
     "",
     "선택:",
     "  --out=output/manual-balance-playlog.json",
@@ -53,9 +54,9 @@ function usage() {
     "  --pending-id-json          # --pending-id 결과를 JSON으로 출력",
     "  --preflight              # 새 수동 세션 시작 전 무효/미완료 마커 점검",
     "  --preflight-json         # --preflight 결과를 JSON으로 출력",
-    "  --finish=RUN1 --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --endedAt=RESULT_ENDED_AT",
+    "  --finish=RUN1 --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --inputTypes=RESULT_INPUT_TYPES --endedAt=RESULT_ENDED_AT",
     "                          # 시작 마커의 startedAt/difficulty/stage/seed를 사용해 결과 세션 저장",
-    "  --finish-latest --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --endedAt=RESULT_ENDED_AT",
+    "  --finish-latest --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --inputTypes=RESULT_INPUT_TYPES --endedAt=RESULT_ENDED_AT",
     "                          # 가장 최근 시작 마커를 자동 선택해 결과 세션 저장",
     "  --finish                 # --finish-latest와 동일",
     "  --dry-run                # 시작/결과 세션을 검증하고 미리보기만 출력, 로그 파일은 쓰지 않음",
@@ -252,6 +253,25 @@ function legendCount(session) {
   return Number.isFinite(value) ? value : 0;
 }
 
+function normalizeInputTypes(value) {
+  if (Array.isArray(value)) {
+    return [...new Set(value.map((type) => String(type).trim()).filter(Boolean))].sort();
+  }
+  if (value && typeof value === "object") {
+    return Object.keys(value).filter((type) => Number(value[type]) > 0).sort();
+  }
+  return String(value ?? "")
+    .split(",")
+    .map((type) => type.trim())
+    .filter(Boolean)
+    .filter((type, index, arr) => arr.indexOf(type) === index)
+    .sort();
+}
+
+function inputTypesForSession(session) {
+  return normalizeInputTypes(session.inputTypes ?? session.inputCounts);
+}
+
 function hasCompleteManualMetadata(session) {
   const source = String(session.source ?? "human-playtest");
   const difficulty = String(session.difficulty ?? "");
@@ -264,6 +284,7 @@ function hasCompleteManualMetadata(session) {
   const dataVersionValue = String(session.dataVersion ?? "");
   const checksumValue = String(session.stateChecksum ?? "");
   const inputCountValue = Number(session.inputCount ?? 0);
+  const inputTypes = inputTypesForSession(session);
   return difficulties.includes(difficulty) &&
     ["clear", "cleared", "win", "won", "victory", "loss", "lose", "lost", "fail", "failed", "defeat", "quit"].includes(result) &&
     isValidStageId(stageValue) &&
@@ -275,7 +296,7 @@ function hasCompleteManualMetadata(session) {
     seedValue.length > 0 &&
     dataVersionValue.length > 0 &&
     /^[0-9a-f]{8}$/i.test(checksumValue) &&
-    (source !== "human-playtest" || (Number.isFinite(inputCountValue) && inputCountValue >= MIN_HUMAN_PLAYTEST_INPUT_COUNT));
+    (source !== "human-playtest" || (Number.isFinite(inputCountValue) && inputCountValue >= MIN_HUMAN_PLAYTEST_INPUT_COUNT && inputTypes.length > 0));
 }
 
 function sessionValidationEntries(log) {
@@ -592,6 +613,7 @@ function manualResultFieldChecklist(next) {
     { field: "dataVersion", source: "결과 화면 RESULT_DATA_VERSION", required: true, expected: CURRENT_DATA_VERSION },
     { field: "stateChecksum", source: "결과 화면 RESULT_CHECKSUM", required: true, expected: "8자리 checksum" },
     { field: "inputCount", source: "결과 화면 플레이 입력 수", required: true, expected: `${MIN_HUMAN_PLAYTEST_INPUT_COUNT} 이상` },
+    { field: "inputTypes", source: "결과 화면 플레이 입력 종류", required: true, expected: "1개 이상" },
     { field: "result", source: "결과 화면 클리어/실패 상태", required: true, expected: finish?.result ?? "clear 또는 loss" },
     { field: "round", source: "결과 화면 도달 라운드", required: true, expected: finish?.round ?? "ROUND_REACHED" },
     { field: "legends", source: "결과 화면 전설 이상 수", required: true, expected: finish?.legends ?? "FINAL_LEGENDS" },
@@ -1393,6 +1415,7 @@ function finishCommandTemplate({ id, next }) {
     "--dataVersion=RESULT_DATA_VERSION",
     "--stateChecksum=RESULT_CHECKSUM",
     "--inputCount=RESULT_INPUT_COUNT",
+    "--inputTypes=RESULT_INPUT_TYPES",
     "--endedAt=RESULT_ENDED_AT",
   ].join(" ") + outPathArg();
 }
@@ -1747,6 +1770,8 @@ if (!isLegendMetadataConsistent(maxGrade, legends)) {
 }
 
 const inputCount = optionalNumber("inputCount");
+failIfPlaceholderValue("inputTypes", args.inputTypes, "RESULT_INPUT_TYPES", "결과 화면의 실제 플레이 입력 종류");
+const inputTypes = normalizeInputTypes(args.inputTypes);
 const minutes = asNumber("minutes");
 const seconds = asNumber("seconds");
 const now = new Date();
@@ -1793,6 +1818,12 @@ if (sessionSource === "human-playtest" && (inputCount === undefined || inputCoun
 if (inputCount !== undefined && (!Number.isInteger(inputCount) || inputCount < 0)) {
   fail("--inputCount 값은 0 이상의 정수여야 합니다.");
 }
+if (inputTypes.some((type) => !/^[A-Za-z0-9:_-]+$/.test(type))) {
+  fail("--inputTypes 값은 쉼표로 구분된 입력 종류이며 영문/숫자/콜론/밑줄/하이픈만 사용할 수 있습니다.");
+}
+if (sessionSource === "human-playtest" && inputTypes.length === 0) {
+  fail("--inputTypes 값은 결과 리포트의 플레이 입력 종류이며, human-playtest 세션에서는 1개 이상이어야 합니다.");
+}
 
 const session = {
   source: sessionSource,
@@ -1810,6 +1841,7 @@ const session = {
   dataVersion,
   stateChecksum: stateChecksum.toLowerCase(),
   ...(inputCount !== undefined ? { inputCount } : {}),
+  ...(inputTypes.length > 0 ? { inputTypes } : {}),
   ...(args.notes ? { notes: String(args.notes) } : {}),
 };
 
@@ -1840,6 +1872,7 @@ if (dryRun) {
   console.log(`- 미리보기 누적 시간: ${previewLog.totalMinutes.toFixed(1)}분 / 120.0분`);
   console.log(`- 상태 체크섬: ${stateChecksum.toLowerCase()}`);
   if (inputCount !== undefined) console.log(`- 플레이 입력 수: ${inputCount}`);
+  if (inputTypes.length > 0) console.log(`- 플레이 입력 종류: ${inputTypes.join(", ")}`);
   console.log("- 세션 JSON:");
   console.log(JSON.stringify(session, null, 2));
   process.exit(0);
@@ -1862,6 +1895,7 @@ const summaryAfterSave = buildSummary();
 console.log(`수동 플레이 로그 저장: ${outPath}`);
 console.log(`- 추가 세션: ${difficulty}, ${(minutes ?? computedSeconds / 60).toFixed(1)}분`);
 if (inputCount !== undefined) console.log(`- 플레이 입력 수: ${inputCount}`);
+if (inputTypes.length > 0) console.log(`- 플레이 입력 종류: ${inputTypes.join(", ")}`);
 if (autoPendingFinish) console.log(`- 연결된 시작 마커: ${finishId}`);
 if (linkedTargetPlan) {
   const targetMet = linkedTargetPlan.predicate(session);

@@ -657,6 +657,10 @@ function renderGameToText(): string {
     manualResultChecks = manualProofResultChecklist(summary);
     manualResultPassed = manualResultChecks.every((check) => check.ok);
   }
+  const inputCounts = s.inputHistory.reduce<Record<string, number>>((counts, input) => {
+    counts[input.type] = (counts[input.type] ?? 0) + 1;
+    return counts;
+  }, {});
   return JSON.stringify({
     coordinateSystem: "board origin top-left, x right, y down, logical size 960x560",
     scene: ctx.scene,
@@ -666,6 +670,7 @@ function renderGameToText(): string {
     seed: s.seed,
     stateChecksum: currentStateChecksum,
     inputCount: s.inputHistory.length,
+    inputCounts,
     difficulty: { id: s.difficulty, name: game.diff.name },
     stage: {
       current: s.stageId,
@@ -717,6 +722,7 @@ function renderGameToText(): string {
             currentStateChecksum,
             startedAt: ctx.runStartedAt,
             inputCount: s.inputHistory.length,
+            inputCounts,
           }
         : null,
     },

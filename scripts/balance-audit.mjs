@@ -372,6 +372,7 @@ function hasCompleteManualMetadata(session) {
   const dataVersion = String(session.dataVersion ?? "");
   const stateChecksum = String(session.stateChecksum ?? "");
   const inputCount = Number(session.inputCount ?? 0);
+  const inputTypes = inputTypesForSession(session);
   return ["novice", "normal", "intermediate", "expert", "master"].includes(difficulty) &&
     ["clear", "cleared", "win", "won", "victory", "loss", "lose", "lost", "fail", "failed", "defeat", "quit"].includes(result) &&
     isValidStageId(stage) &&
@@ -383,7 +384,7 @@ function hasCompleteManualMetadata(session) {
     seed.length > 0 &&
     dataVersion.length > 0 &&
     /^[0-9a-f]{8}$/i.test(stateChecksum) &&
-    (source !== "human-playtest" || (Number.isFinite(inputCount) && inputCount >= MIN_HUMAN_PLAYTEST_INPUT_COUNT));
+    (source !== "human-playtest" || (Number.isFinite(inputCount) && inputCount >= MIN_HUMAN_PLAYTEST_INPUT_COUNT && inputTypes.length > 0));
 }
 
 function isLegendMetadataConsistent(maxGrade, legends) {
@@ -408,6 +409,22 @@ function isLoss(session) {
 function legendCount(session) {
   const value = Number(session.legends ?? session.legendOrBetter ?? session.legendOrBetterCount ?? 0);
   return Number.isFinite(value) ? value : 0;
+}
+
+function inputTypesForSession(session) {
+  const value = session.inputTypes ?? session.inputCounts;
+  if (Array.isArray(value)) {
+    return [...new Set(value.map((type) => String(type).trim()).filter(Boolean))].sort();
+  }
+  if (value && typeof value === "object") {
+    return Object.keys(value).filter((type) => Number(value[type]) > 0).sort();
+  }
+  return String(value ?? "")
+    .split(",")
+    .map((type) => type.trim())
+    .filter(Boolean)
+    .filter((type, index, arr) => arr.indexOf(type) === index)
+    .sort();
 }
 
 function reachedFinalRound(session) {
