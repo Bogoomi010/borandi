@@ -14,8 +14,10 @@ const args = Object.fromEntries(
 
 const url = String(args.url ?? "http://127.0.0.1:1421/");
 const seeds = Math.max(1, Number(args.seeds ?? 6));
+const seedStart = Math.max(0, Number(args["seed-start"] ?? 0));
 const maxRound = Math.max(1, Number(args["max-round"] ?? 40));
 const stepMs = Math.max(250, Number(args["step-ms"] ?? 5000));
+const maxSteps = Math.max(1, Number(args["max-steps"] ?? 900));
 const realTime = args["real-time"] === "true";
 const timingMode = realTime ? "real-time" : "simulated";
 const outPath = typeof args.json === "string" && args.json !== "true" ? args.json : "";
@@ -422,7 +424,7 @@ async function playScenarioSeed(page, scenario, seedIndex) {
   const samples = [];
   let lastRound = 0;
   let steps = 0;
-  for (; steps < 900; steps++) {
+  for (; steps < maxSteps; steps++) {
     const snap = await readSnapshot(page);
     if (snap.phase === "ended" || snap.round > maxRound) break;
     if (snap.breakTicks > 0) {
@@ -668,10 +670,11 @@ try {
   for (const scenario of scenarios) {
     const runs = [];
     for (let i = 0; i < seeds; i++) {
-      const run = await playScenarioSeed(page, scenario, i);
+      const seedIndex = seedStart + i;
+      const run = await playScenarioSeed(page, scenario, seedIndex);
       runs.push(run);
       const timingLabel = realTime ? "wall" : "simulated";
-      console.log(`${scenario.label} #${i + 1}: ${run.final.mode} ${run.final.round}R, cleared ${run.final.cleared}, legends ${run.final.unitSummary.legendOrBetter}, pressure ${run.final.pressure}, ${timingLabel} ${(run.playSeconds / 60).toFixed(1)}m`);
+      console.log(`${scenario.label} #${seedIndex + 1}: ${run.final.mode} ${run.final.round}R, cleared ${run.final.cleared}, legends ${run.final.unitSummary.legendOrBetter}, pressure ${run.final.pressure}, ${timingLabel} ${(run.playSeconds / 60).toFixed(1)}m`);
     }
     const summary = summarizeScenario(scenario, runs);
     results.push(summary);
@@ -699,7 +702,9 @@ try {
     wallClockSeconds,
     dataVersion: CURRENT_DATA_VERSION,
     seeds,
+    seedStart,
     maxRound,
+    maxSteps,
     stepMs,
     timingMode,
     realTime,
