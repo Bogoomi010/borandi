@@ -139,7 +139,10 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("실행 순서:");
     expect(output).toContain("1. 게임에서 다음 목표 난이도로 새 게임을 시작하고 상단의 실제 시드를 확인");
     expect(output).toContain("3. 검증이 통과하면 같은 명령에서 --dry-run을 빼고 시작 마커 저장");
-    expect(output).toContain("5. 결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 실행 후 실제 finish 저장");
+    expect(output).toContain("5. 결과 화면에서 증거 JSON을 내보내고 --from-result=PATH_TO_EXPORTED_JSON --dry-run으로 검증");
+    expect(output).toContain("6. 검증이 통과하면 --dry-run을 빼서 JSON 결과 저장.");
+    expect(output).toContain("결과 JSON 저장:");
+    expect(output).toContain(`저장 전 검증: yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --out=${shellArg(out)} --dry-run`);
     expect(output).toContain("전체 수집 계획:");
     expect(output).toContain(`yarn manual-playlog --plan --out=${shellArg(out)}`);
     expect(output).toContain("결과 기록 필드:");
@@ -186,8 +189,11 @@ describe("manual-playlog plan", () => {
       "추천 시작 검증 명령의 GAME_SEED_HERE를 실제 시드로 바꿔 --dry-run 실행",
       "검증이 통과하면 같은 명령에서 --dry-run을 빼고 시작 마커 저장",
       "12분 이상 실제로 플레이하고 목표 결과 조건 확인",
-      "결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 실행 후 실제 finish 저장",
+      "결과 화면에서 증거 JSON을 내보내고 --from-result=PATH_TO_EXPORTED_JSON --dry-run으로 검증",
+      "검증이 통과하면 --dry-run을 빼서 JSON 결과 저장. 필요하면 결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 후 실제 finish 저장",
     ]);
+    expect(preflight.fromResultDryRunCommandTemplate).toBe(`yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --out=${shellArg(out)} --dry-run`);
+    expect(preflight.fromResultCommandTemplate).toBe(`yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --out=${shellArg(out)}`);
   });
 
   it("codex 직접 플레이 출처는 start-next 마커와 finish 결과에 보존된다", () => {
@@ -466,13 +472,16 @@ describe("manual-playlog plan", () => {
       "추천 시작 검증 명령의 GAME_SEED_HERE를 실제 시드로 바꿔 --dry-run 실행",
       "검증이 통과하면 같은 명령에서 --dry-run을 빼고 시작 마커 저장",
       "12분 이상 실제로 플레이하고 목표 결과 조건 확인",
-      "결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 실행 후 실제 finish 저장",
+      "결과 화면에서 증거 JSON을 내보내고 --from-result=PATH_TO_EXPORTED_JSON --dry-run으로 검증",
+      "검증이 통과하면 --dry-run을 빼서 JSON 결과 저장. 필요하면 결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 후 실제 finish 저장",
     ]);
     const text = runManualPlaylog([`--out=${out}`, "--next"]);
     expect(text).toContain("추천 시작 검증:");
     expect(text).toContain("yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
     expect(text).toContain("--dry-run");
     expect(text).toContain("추천 시작 마커:");
+    expect(text).toContain("결과 JSON 저장:");
+    expect(text).toContain(`저장 전 검증: yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --out=${shellArg(out)} --dry-run`);
     expect(text).toContain("yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
     expect(text).toContain("직접 시작 검증:");
     expect(text).toContain("직접 시작 마커:");
@@ -510,6 +519,8 @@ describe("manual-playlog plan", () => {
     expect(summary.commandTemplates).toMatchObject({
       preflight: `yarn manual-playlog --preflight --out=${shellArg(out)}`,
       preflightJson: `yarn --silent manual-playlog --preflight-json --out=${shellArg(out)}`,
+      fromResultDryRun: `yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --out=${shellArg(out)} --dry-run`,
+      fromResult: `yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --out=${shellArg(out)}`,
       plan: `yarn manual-playlog --plan --out=${shellArg(out)}`,
       planJson: `yarn --silent manual-playlog --plan-json --out=${shellArg(out)}`,
       sheet: `yarn manual-playlog --sheet --out=${shellArg(out)}`,

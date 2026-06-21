@@ -687,6 +687,8 @@ function manualProofCommandTemplates(next) {
   return {
     preflight: manualPreflightCommandTemplate(),
     preflightJson: `yarn --silent manual-playlog --preflight-json${outPathArg()}`,
+    fromResultDryRun: manualFromResultDryRunCommandTemplate(),
+    fromResult: manualFromResultCommandTemplate(),
     plan: manualPlanCommandTemplate(),
     planJson: `yarn --silent manual-playlog --plan-json${outPathArg()}`,
     sheet: manualSheetCommandTemplate(),
@@ -1043,6 +1045,17 @@ function printManualSheet() {
   }
 
   console.log("");
+  console.log("## 결과 JSON 저장");
+  console.log("");
+  console.log("결과 화면의 `증거 JSON 내보내기` 파일 경로로 먼저 검증한 뒤 저장합니다.");
+  console.log("");
+  console.log("### 저장 전 검증");
+  console.log(codeBlock(manualFromResultDryRunCommandTemplate()));
+  console.log("");
+  console.log("### 실제 저장");
+  console.log(codeBlock(manualFromResultCommandTemplate()));
+
+  console.log("");
   console.log("## 실행 순서");
   console.log("");
   manualStartWorkflow().forEach((step, index) => {
@@ -1131,6 +1144,10 @@ function printNext() {
       console.log(`${index + 1}. ${step}`);
     });
     console.log("");
+    console.log("결과 JSON 저장:");
+    console.log(`- 저장 전 검증: ${manualFromResultDryRunCommandTemplate()}`);
+    console.log(`- 실제 저장: ${manualFromResultCommandTemplate()}`);
+    console.log("");
     console.log("결과 기록 필드:");
     for (const item of next.resultFieldChecklist) {
       console.log(`- ${item.field}: ${item.source} (기대값: ${item.expected})`);
@@ -1150,7 +1167,8 @@ function manualStartWorkflow() {
     "추천 시작 검증 명령의 GAME_SEED_HERE를 실제 시드로 바꿔 --dry-run 실행",
     "검증이 통과하면 같은 명령에서 --dry-run을 빼고 시작 마커 저장",
     "12분 이상 실제로 플레이하고 목표 결과 조건 확인",
-    "결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 실행 후 실제 finish 저장",
+    "결과 화면에서 증거 JSON을 내보내고 --from-result=PATH_TO_EXPORTED_JSON --dry-run으로 검증",
+    "검증이 통과하면 --dry-run을 빼서 JSON 결과 저장. 필요하면 결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 후 실제 finish 저장",
   ];
 }
 
@@ -1164,6 +1182,14 @@ function manualPlanCommandTemplate() {
 
 function manualSheetCommandTemplate() {
   return `yarn manual-playlog --sheet${outPathArg()}`;
+}
+
+function manualFromResultDryRunCommandTemplate() {
+  return `yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON${outPathArg()} --dry-run`;
+}
+
+function manualFromResultCommandTemplate() {
+  return `yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON${outPathArg()}`;
 }
 
 function printPreflight() {
@@ -1229,6 +1255,10 @@ function printPreflight() {
       console.log(`${index + 1}. ${step}`);
     });
     console.log("");
+    console.log("결과 JSON 저장:");
+    console.log(`- 저장 전 검증: ${manualFromResultDryRunCommandTemplate()}`);
+    console.log(`- 실제 저장: ${manualFromResultCommandTemplate()}`);
+    console.log("");
     console.log("전체 수집 계획:");
     console.log(preflight.planCommandTemplate);
     console.log("");
@@ -1277,6 +1307,8 @@ function buildPreflight() {
     next: summary.next,
     nextStartCommandTemplate: summary.next?.startNextCommandTemplate ?? "",
     nextStartDryRunCommandTemplate: summary.next?.startNextDryRunCommandTemplate ?? "",
+    fromResultDryRunCommandTemplate: manualFromResultDryRunCommandTemplate(),
+    fromResultCommandTemplate: manualFromResultCommandTemplate(),
     planCommandTemplate: manualPlanCommandTemplate(),
     remainingPlanStepCount: plan.steps.length,
     remainingPlanPreview: plan.steps.slice(0, 3),
