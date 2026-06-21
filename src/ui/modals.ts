@@ -27,7 +27,7 @@ import {
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
 import { initialNewRunStageId, loadProfile, maxSelectableStageId } from "./settings";
 import { FINAL_ROUND } from "../data/waves";
-import { manualProofTargetFor, type ManualProofTargetStatus } from "../core/manualProof";
+import { manualProofFinishReadiness, manualProofTargetFor, type ManualProofTargetStatus } from "../core/manualProof";
 import { manualProofResultChecklist, manualProofResultLogNote, manualProofResultTarget } from "../core/manualProofResult";
 import {
   manualStartCommand as buildManualStartCommand,
@@ -884,9 +884,16 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       ? manualStartValidateSaveCommand(currentStartNextCommand, currentPendingIdCommand)
       : "";
     const currentCheckpointSummary = ctx?.scene === "game" ? currentManualProofSummary(ctx) : null;
-    const currentFinishCheckpointCommand = currentCheckpointSummary ? manualPlaylogFinishCommand(currentCheckpointSummary) : "";
+    const currentFinishReadiness = currentCheckpointSummary
+      ? manualProofFinishReadiness({
+        elapsedSeconds: currentCheckpointSummary.wallSeconds ?? 0,
+        inputCount: currentCheckpointSummary.inputCount,
+        inputCounts: currentCheckpointSummary.inputCounts,
+      })
+      : null;
+    const currentFinishCheckpointCommand = currentCheckpointSummary && currentFinishReadiness?.ready ? manualPlaylogFinishCommand(currentCheckpointSummary) : "";
     const currentFinishCheckpointDryRunCommand = currentCheckpointSummary ? manualPlaylogFinishDryRunCommand(currentCheckpointSummary) : "";
-    const currentFinishLatestCheckpointCommand = currentCheckpointSummary ? manualPlaylogFinishLatestCommand(currentCheckpointSummary) : "";
+    const currentFinishLatestCheckpointCommand = currentCheckpointSummary && currentFinishReadiness?.ready ? manualPlaylogFinishLatestCommand(currentCheckpointSummary) : "";
     const currentFinishLatestCheckpointDryRunCommand = currentCheckpointSummary ? manualPlaylogFinishLatestDryRunCommand(currentCheckpointSummary) : "";
     const summaryCommand = manualSummaryCommand();
     const planCommand = manualPlanCommand();
@@ -963,12 +970,23 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       body.appendChild(el("div", "modal-note", "직접 시작 마커에는 현재 목표 라벨이 함께 저장됩니다. 검증 출력의 finish 템플릿이 목표 조건과 맞는지 확인한 뒤 저장하세요."));
       body.appendChild(el("div", "modal-note", "플레이 시작 직후 한 번 실행해두면 결과 화면을 놓쳐도 --finish 명령으로 같은 시작 시각을 재사용할 수 있습니다."));
     }
-    if (currentFinishCheckpointCommand) {
+    if (currentFinishCheckpointDryRunCommand && currentFinishReadiness) {
       body.appendChild(el("h3", "", "현재 상태 finish 점검"));
+      body.appendChild(el(
+        "div",
+        currentFinishReadiness.ready ? "result-proof-ok" : "result-hint",
+        currentFinishReadiness.ready
+          ? "현재 상태는 수동 증거 저장 최소 조건을 만족합니다. 그래도 결과 화면의 endedAt/stateChecksum 값으로 최종 검증한 뒤 저장하세요."
+          : `아직 실제 저장 전입니다: ${currentFinishReadiness.blockers.join(", ")}. 아래 dry-run으로 현재 부족 사유만 점검하세요.`,
+      ));
       body.appendChild(el("pre", "report", currentFinishCheckpointDryRunCommand));
-      body.appendChild(el("pre", "report", currentFinishCheckpointCommand));
       body.appendChild(el("pre", "report", currentFinishLatestCheckpointDryRunCommand));
-      body.appendChild(el("pre", "report", currentFinishLatestCheckpointCommand));
+      if (currentFinishCheckpointCommand) {
+        body.appendChild(el("pre", "report", currentFinishCheckpointCommand));
+      }
+      if (currentFinishLatestCheckpointCommand) {
+        body.appendChild(el("pre", "report", currentFinishLatestCheckpointCommand));
+      }
       body.appendChild(el("div", "modal-note", "진행 중인 판의 현재 라운드/전설/체크섬 기준 명령입니다. 결과 화면이 나오면 결과 화면의 endedAt/stateChecksum 값으로 다시 검증한 뒤 저장하세요."));
     }
     body.appendChild(el("h3", "", "실제 세션 기록 순서"));
@@ -1103,7 +1121,7 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
         }
       };
       row.appendChild(copyPendingIdJson);
-      if (currentFinishCheckpointCommand) {
+      if (currentFinishCheckpointDryRunCommand) {
         const copyFinishCheckpointDryRun = el("button", "", "현재 finish검증 복사");
         copyFinishCheckpointDryRun.onclick = async () => {
           try {
@@ -1114,6 +1132,8 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
           }
         };
         row.appendChild(copyFinishCheckpointDryRun);
+      }
+      if (currentFinishCheckpointCommand) {
         const copyFinishCheckpoint = el("button", "", "현재 finish 복사");
         copyFinishCheckpoint.onclick = async () => {
           try {

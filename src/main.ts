@@ -34,7 +34,13 @@ import { stageById } from "./data/stages";
 import { FINAL_ROUND, waveForRound } from "./data/waves";
 import { UPGRADES, upgradeCost } from "./data/upgrades";
 import { GRADE_ORDER, type DifficultyId, type Grade } from "./core/types";
-import { MANUAL_PROOF_TARGET_SECONDS, manualProofReadyAt, manualProofRemainingSeconds, manualProofTargetFor } from "./core/manualProof";
+import {
+  MANUAL_PROOF_TARGET_SECONDS,
+  manualProofFinishReadiness,
+  manualProofReadyAt,
+  manualProofRemainingSeconds,
+  manualProofTargetFor,
+} from "./core/manualProof";
 import { manualProofResultChecklist, manualProofResultTarget } from "./core/manualProofResult";
 import {
   manualDryRunCommand,
@@ -600,6 +606,7 @@ function renderGameToText(): string {
   let manualResultTarget: string | null = null;
   let manualResultChecks: ReturnType<typeof manualProofResultChecklist> | null = null;
   let manualResultPassed: boolean | null = null;
+  let manualCurrentFinishReadiness: ReturnType<typeof manualProofFinishReadiness> | null = null;
   const manualProofCommands = ctx.scene === "game"
     ? {
         start: manualStartCommand,
@@ -635,10 +642,17 @@ function renderGameToText(): string {
     : null;
   if (manualProofCommands && s.phase !== "ended") {
     const currentSummary = currentManualProofSummary(ctx);
-    manualProofCommands.currentFinish = manualPlaylogFinishCommand(currentSummary);
+    manualCurrentFinishReadiness = manualProofFinishReadiness({
+      elapsedSeconds: currentSummary.wallSeconds ?? 0,
+      inputCount: currentSummary.inputCount,
+      inputCounts: currentSummary.inputCounts,
+    });
     manualProofCommands.currentFinishDryRun = manualPlaylogFinishDryRunCommand(currentSummary);
-    manualProofCommands.currentFinishLatest = manualPlaylogFinishLatestCommand(currentSummary);
     manualProofCommands.currentFinishLatestDryRun = manualPlaylogFinishLatestDryRunCommand(currentSummary);
+    if (manualCurrentFinishReadiness.ready) {
+      manualProofCommands.currentFinish = manualPlaylogFinishCommand(currentSummary);
+      manualProofCommands.currentFinishLatest = manualPlaylogFinishLatestCommand(currentSummary);
+    }
   }
   if (manualProofCommands && s.phase === "ended") {
     const endedAt = ctx.runEndedAt ?? new Date().toISOString();
@@ -713,6 +727,7 @@ function renderGameToText(): string {
       resultTarget: manualResultTarget,
       resultChecks: manualResultChecks,
       resultPassed: manualResultPassed,
+      currentFinishReadiness: manualCurrentFinishReadiness,
       readyNotified: manualProofReadyNotified,
       startedAt: ctx.scene === "game" ? ctx.runStartedAt : null,
       commands: manualProofCommands,

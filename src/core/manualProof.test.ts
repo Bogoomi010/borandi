@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { MANUAL_PROOF_TARGET_SECONDS, manualProofReadyAt, manualProofRemainingSeconds, manualProofTargetFor } from "./manualProof";
+import {
+  MANUAL_PROOF_TARGET_SECONDS,
+  manualProofFinishReadiness,
+  manualProofReadyAt,
+  manualProofRemainingSeconds,
+  manualProofTargetFor,
+} from "./manualProof";
 
 describe("수동 증거 목표 표시", () => {
   it("12분 목표 시간을 고정한다", () => {
@@ -16,6 +22,38 @@ describe("수동 증거 목표 표시", () => {
   it("시작 시각에서 12분 기준 시각을 계산한다", () => {
     expect(manualProofReadyAt("2026-06-20T12:00:00.000Z")).toBe("2026-06-20T12:12:00.000Z");
     expect(manualProofReadyAt("not-a-date")).toBeNull();
+  });
+
+  it("현재 상태 finish 저장 가능 조건을 수동 감사 최소 조건과 맞춘다", () => {
+    expect(manualProofFinishReadiness({
+      elapsedSeconds: 719,
+      inputCount: 11,
+      inputCounts: { summon: 10, startWave: 1 },
+    })).toMatchObject({
+      ready: false,
+      checks: {
+        time: false,
+        inputCount: false,
+        inputTypes: true,
+        inputCountsTotal: true,
+      },
+    });
+    expect(manualProofFinishReadiness({
+      elapsedSeconds: 720,
+      inputCount: 12,
+      inputCounts: { summon: 9, startWave: 3 },
+    })).toMatchObject({
+      ready: true,
+      blockers: [],
+    });
+    expect(manualProofFinishReadiness({
+      elapsedSeconds: 720,
+      inputCount: 12,
+      inputCounts: { summon: 5 },
+    })).toMatchObject({
+      ready: false,
+      checks: { inputCountsTotal: false },
+    });
   });
 
   it("입문자는 전설이 없어야 목표 조건 유지로 표시한다", () => {

@@ -12,6 +12,49 @@ export function manualProofReadyAt(startedAt: string): string | null {
   return new Date(startedAtMs + MANUAL_PROOF_TARGET_SECONDS * 1000).toISOString();
 }
 
+export interface ManualProofFinishReadinessInput {
+  elapsedSeconds: number;
+  inputCount: number;
+  inputCounts: Record<string, number>;
+}
+
+export interface ManualProofFinishReadiness {
+  ready: boolean;
+  blockers: string[];
+  checks: {
+    time: boolean;
+    inputCount: boolean;
+    inputTypes: boolean;
+    inputCountsTotal: boolean;
+  };
+}
+
+export function manualProofFinishReadiness(input: ManualProofFinishReadinessInput): ManualProofFinishReadiness {
+  const elapsedSeconds = Math.max(0, Math.floor(input.elapsedSeconds));
+  const inputCount = Math.max(0, Math.floor(input.inputCount));
+  const inputCountsTotal = Object.values(input.inputCounts).reduce((sum, count) => {
+    return sum + Math.max(0, Math.floor(count));
+  }, 0);
+  const inputTypes = Object.values(input.inputCounts).filter((count) => count > 0).length;
+  const checks = {
+    time: elapsedSeconds >= MANUAL_PROOF_TARGET_SECONDS,
+    inputCount: inputCount >= 12,
+    inputTypes: inputTypes >= 1,
+    inputCountsTotal: inputCountsTotal === inputCount,
+  };
+  const blockers = [
+    checks.time ? "" : `수동시간 ${MANUAL_PROOF_TARGET_SECONDS}초 이상 필요`,
+    checks.inputCount ? "" : "플레이 입력 12회 이상 필요",
+    checks.inputTypes ? "" : "플레이 입력 종류 1개 이상 필요",
+    checks.inputCountsTotal ? "" : "입력별 횟수 합계가 총 입력 수와 일치해야 함",
+  ].filter(Boolean);
+  return {
+    ready: blockers.length === 0,
+    blockers,
+    checks,
+  };
+}
+
 export interface ManualProofTargetStatus {
   label: string;
   status: string;
