@@ -7,13 +7,39 @@ import { UNIT_BY_ID } from "../data/units";
 import { analyzeRecipes, bossOutlook } from "../core/advisor";
 import { MISSION_BY_ID } from "../data/missions";
 import { waveForRound, FINAL_ROUND, BOSS_ROUND_LIST } from "../data/waves";
+import { FINAL_STAGE, stageById } from "../data/stages";
 import { UPGRADES, upgradeCost } from "../data/upgrades";
 import { SUMMON_COST, SELL_REFUND, DIFFICULTY_BY_ID } from "../data/difficulty";
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
-import { openSelectorModal } from "./modals";
-import { LOSE_THRESHOLD } from "../core/engine";
+import { openManualProofGuideModal, openSelectorModal } from "./modals";
+import { MANUAL_PROOF_TARGET_SECONDS, manualProofFinishReadiness, manualProofReadyAt, manualProofRemainingSeconds, manualProofTargetFor } from "../core/manualProof";
 
 // ---------- 상단 상태바 ----------
+
+// COMPONENT: Topbar - updates round, enemy count, gold, difficulty, speed, pause, and save status.
+function clockText(seconds: number): string {
+  const safe = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safe / 60);
+  const rest = safe % 60;
+  return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
+function clockTimeText(iso: string | null): string {
+  if (!iso) return "계산 불가";
+  return new Date(iso).toLocaleTimeString("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
+function inputCountsForProof(ctx: AppCtx): Record<string, number> {
+  return ctx.game.state.inputHistory.reduce<Record<string, number>>((counts, input) => {
+    counts[input.type] = (counts[input.type] ?? 0) + 1;
+    return counts;
+  }, {});
+}
 
 export function renderTopbar(ctx: AppCtx) {
   const root = document.getElementById("topbar")!;
@@ -21,22 +47,51 @@ export function renderTopbar(ctx: AppCtx) {
   const s = ctx.game.state;
   const diff = DIFFICULTY_BY_ID[s.difficulty];
 
-  const stat = (label: string, value: string, cls = "") => {
-    const d = el("div", "stat");
+  const stat = (label: string, value: string, cls = "", onClick?: () => void) => {
+    const d = el("div", `stat ${onClick ? "clickable" : ""}`);
     d.appendChild(el("span", "label", label));
     d.appendChild(el("span", `value ${cls}`, value));
+    if (onClick) {
+      d.title = "수동 밸런스 증거 안내 열기";
+      d.onclick = onClick;
+    }
     return d;
   };
 
-  root.appendChild(stat("스테이지", `${Math.min(s.round, FINAL_ROUND)}/${FINAL_ROUND}`));
-  root.appendChild(stat("적 누적", `${s.enemies.length}/${LOSE_THRESHOLD}`, "life"));
+  const stage = stageById(s.stageId);
+  root.appendChild(stat("맵", `${stage.id}. ${stage.name}`));
+  root.appendChild(stat("현재 판", "선택 맵 고정 · 40R 보스까지", "mapgoal"));
+  root.appendChild(stat("맵선택", `전체 ${FINAL_STAGE}`));
+  root.appendChild(stat("라운드", `${Math.min(s.round, FINAL_ROUND)}/${FINAL_ROUND}`));
+  root.appendChild(stat("적 누적", `${s.enemies.length}/${ctx.game.enemyLimit()}`, "life"));
   root.appendChild(stat("골드", String(s.gold), "gold"));
   root.appendChild(stat("난이도", diff.name));
+  const legendOrBetter = s.units
+    .filter((u) => GRADE_ORDER.indexOf(UNIT_BY_ID[u.defId].grade) >= GRADE_ORDER.indexOf("legend"))
+    .length;
+  const proofTarget = manualProofTargetFor(s.difficulty, legendOrBetter);
+  const proofConditionClass = proofTarget.state === "ok"
+    ? "proof-ok"
+    : proofTarget.state === "warn" ? "proof-warn" : "proof-wait";
+  const proofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
+  const proofRemainingSeconds = manualProofRemainingSeconds(proofSeconds);
+  const proofReadiness = manualProofFinishReadiness({
+    elapsedSeconds: proofSeconds,
+    inputCount: s.inputHistory.length,
+    inputCounts: inputCountsForProof(ctx),
+  });
+  const proofText = proofReadiness.ready
+    ? "저장조건 충족"
+    : proofSeconds >= MANUAL_PROOF_TARGET_SECONDS
+      ? "12:00+ · 입력조건 확인"
+    : `${clockText(proofSeconds)}/12:00 · ${clockText(proofRemainingSeconds)} 남음`;
+  root.appendChild(stat("수동증거", proofText, proofReadiness.ready ? "proof-ok" : "proof-wait", () => openManualProofGuideModal(ctx)));
+  root.appendChild(stat("증거조건", proofTarget.status, proofConditionClass, () => openManualProofGuideModal(ctx)));
   root.appendChild(stat("시드", s.seed));
 
   const nextBoss = BOSS_ROUND_LIST.find((r) => r >= s.round);
   if (nextBoss !== undefined) {
-    root.appendChild(stat("다음 보스", `${nextBoss}ST (${nextBoss - s.round}스테이지 후)`, "boss"));
+    root.appendChild(stat("다음 보스", `${nextBoss}R (${nextBoss - s.round}라운드 후)`, "boss"));
   }
 
   if (s.pendingSelectors.length > 0) {
@@ -75,6 +130,7 @@ export function renderTopbar(ctx: AppCtx) {
 
 // ---------- 좌측: 보유 유닛 ----------
 
+// COMPONENT: LeftPanel - shows owned units grouped by unit type with grade filtering and lock controls.
 export function renderLeftPanel(ctx: AppCtx) {
   const root = document.getElementById("left-panel")!;
   root.innerHTML = "";
@@ -180,6 +236,7 @@ export function renderLeftPanel(ctx: AppCtx) {
 
 // ---------- 우측: 조합/미션/보스/로그 탭 ----------
 
+// COMPONENT: RightPanel - owns the right-side tab shell and delegates to mission/boss/log tabs.
 export function renderRightPanel(ctx: AppCtx) {
   const root = document.getElementById("right-panel")!;
   root.innerHTML = "";
@@ -187,7 +244,6 @@ export function renderRightPanel(ctx: AppCtx) {
 
   const tabs = el("div", "tabs");
   const defs: Array<{ id: RightTab; label: string; badge: boolean }> = [
-    { id: "recipe", label: "조합", badge: analyzeRecipes(s).some((r) => r.tier === "ok" && r.goldShort === 0) },
     {
       id: "mission", label: "미션",
       badge: s.missions.some((m) => {
@@ -208,13 +264,13 @@ export function renderRightPanel(ctx: AppCtx) {
   root.appendChild(tabs);
 
   switch (ctx.activeTab) {
-    case "recipe": renderRecipeTab(ctx, root); break;
     case "mission": renderMissionTab(ctx, root); break;
     case "boss": renderBossTab(ctx, root); break;
     case "log": renderLogTab(ctx, root); break;
   }
 }
 
+// COMPONENT: RecipeTab - lists craftable and near-craftable recipes plus craft buttons.
 function renderRecipeTab(ctx: AppCtx, root: HTMLElement) {
   const s = ctx.game.state;
   const statuses = analyzeRecipes(s);
@@ -269,6 +325,153 @@ function renderRecipeTab(ctx: AppCtx, root: HTMLElement) {
   }
 }
 
+void renderRecipeTab;
+
+function recipeUsesUnit(recipe: ReturnType<typeof analyzeRecipes>[number]["recipe"], defId: string): boolean {
+  const def = UNIT_BY_ID[defId];
+  return recipe.ingredients.some((ing) => {
+    if (ing.unitId) return ing.unitId === defId;
+    if (ing.grade && ing.grade !== def.grade) return false;
+    if (ing.family && ing.family !== def.family) return false;
+    return !!ing.grade || !!ing.family;
+  });
+}
+
+// COMPONENT: RecipeSuggestions - shows only immediately craftable recipes related to selected units.
+export function renderRecipeSuggestions(ctx: AppCtx) {
+  const root = document.getElementById("recipe-suggestions");
+  if (!root) return;
+  root.innerHTML = "";
+
+  const s = ctx.game.state;
+  const selectedUnits = s.units.filter((u) => ctx.renderer.selectedUids.has(u.uid));
+  const selectedDefIds = new Set(selectedUnits.map((u) => u.defId));
+  if (selectedDefIds.size === 0) {
+    root.classList.add("hidden");
+    return;
+  }
+
+  const related = analyzeRecipes(s).filter((st) => {
+    return [...selectedDefIds].some((defId) => recipeUsesUnit(st.recipe, defId));
+  });
+
+  const mergeDefs = selectedUnits.map((u) => UNIT_BY_ID[u.defId]);
+  const mergeGrade = mergeDefs[0]?.grade;
+  const canShowMerge = selectedUnits.length === 3;
+  const canMerge = canShowMerge &&
+    mergeGrade !== undefined &&
+    mergeGrade !== "legend" &&
+    mergeGrade !== "hidden" &&
+    !selectedUnits.some((u) => u.locked) &&
+    mergeDefs.every((d) => d.grade === mergeGrade);
+
+  if (related.length === 0 && !canShowMerge) {
+    root.classList.add("hidden");
+    return;
+  }
+
+  root.classList.remove("hidden");
+  const craftableCount = related.filter((st) =>
+    st.tier === "ok" &&
+    st.goldShort === 0 &&
+    (st.recipe.minRound === undefined || s.round >= st.recipe.minRound),
+  ).length + (canMerge ? 1 : 0);
+  root.appendChild(el("div", "rs-title", craftableCount > 0 ? "조합 가능" : "조합 후보"));
+
+  const iconList = el("div", "rs-icon-list");
+
+  if (canShowMerge && mergeGrade) {
+    const wrap = el("div", "rs-icon-wrap");
+    const icon = el("button", `rs-unit-icon ${canMerge ? "" : "disabled"}`) as HTMLButtonElement;
+    icon.type = "button";
+    icon.title = "3합성";
+    const portrait = el("span", "rs-unit-portrait merge-portrait", "3");
+    const sameFamily = mergeDefs.every((d) => d.family === mergeDefs[0].family);
+    portrait.style.cssText = `background:${sameFamily ? FAMILY_COLOR[mergeDefs[0].family] : "#2b3348"};border-color:${GRADE_COLOR[mergeGrade]};border-radius:8px`;
+    icon.appendChild(portrait);
+    icon.appendChild(el("span", "rs-unit-name", "3합성"));
+    wrap.appendChild(icon);
+
+    const popup = el("div", "rs-popover");
+    const head = el("div", "head");
+    const nextGrade = GRADE_ORDER[GRADE_ORDER.indexOf(mergeGrade) + 1];
+    head.appendChild(el("span", `badge grade-${mergeGrade}`, GRADE_LABEL[mergeGrade]));
+    head.appendChild(el("span", "rname", "3합성"));
+    if (nextGrade) head.appendChild(el("span", `badge grade-${nextGrade}`, `${GRADE_LABEL[nextGrade]} 획득`));
+    popup.appendChild(head);
+    popup.appendChild(el("div", "mats", mergeDefs.map((d) => d.name).join(" + ")));
+    popup.appendChild(el("div", "why", sameFamily ? "같은 계열 다음 등급 유닛으로 합성" : "다음 등급 무작위 유닛으로 합성"));
+    if (selectedUnits.some((u) => u.locked)) popup.appendChild(el("div", "why warn", "잠금 유닛 포함"));
+    if (!mergeDefs.every((d) => d.grade === mergeGrade)) popup.appendChild(el("div", "why warn", "같은 등급 3기가 필요"));
+    if (mergeGrade === "legend" || mergeGrade === "hidden") popup.appendChild(el("div", "why warn", "이 등급은 3합성 불가"));
+    const btn = el("button", "craft-btn", canMerge ? "합성" : "불가") as HTMLButtonElement;
+    btn.disabled = !canMerge;
+    btn.onclick = () => {
+      if (ctx.act("merge3", { unitIds: selectedUnits.map((u) => u.uid) })) {
+        ctx.renderer.selectedUids.clear();
+        ctx.refresh();
+      }
+    };
+    popup.appendChild(btn);
+    wrap.appendChild(popup);
+    iconList.appendChild(wrap);
+  }
+
+  for (const st of related.slice(0, 8)) {
+    const d = UNIT_BY_ID[st.recipe.resultUnitId];
+    const roundLocked = st.recipe.minRound !== undefined && s.round < st.recipe.minRound;
+    const canCraft = st.tier === "ok" && st.goldShort === 0 && !roundLocked;
+    const wrap = el("div", "rs-icon-wrap");
+
+    const icon = el("button", `rs-unit-icon ${canCraft ? "" : "disabled"}`) as HTMLButtonElement;
+    icon.type = "button";
+    icon.title = d.name;
+    const portrait = el("span", "rs-unit-portrait");
+    portrait.style.cssText = `background:${FAMILY_COLOR[d.family]};border-color:${GRADE_COLOR[d.grade]};border-radius:${d.grade === "common" ? "50%" : "7px"}`;
+    icon.appendChild(portrait);
+    icon.appendChild(el("span", "rs-unit-name", d.name));
+    wrap.appendChild(icon);
+
+    const popup = el("div", "rs-popover");
+    const head = el("div", "head");
+    head.appendChild(el("span", `badge grade-${d.grade}`, GRADE_LABEL[d.grade]));
+    head.appendChild(el("span", "rname", st.resultName));
+    head.appendChild(el("span", "badge", `${st.recipe.cost.gold}G`));
+    popup.appendChild(head);
+
+    const mats = el("div", "mats");
+    const parts: string[] = [];
+    for (const ing of st.recipe.ingredients) {
+      const label = ing.unitId ? UNIT_BY_ID[ing.unitId].name : `${ing.grade ?? ""}${ing.family ?? ""}`;
+      parts.push(`${label} x${ing.count}`);
+    }
+    mats.textContent = parts.join(" + ");
+    popup.appendChild(mats);
+    if (d.desc) popup.appendChild(el("div", "why", d.desc));
+    if (roundLocked) {
+      popup.appendChild(el("div", "why warn", `${st.recipe.minRound}R부터 제작 가능`));
+    }
+    if (st.goldShort > 0) {
+      popup.appendChild(el("div", "why warn", `골드 ${st.goldShort} 부족`));
+    }
+    if (st.missing.length > 0) {
+      popup.appendChild(el("div", "why warn", `부족: ${st.missing.map((m) => `${m.label} x${m.count}`).join(", ")}`));
+    }
+    if (st.needsLocked) {
+      popup.appendChild(el("div", "why warn", "잠금 유닛을 해제해야 제작 가능"));
+    }
+
+    const btn = el("button", "craft-btn", canCraft ? "제작" : "불가") as HTMLButtonElement;
+    btn.disabled = !canCraft;
+    btn.onclick = () => ctx.act("craft", { recipeId: st.recipe.id });
+    popup.appendChild(btn);
+    wrap.appendChild(popup);
+    iconList.appendChild(wrap);
+  }
+  root.appendChild(iconList);
+}
+
+// COMPONENT: MissionTab - lists active, completed, and expired mission progress.
 function renderMissionTab(ctx: AppCtx, root: HTMLElement) {
   const s = ctx.game.state;
   const order = { active: 0, done: 1, expired: 2 } as const;
@@ -303,6 +506,7 @@ function renderMissionTab(ctx: AppCtx, root: HTMLElement) {
   }
 }
 
+// COMPONENT: BossTab - shows the next boss forecast, risk, weakness, and kill history.
 function renderBossTab(ctx: AppCtx, root: HTMLElement) {
   const s = ctx.game.state;
   const outlook = bossOutlook(s);
@@ -316,8 +520,8 @@ function renderBossTab(ctx: AppCtx, root: HTMLElement) {
       r.appendChild(el("span", cls, v));
       return r;
     };
-    box.appendChild(row("다음 보스", `${outlook.name} (${outlook.round}ST)`));
-    box.appendChild(row("남은 스테이지", String(outlook.roundsLeft)));
+    box.appendChild(row("다음 보스", `${outlook.name} (${outlook.round}R)`));
+    box.appendChild(row("남은 라운드", String(outlook.roundsLeft)));
     box.appendChild(row("약점", outlook.weakness));
     box.appendChild(row("예상 위험도", outlook.riskText,
       outlook.risk === "ok" ? "risk-ok" : outlook.risk === "warn" ? "risk-warn" : "risk-bad"));
@@ -335,6 +539,7 @@ function renderBossTab(ctx: AppCtx, root: HTMLElement) {
   root.appendChild(box);
 }
 
+// COMPONENT: LogTab - renders recent game log events in reverse chronological order.
 function renderLogTab(ctx: AppCtx, root: HTMLElement) {
   const list = el("div", "log-list");
   const log = ctx.game.state.log.slice(-60);
@@ -371,6 +576,7 @@ function passiveChips(d: typeof UNIT_BY_ID[string]): string[] {
   return chips;
 }
 
+// COMPONENT: UnitDetail - renders the selected unit combat HUD over the field.
 export function renderUnitDetail(ctx: AppCtx) {
   const root = document.getElementById("unit-detail");
   if (!root) return;
@@ -380,11 +586,27 @@ export function renderUnitDetail(ctx: AppCtx) {
   const selected = s.units.filter((u) => ctx.renderer.selectedUids.has(u.uid));
 
   if (selected.length === 0) {
-    root.classList.add("empty");
-    root.appendChild(el("div", "ud-hint", "유닛을 선택하면 상세 정보가 표시됩니다 (전장 클릭/드래그 또는 좌측 목록)"));
+    root.classList.add("hidden");
+    root.classList.remove("multi");
     return;
   }
-  root.classList.remove("empty");
+  root.classList.remove("hidden", "empty", "multi");
+
+  const stat = (k: string, v: string, emphasis = false, icon = "") => {
+    const c = el("div", `ud-stat ${emphasis ? "emphasis" : ""}`);
+    if (icon) c.appendChild(el("span", `ui-icon icon-${icon}`, ""));
+    c.appendChild(el("span", "k", k));
+    c.appendChild(el("span", "v", v));
+    return c;
+  };
+
+  const slot = (label: string, active = true, icon = active ? "passive" : "") => {
+    const d = el("div", `ud-slot ${active ? "active" : ""}`);
+    if (icon) d.appendChild(el("span", `ui-icon icon-${icon}`, ""));
+    d.appendChild(el("span", "ud-slot-label", label));
+    d.title = label;
+    return d;
+  };
 
   // 여러 기 선택 → 요약
   if (selected.length > 1) {
@@ -399,33 +621,53 @@ export function renderUnitDetail(ctx: AppCtx) {
       .sort((a, b) => GRADE_ORDER.indexOf(b[0]) - GRADE_ORDER.indexOf(a[0]))
       .map(([g, n]) => `${GRADE_LABEL[g]} ${n}`).join(" · ");
 
+    root.classList.add("multi");
+
+    const portrait = el("div", "ud-portrait multi");
+    portrait.appendChild(el("span", "ud-portrait-count", String(selected.length)));
+    portrait.appendChild(el("span", "ud-portrait-label", "선택"));
+    root.appendChild(portrait);
+
+    const main = el("div", "ud-main");
     const head = el("div", "ud-head");
     head.appendChild(el("span", "ud-name", `${selected.length}기 선택`));
     head.appendChild(el("span", "badge", gradeText));
-    root.appendChild(head);
+    main.appendChild(head);
+
+    const power = el("div", "ud-power");
+    power.appendChild(el("span", "ui-icon icon-attack", ""));
+    power.appendChild(el("span", "label", "합계 공격력"));
+    power.appendChild(el("span", "value", String(totalAtk)));
+    main.appendChild(power);
 
     const stats = el("div", "ud-stats");
-    const stat = (k: string, v: string) => {
-      const d = el("div", "ud-stat");
-      d.appendChild(el("span", "k", k));
-      d.appendChild(el("span", "v", v));
-      stats.appendChild(d);
-    };
-    stat("합계 공격력", String(totalAtk));
-    stat("합계 누적피해", Math.round(totalDmg).toLocaleString());
+    stats.appendChild(stat("누적피해", Math.round(totalDmg).toLocaleString(), true, "damage"));
     const merge3 = selUids.length === 3 ? "3합성 가능" : "—";
-    stat("3합성", merge3);
-    root.appendChild(stats);
+    stats.appendChild(stat("3합성", merge3, false, "merge"));
+    stats.appendChild(stat("선택 수", `${selected.length}기`, false, "target"));
+    main.appendChild(stats);
+    root.appendChild(main);
+
+    const slots = el("div", "ud-slots");
+    for (const [g, n] of [...byGrade.entries()].sort((a, b) => GRADE_ORDER.indexOf(b[0]) - GRADE_ORDER.indexOf(a[0])).slice(0, 4)) {
+      slots.appendChild(slot(`${GRADE_LABEL[g]} ${n}`, true, "skill"));
+    }
+    while (slots.childElementCount < 4) slots.appendChild(slot("빈 슬롯", false));
+    root.appendChild(slots);
     return;
   }
 
   // 단일 선택 → 상세
   const u = selected[0];
   const d = UNIT_BY_ID[u.defId];
+  root.style.setProperty("--unit-color", FAMILY_COLOR[d.family]);
+  root.style.setProperty("--grade-color", GRADE_COLOR[d.grade]);
 
   const shape = el("div", "ud-portrait");
-  shape.style.cssText = `background:${FAMILY_COLOR[d.family]};border:3px solid ${GRADE_COLOR[d.grade]};border-radius:${d.grade === "common" ? "50%" : "8px"}`;
-  if (u.locked) shape.appendChild(el("span", "ud-lock", "🔒"));
+  shape.style.borderRadius = d.grade === "common" ? "50%" : "12px";
+  shape.appendChild(el("span", "ud-portrait-mark", d.name.slice(0, 1)));
+  shape.appendChild(el("span", "ud-portrait-family", FAMILY_LABEL[d.family]));
+  if (u.locked) shape.appendChild(el("span", "ud-lock", "잠금"));
   root.appendChild(shape);
 
   const main = el("div", "ud-main");
@@ -436,18 +678,18 @@ export function renderUnitDetail(ctx: AppCtx) {
   head.appendChild(el("span", "ud-sub", `${FAMILY_LABEL[d.family]} · ${d.roles.map((r) => ROLE_LABEL[r]).join("/")}`));
   main.appendChild(head);
 
+  const power = el("div", "ud-power");
+  power.appendChild(el("span", "ui-icon icon-attack", ""));
+  power.appendChild(el("span", "label", "공격력"));
+  power.appendChild(el("span", "value", String(d.attack)));
+  power.appendChild(el("span", "type", ATTACK_TYPE_LABEL[d.attackType]));
+  main.appendChild(power);
+
   const stats = el("div", "ud-stats");
-  const stat = (k: string, v: string) => {
-    const c = el("div", "ud-stat");
-    c.appendChild(el("span", "k", k));
-    c.appendChild(el("span", "v", v));
-    stats.appendChild(c);
-  };
-  stat("공격력", `${d.attack} (${ATTACK_TYPE_LABEL[d.attackType]})`);
-  stat("공격속도", `${d.attackSpeed.toFixed(2)}/s`);
-  stat("사거리", String(d.range));
-  stat("타겟", TARGETING_LABEL[d.targeting]);
-  stat("누적피해", Math.round(u.totalDamage).toLocaleString());
+  stats.appendChild(stat("공격속도", `${d.attackSpeed.toFixed(2)}/s`, false, "speed"));
+  stats.appendChild(stat("사거리", String(d.range), false, "range"));
+  stats.appendChild(stat("타겟", TARGETING_LABEL[d.targeting], false, "target"));
+  stats.appendChild(stat("누적딜", Math.round(u.totalDamage).toLocaleString(), true, "damage"));
   main.appendChild(stats);
 
   const chips = passiveChips(d);
@@ -460,10 +702,17 @@ export function renderUnitDetail(ctx: AppCtx) {
   }
 
   root.appendChild(main);
+
+  const slots = el("div", "ud-slots");
+  const slotLabels = [...chips, ...d.roles.map((r) => ROLE_LABEL[r])].slice(0, 4);
+  for (const label of slotLabels) slots.appendChild(slot(label, true, chips.includes(label) ? "passive" : "skill"));
+  while (slots.childElementCount < 4) slots.appendChild(slot("빈 슬롯", false));
+  root.appendChild(slots);
 }
 
 // ---------- 하단 액션바 ----------
 
+// COMPONENT: Actionbar - builds summon, merge, sell, upgrade, phase, and next-wave controls.
 export function renderActionbar(ctx: AppCtx) {
   const root = document.getElementById("action-controls")!;
   root.innerHTML = "";
@@ -472,10 +721,11 @@ export function renderActionbar(ctx: AppCtx) {
   const ended = s.phase === "ended";
 
   const btn = (label: string, sub: string, opts: {
-    disabled?: boolean; primary?: boolean; danger?: boolean; title?: string;
+    disabled?: boolean; primary?: boolean; danger?: boolean; title?: string; icon?: string;
     onClick: () => void;
   }) => {
     const b = el("button", `action-btn ${opts.primary ? "primary" : ""} ${opts.danger ? "danger" : ""}`);
+    if (opts.icon) b.appendChild(el("span", `ui-icon icon-${opts.icon}`, ""));
     b.appendChild(el("span", "", label));
     b.appendChild(el("span", "sub", sub));
     b.disabled = !!opts.disabled;
@@ -488,6 +738,7 @@ export function renderActionbar(ctx: AppCtx) {
   root.appendChild(btn("소환 [Z]", `${SUMMON_COST}골드`, {
     disabled: ended || s.gold < SUMMON_COST || s.units.length >= ctx.game.diff.unitCap,
     title: s.units.length >= ctx.game.diff.unitCap ? "보유칸이 가득 차 소환할 수 없습니다." : "",
+    icon: "summon",
     onClick: () => ctx.act("summon"),
   }));
 
@@ -496,6 +747,7 @@ export function renderActionbar(ctx: AppCtx) {
   root.appendChild(btn("3합성 [X]", canMergeCount ? "선택 3기 합성" : `${sel.length}/3 선택`, {
     disabled: ended || !canMergeCount,
     title: "같은 등급 3기를 선택하세요",
+    icon: "merge",
     onClick: () => {
       ctx.act("merge3", { unitIds: sel });
       ctx.renderer.selectedUids.clear();
@@ -510,6 +762,7 @@ export function renderActionbar(ctx: AppCtx) {
   }
   root.appendChild(btn("판매 [Del]", sel.length > 0 ? `${sel.length}기 +${refund}G` : "유닛 선택", {
     disabled: ended || sel.length === 0,
+    icon: "sell",
     onClick: () => {
       confirmModal("판매 확인", `선택한 ${sel.length}기를 판매하고 ${refund}골드를 받습니다.`, "판매", () => {
         ctx.act("sell", { unitIds: sel });
@@ -521,28 +774,53 @@ export function renderActionbar(ctx: AppCtx) {
   // 업그레이드
   root.appendChild(btn("업그레이드", "계열 강화", {
     disabled: ended,
+    icon: "upgrade",
     onClick: () => openUpgradeModal(ctx),
+  }));
+
+  root.appendChild(btn("수동증거", "시작마커/목표", {
+    disabled: ended,
+    onClick: () => openManualProofGuideModal(ctx),
   }));
 
   root.appendChild(el("div", "gap"));
 
   const inBreak = s.breakTicks > 0;
   const alive = s.enemies.length;
+  const limit = ctx.game.enemyLimit();
+  const legendOrBetter = s.units
+    .filter((u) => GRADE_ORDER.indexOf(UNIT_BY_ID[u.defId].grade) >= GRADE_ORDER.indexOf("legend"))
+    .length;
+  const proofTarget = manualProofTargetFor(s.difficulty, legendOrBetter);
+  const proofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
+  const proofRemainingSeconds = manualProofRemainingSeconds(proofSeconds);
+  const proofReadyAt = manualProofReadyAt(ctx.runStartedAt);
+  const proofReadiness = manualProofFinishReadiness({
+    elapsedSeconds: proofSeconds,
+    inputCount: s.inputHistory.length,
+    inputCounts: inputCountsForProof(ctx),
+  });
+  const proofTimeText = proofReadiness.ready
+    ? "저장조건 충족"
+    : proofRemainingSeconds === 0
+      ? `12분 충족 · ${proofReadiness.blockers.join(", ")}`
+    : `${clockText(proofRemainingSeconds)} 남음`;
   const phaseText = s.phase === "ended"
     ? (s.cleared ? "클리어!" : "게임 종료")
     : inBreak
-      ? `${s.round}스테이지 대기 — 적 ${alive}/${LOSE_THRESHOLD}`
-      : `${s.round}스테이지 진행 중 — 적 ${alive}/${LOSE_THRESHOLD}`;
-  root.appendChild(el("div", "", phaseText)).id = "phase-label";
+      ? `${s.round}라운드 대기 — 적 ${alive}/${limit}`
+      : `${s.round}라운드 진행 중 — 적 ${alive}/${limit}`;
+  root.appendChild(el("div", "", `${phaseText}\n증거목표: ${proofTarget.label}\n증거조건: ${proofTarget.status}\n수동시간: ${proofTimeText} · 12분기준 ${clockTimeText(proofReadyAt)}`)).id = "phase-label";
 
-  // 진행 버튼 — 휴식 중에만 "다음 스테이지 시작"
+  // 진행 버튼 — 휴식 중에만 "다음 라운드 시작"
   if (inBreak && !ended) {
     const wave = waveForRound(Math.min(s.round, FINAL_ROUND));
     const sub = s.pendingSelectors.length > 0
       ? "🎁 선택권 확인!"
-      : wave.type === "boss" ? "⚠ 보스 스테이지" : `${wave.enemyName} x${wave.count}`;
-    root.appendChild(btn(`${s.round}스테이지 시작 [Space]`, sub, {
+      : wave.type === "boss" ? "⚠ 보스 라운드" : `${wave.enemyName} x${wave.count}`;
+    root.appendChild(btn(`${s.round}라운드 시작 [Space]`, sub, {
       primary: true,
+      icon: "skill",
       onClick: () => {
         if (s.pendingSelectors.length > 0) openSelectorModal(ctx);
         else ctx.advanceWave();
@@ -551,6 +829,7 @@ export function renderActionbar(ctx: AppCtx) {
   }
 }
 
+// COMPONENT: UpgradeModal - renders family upgrade purchase controls inside a modal.
 function openUpgradeModal(ctx: AppCtx) {
   import("./widgets").then(({ openModal }) => {
     openModal((body, close) => {

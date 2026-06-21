@@ -1,13 +1,14 @@
 // 다중 시드 자동 시뮬레이션 — 실제 게임 코어 재사용
 
 import { Game } from "../core/engine";
-import { playFullRun, type Strategy } from "./autoPlayer";
-import { GRADE_LABEL, GRADE_ORDER, type Grade } from "../core/types";
+import { playFullRun, type AutoPlayOptions, type Strategy } from "./autoPlayer";
+import { GRADE_LABEL, GRADE_ORDER, type DifficultyId, type Grade } from "../core/types";
 import { MISSION_BY_ID } from "../data/missions";
+import { UNIT_BY_ID } from "../data/units";
 
 export interface SimReport {
   seeds: number;
-  difficulty: "novice" | "normal";
+  difficulty: DifficultyId;
   strategy: Strategy;
   clearRate: number;
   avgReachedRound: number;
@@ -17,19 +18,27 @@ export interface SimReport {
   missionRates: Record<string, number>;
   pityRate: number;
   gradeDistribution: Record<Grade, number>;
+  avgLegendCount: number;
+  avgHiddenCount: number;
   durationMs: number;
 }
 
 export function runSimulation(
   seeds: number,
-  difficulty: "novice" | "normal",
-  strategy: Strategy = "balanced",
+  difficulty: DifficultyId,
+  strategyOrOptions: Strategy | AutoPlayOptions = "balanced",
   onProgress?: (done: number, total: number) => void,
 ): SimReport {
+  const options: AutoPlayOptions = typeof strategyOrOptions === "string"
+    ? { strategy: strategyOrOptions }
+    : strategyOrOptions;
+  const strategy = options.strategy ?? "balanced";
   const started = Date.now();
   let clears = 0;
   let totalRound = 0;
   let totalMissions = 0;
+  let totalLegends = 0;
+  let totalHidden = 0;
   let pityRuns = 0;
   const deathRounds: Record<number, number> = {};
   const bossFailCounts: Record<number, number> = {};
@@ -40,7 +49,7 @@ export function runSimulation(
 
   for (let i = 0; i < seeds; i++) {
     const game = new Game(`SIM-${i + 1}`, difficulty);
-    playFullRun(game, strategy);
+    playFullRun(game, options);
     const s = game.state;
     if (s.cleared) clears++;
     else deathRounds[s.round] = (deathRounds[s.round] ?? 0) + 1;
@@ -53,6 +62,8 @@ export function runSimulation(
       bossFailCounts[r] = (bossFailCounts[r] ?? 0) + 1;
     }
     if (s.summonStats.pityTriggered > 0) pityRuns++;
+    totalLegends += s.units.filter((u) => UNIT_BY_ID[u.defId].grade === "legend").length;
+    totalHidden += s.units.filter((u) => UNIT_BY_ID[u.defId].grade === "hidden").length;
     gradeDist[game.maxOwnedGrade()]++;
     onProgress?.(i + 1, seeds);
   }
@@ -69,6 +80,8 @@ export function runSimulation(
     missionRates,
     pityRate: pityRuns / seeds,
     gradeDistribution: gradeDist,
+    avgLegendCount: totalLegends / seeds,
+    avgHiddenCount: totalHidden / seeds,
     durationMs: Date.now() - started,
   };
 }
@@ -83,6 +96,8 @@ export function reportToMarkdown(r: SimReport): string {
   lines.push(`- 클리어율: ${(r.clearRate * 100).toFixed(1)}%`);
   lines.push(`- 평균 도달 라운드: ${r.avgReachedRound.toFixed(1)}`);
   lines.push(`- 평균 미션 완료: ${r.avgMissionsDone.toFixed(1)}`);
+  lines.push(`- 평균 전설 보유: ${r.avgLegendCount.toFixed(1)}`);
+  lines.push(`- 평균 히든 보유: ${r.avgHiddenCount.toFixed(1)}`);
   lines.push(`- 보정 발동 판 비율: ${(r.pityRate * 100).toFixed(1)}%`);
   lines.push(`- 실행 시간: ${(r.durationMs / 1000).toFixed(1)}s`);
   lines.push("");

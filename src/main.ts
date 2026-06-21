@@ -6,19 +6,60 @@ import { randomSeed } from "./core/rng";
 import { stateChecksum } from "./core/checksum";
 import { BoardRenderer } from "./ui/board";
 import type { AppCtx } from "./ui/ctx";
-import { renderTopbar, renderLeftPanel, renderRightPanel, renderActionbar, renderUnitDetail } from "./ui/panels";
+import {
+  renderTopbar, renderLeftPanel, renderRightPanel, renderActionbar,
+  renderUnitDetail, renderRecipeSuggestions,
+} from "./ui/panels";
 import { renderMenubar } from "./ui/menu";
 import { toast, anyModalOpen, closeTopModal, confirmModal } from "./ui/widgets";
-import { maybeShowResult, openSelectorModal, resetResultShown } from "./ui/modals";
+import {
+  manualPlaylogCommand,
+  manualPlaylogDryRunCommand,
+  manualPlaylogFinishCommand,
+  manualPlaylogFinishDryRunCommand,
+  manualPlaylogFinishLatestCommand,
+  manualPlaylogFinishLatestDryRunCommand,
+  manualPlaylogFinishLatestThenNextCommand,
+  manualPlaylogThenNextCommand,
+  currentManualProofSummary,
+  maybeShowResult,
+  openSelectorModal,
+  resetResultShown,
+} from "./ui/modals";
 import { loadSlot, makeSaveRecord, saveSlot } from "./save/saveApi";
-import { loadSettings, profileMarkSeen, profileRecordRun } from "./ui/settings";
+import { loadSettings, playableStageId, profileMarkSeen, profileRecordRun } from "./ui/settings";
 import { GameAudio } from "./ui/audio";
 import { showGame, showTitle, openPauseMenu } from "./ui/scenes";
-import { openDevSpawnModal } from "./ui/devTools"; // ⚠ DEV전용 (출시 전 제거)
 import { UNIT_BY_ID } from "./data/units";
 import { analyzeRecipes } from "./core/advisor";
-import { stageForRound } from "./data/stages";
-import { waveForRound } from "./data/waves";
+import { stageById } from "./data/stages";
+import { FINAL_ROUND, waveForRound } from "./data/waves";
+import { UPGRADES, upgradeCost } from "./data/upgrades";
+import { GRADE_ORDER, type DifficultyId, type Grade } from "./core/types";
+import {
+  MANUAL_PROOF_TARGET_SECONDS,
+  manualProofFinishReadiness,
+  manualProofReadyAt,
+  manualProofRemainingSeconds,
+  manualProofTargetFor,
+} from "./core/manualProof";
+import { manualProofResultChecklist, manualProofResultTarget } from "./core/manualProofResult";
+import {
+  manualDryRunCommand,
+  manualNextCommand,
+  manualNextJsonCommand,
+  manualPendingIdCommand as buildManualPendingIdCommand,
+  manualPlanCommand,
+  manualPlanJsonCommand,
+  manualPreflightCommand,
+  manualPreflightJsonCommand,
+  manualSheetCommand,
+  manualStartCommand as buildManualStartCommand,
+  manualStartNextCommand as buildManualStartNextCommand,
+  manualStartValidateSaveCommand,
+  manualSummaryCommand,
+  manualSummaryJsonCommand,
+} from "./core/manualProofCommands";
 
 const settings = loadSettings();
 const audio = new GameAudio(settings);
@@ -27,6 +68,10 @@ const canvas = document.getElementById("board") as HTMLCanvasElement;
 const renderer = new BoardRenderer(canvas);
 renderer.showLabels = settings.highContrast;
 renderer.showDamage = settings.showDamage;
+
+for (const eventName of ["contextmenu", "selectstart", "dragstart", "drop"]) {
+  window.addEventListener(eventName, (e) => e.preventDefault(), { capture: true });
+}
 
 /** 직전 시점에 "지금 제작 가능"하던 조합 id들 (신규 가능 알림용) */
 let craftableIds = new Set<string>();
@@ -53,13 +98,66 @@ function notifyNewlyCraftable() {
   craftableIds = nowOk;
 }
 
-let game = new Game(randomSeed(), "novice"); // 타이틀 뒤에서 대기하는 플레이스홀더 런
+let game = new Game(randomSeed(), "novice", 1); // 타이틀 뒤에서 대기하는 플레이스홀더 런
 let panelsDirty = true;
 let lastPhase = game.state.phase;
 let lastRound = game.state.round;
 let lastSelectorCount = game.state.pendingSelectors.length;
 let autosaveTimer: number | null = null;
 let endedHandled = false;
+let manualProofTimeReachedNotified = false;
+let manualProofReadyNotified = false;
+
+function markRunStarted() {
+  ctx.runStartedAt = new Date().toISOString();
+  ctx.runStartedAtMs = performance.now();
+  ctx.runEndedAt = null;
+  ctx.runEndedAtMs = null;
+  manualProofTimeReachedNotified = false;
+  manualProofReadyNotified = false;
+}
+
+function markRunEnded() {
+  if (ctx.runEndedAt) return;
+  ctx.runEndedAt = new Date().toISOString();
+  ctx.runEndedAtMs = performance.now();
+}
+
+function currentLegendOrBetterCount(): number {
+  return game.state.units.filter((u) => (
+    GRADE_ORDER.indexOf(UNIT_BY_ID[u.defId].grade) >= GRADE_ORDER.indexOf("legend")
+  )).length;
+}
+
+function currentInputCounts(): Record<string, number> {
+  return game.state.inputHistory.reduce<Record<string, number>>((counts, input) => {
+    counts[input.type] = (counts[input.type] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
+function maybeNotifyManualProofReady(now: number) {
+  if (manualProofReadyNotified || ctx.scene !== "game" || game.state.phase === "ended") return;
+  const proofSeconds = Math.max(0, Math.floor((now - ctx.runStartedAtMs) / 1000));
+  if (proofSeconds < MANUAL_PROOF_TARGET_SECONDS) return;
+  const readiness = manualProofFinishReadiness({
+    elapsedSeconds: proofSeconds,
+    inputCount: game.state.inputHistory.length,
+    inputCounts: currentInputCounts(),
+  });
+  if (!readiness.ready) {
+    if (!manualProofTimeReachedNotified) {
+      manualProofTimeReachedNotified = true;
+      toast(`수동증거 12분 충족 · 아직 ${readiness.blockers.join(", ")}`, "warn", 5200);
+      panelsDirty = true;
+    }
+    return;
+  }
+  const target = manualProofTargetFor(game.state.difficulty, currentLegendOrBetterCount());
+  manualProofReadyNotified = true;
+  toast(`수동증거 저장 조건 충족 · ${target.status} · 결과 후 로그 기록`, target.state === "warn" ? "warn" : "ok", 5200);
+  panelsDirty = true;
+}
 
 const ctx: AppCtx = {
   game,
@@ -68,18 +166,28 @@ const ctx: AppCtx = {
   settings,
   scene: "title",
   paused: false,
-  activeTab: "recipe",
+  activeTab: "mission",
   gradeFilter: "all",
   saveStatus: "idle",
+  runStartedAt: new Date().toISOString(),
+  runStartedAtMs: performance.now(),
+  runEndedAt: null,
+  runEndedAtMs: null,
+  lastRunUnlockedNext: false,
   refresh: () => { panelsDirty = true; },
-  newRun: (seed, difficulty) => {
-    game = new Game(seed || randomSeed(), difficulty);
+  newRun: (seed, difficulty, stageId = 1) => {
+    const requestedStage = stageId;
+    const allowedStage = playableStageId(requestedStage, 1);
+    const resolvedSeed = typeof seed === "string" ? seed : String(seed ?? "");
+    game = new Game(resolvedSeed || randomSeed(), difficulty, allowedStage);
     ctx.game = game;
+    markRunStarted();
     game.onEvent = onGameEvent;
     renderer.selectedUids.clear();
     renderer.resetFx();
     craftableIds = craftableSet();
     ctx.paused = false;
+    ctx.lastRunUnlockedNext = false;
     resetResultShown();
     endedHandled = false;
     lastPhase = game.state.phase;
@@ -89,18 +197,23 @@ const ctx: AppCtx = {
     panelsDirty = true;
     showGame(ctx);
     audio.sfx("waveStart");
-    toast(`새 게임: 시드 ${game.state.seed}`, "ok");
+    const stage = stageById(game.state.stageId);
+    const lockNote = allowedStage !== requestedStage ? " · 범위 밖 맵 요청은 실제 맵 범위로 조정됨" : "";
+    toast(`새 게임: ${stage.id}. ${stage.name} · 이번 판 1~40R 맵 고정 · 시드 ${game.state.seed}${lockNote}`, "ok");
   },
   adoptGame: (g) => {
     game = g;
     ctx.game = game;
+    markRunStarted();
     game.onEvent = onGameEvent;
     renderer.selectedUids.clear();
     renderer.resetFx();
     craftableIds = craftableSet();
     ctx.paused = true;
+    ctx.lastRunUnlockedNext = false;
     resetResultShown();
     endedHandled = game.state.phase === "ended";
+    if (endedHandled) markRunEnded();
     lastPhase = game.state.phase;
     lastRound = game.state.round;
     lastSelectorCount = game.state.pendingSelectors.length;
@@ -132,7 +245,7 @@ const ctx: AppCtx = {
         toast("현재 데이터 버전과 달라 불러올 수 없습니다.", "warn", 4000);
         return false;
       }
-      const replayed = replay(rec.seed, rec.difficulty, rec.inputHistory, rec.tick);
+      const replayed = replay(rec.seed, rec.difficulty, rec.stageId ?? 1, rec.inputHistory, rec.tick);
       if (stateChecksum(replayed.state) !== rec.stateChecksum) {
         toast("체크섬 불일치: 손상된 자동 저장입니다.", "danger", 4000);
         return false;
@@ -162,7 +275,7 @@ function playActionSfx(type: string) {
     case "upgrade": audio.sfx("upgrade"); break;
     case "pickSelector": audio.sfx("summonRare"); break;
     case "startWave": {
-      const isBoss = [5, 10, 15].includes(game.state.round);
+      const isBoss = game.state.round % 10 === 0;
       audio.sfx(isBoss ? "bossWarn" : "waveStart");
       break;
     }
@@ -191,7 +304,7 @@ async function doAutosave() {
   panelsDirty = true;
   try {
     await saveSlot("autosave", makeSaveRecord({
-      seed: s.seed, difficulty: s.difficulty,
+      seed: s.seed, difficulty: s.difficulty, stageId: s.stageId,
       stateChecksum: stateChecksum(s),
       tick: s.tick, round: s.round, life: s.life,
       maxGrade: game.maxOwnedGrade(),
@@ -245,12 +358,22 @@ function loop(now: number) {
     lastSelectorCount = game.state.pendingSelectors.length;
 
     if (game.state.phase !== lastPhase) { lastPhase = game.state.phase; panelsDirty = true; }
+    maybeNotifyManualProofReady(now);
 
     // 종료 처리 (1회)
     if (game.state.phase === "ended" && !endedHandled) {
       endedHandled = true;
+      markRunEnded();
       profileMarkSeen(game.state.units.map((u) => u.defId), game.state.discoveredRecipeIds);
-      profileRecordRun(game.state.cleared, game.state.difficulty, game.state.round);
+      const finalBossCleared = game.state.cleared && game.state.bossKillSeconds[FINAL_ROUND] !== undefined;
+      const unlockedNext = profileRecordRun(
+        game.state.cleared,
+        game.state.difficulty,
+        game.state.round,
+        game.state.stageId,
+        finalBossCleared,
+      );
+      ctx.lastRunUnlockedNext = unlockedNext;
     }
 
     // 라운드 사이 휴식 카운트다운 표시 (엔진 breakTicks 기반)
@@ -263,14 +386,15 @@ function loop(now: number) {
       panelsDirty = false;
       notifyNewlyCraftable();
       renderTopbar(ctx);
-      renderLeftPanel(ctx);
       renderRightPanel(ctx);
       renderUnitDetail(ctx);
+      renderRecipeSuggestions(ctx);
       renderActionbar(ctx);
     } else if (game.state.phase === "wave" && now - lastTopbarAt > 250) {
       lastTopbarAt = now;
       renderTopbar(ctx);
       renderUnitDetail(ctx); // 전투 중 누적피해 갱신
+      renderRecipeSuggestions(ctx);
     }
   }
   lastTime = now;
@@ -295,8 +419,6 @@ function commandSelected(type: string, payload: Record<string, unknown>) {
   if (ids.length === 0) return;
   ctx.act(type, { unitIds: ids, ...payload });
 }
-
-canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
 canvas.addEventListener("pointerdown", (e) => {
   if (ctx.scene !== "game" || anyModalOpen()) return;
@@ -383,9 +505,6 @@ document.addEventListener("keydown", (e) => {
     return;
   }
   if (ctx.scene !== "game" || anyModalOpen()) return;
-
-  // ⚠ DEV전용: 백틱(`)으로 유닛 즉시 생성 팝업 (출시 전 제거)
-  if (e.key === "`") { e.preventDefault(); openDevSpawnModal(ctx); return; }
 
   const s = game.state;
 
@@ -479,28 +598,196 @@ requestAnimationFrame(loop);
 
 function renderGameToText(): string {
   const s = game.state;
-  const stage = stageForRound(s.round);
-  const wave = waveForRound(Math.min(s.round, 15));
+  const stage = stageById(s.stageId);
+  const wave = waveForRound(Math.min(s.round, FINAL_ROUND));
+  const manualProofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
+  const manualProofRemaining = manualProofRemainingSeconds(manualProofSeconds);
+  const manualProofTargetReadyAt = ctx.scene === "game" ? manualProofReadyAt(ctx.runStartedAt) : null;
+  const inputCounts = currentInputCounts();
+  const gradeCounts: Record<Grade, number> = { common: 0, rare: 0, hero: 0, legend: 0, hidden: 0 };
+  let maxGrade: Grade | null = null;
+  for (const unit of s.units) {
+    const grade = UNIT_BY_ID[unit.defId].grade;
+    gradeCounts[grade]++;
+    if (!maxGrade || GRADE_ORDER.indexOf(grade) > GRADE_ORDER.indexOf(maxGrade)) maxGrade = grade;
+  }
+  const legendOrBetter = gradeCounts.legend + gradeCounts.hidden;
+  const manualProofTarget = manualProofTargetFor(s.difficulty, legendOrBetter);
+  const currentStateChecksum = stateChecksum(s);
+  const manualStartInput = {
+    difficultyId: s.difficulty,
+    stageId: s.stageId,
+    seed: s.seed,
+    startedAt: ctx.runStartedAt,
+    notes: manualProofTarget.label,
+  };
+  const manualStartCommand = buildManualStartCommand(manualStartInput);
+  const manualStartNextCommand = buildManualStartNextCommand(manualStartInput);
+  const manualPendingIdCommand = buildManualPendingIdCommand(manualStartInput);
+  let manualResultTarget: string | null = null;
+  let manualResultChecks: ReturnType<typeof manualProofResultChecklist> | null = null;
+  let manualResultPassed: boolean | null = null;
+  let manualCurrentFinishReadiness: ReturnType<typeof manualProofFinishReadiness> | null = null;
+  const manualProofCommands = ctx.scene === "game"
+    ? {
+        start: manualStartCommand,
+        startDryRun: manualDryRunCommand(manualStartCommand),
+        startValidateSave: manualStartValidateSaveCommand(manualStartCommand, manualPendingIdCommand),
+        startNext: manualStartNextCommand,
+        startNextDryRun: manualDryRunCommand(manualStartNextCommand),
+        startNextValidateSave: manualStartValidateSaveCommand(manualStartNextCommand, manualPendingIdCommand),
+        pendingId: manualPendingIdCommand,
+        pendingIdJson: `${manualPendingIdCommand} --json`,
+        preflight: manualPreflightCommand(),
+        preflightJson: manualPreflightJsonCommand(),
+        next: manualNextCommand(),
+        nextJson: manualNextJsonCommand(),
+        summary: manualSummaryCommand(),
+        summaryJson: manualSummaryJsonCommand(),
+        plan: manualPlanCommand(),
+        planJson: manualPlanJsonCommand(),
+        sheet: manualSheetCommand(),
+        result: null as string | null,
+        resultDryRun: null as string | null,
+        resultThenNext: null as string | null,
+        finish: null as string | null,
+        finishDryRun: null as string | null,
+        finishLatest: null as string | null,
+        finishLatestDryRun: null as string | null,
+        finishLatestThenNext: null as string | null,
+        currentFinish: null as string | null,
+        currentFinishDryRun: null as string | null,
+        currentFinishLatest: null as string | null,
+        currentFinishLatestDryRun: null as string | null,
+      }
+    : null;
+  if (manualProofCommands && s.phase !== "ended") {
+    const currentSummary = currentManualProofSummary(ctx);
+    manualCurrentFinishReadiness = manualProofFinishReadiness({
+      elapsedSeconds: currentSummary.wallSeconds ?? 0,
+      inputCount: currentSummary.inputCount,
+      inputCounts: currentSummary.inputCounts,
+    });
+    manualProofCommands.currentFinishDryRun = manualPlaylogFinishDryRunCommand(currentSummary);
+    manualProofCommands.currentFinishLatestDryRun = manualPlaylogFinishLatestDryRunCommand(currentSummary);
+    if (manualCurrentFinishReadiness.ready) {
+      manualProofCommands.currentFinish = manualPlaylogFinishCommand(currentSummary);
+      manualProofCommands.currentFinishLatest = manualPlaylogFinishLatestCommand(currentSummary);
+    }
+  }
+  if (manualProofCommands && s.phase === "ended") {
+    const endedAt = ctx.runEndedAt ?? new Date().toISOString();
+    const endedAtMs = ctx.runEndedAtMs ?? performance.now();
+    const summary = game.resultSummary();
+    summary.playedAt = endedAt;
+    summary.manualStartedAt = ctx.runStartedAt;
+    summary.unlockedNextStage = ctx.lastRunUnlockedNext;
+    summary.wallSeconds = Math.max(1, Math.round((endedAtMs - ctx.runStartedAtMs) / 1000));
+    manualProofCommands.result = manualPlaylogCommand(summary);
+    manualProofCommands.resultDryRun = manualPlaylogDryRunCommand(summary);
+    manualProofCommands.resultThenNext = manualPlaylogThenNextCommand(summary);
+    manualProofCommands.finish = manualPlaylogFinishCommand(summary);
+    manualProofCommands.finishDryRun = manualPlaylogFinishDryRunCommand(summary);
+    manualProofCommands.finishLatest = manualPlaylogFinishLatestCommand(summary);
+    manualProofCommands.finishLatestDryRun = manualPlaylogFinishLatestDryRunCommand(summary);
+    manualProofCommands.finishLatestThenNext = manualPlaylogFinishLatestThenNextCommand(summary);
+    manualResultTarget = manualProofResultTarget(summary);
+    manualResultChecks = manualProofResultChecklist(summary);
+    manualResultPassed = manualResultChecks.every((check) => check.ok);
+  }
   return JSON.stringify({
     coordinateSystem: "board origin top-left, x right, y down, logical size 960x560",
     scene: ctx.scene,
     paused: ctx.paused,
     mode: s.phase,
+    dataVersion: s.dataVersion,
+    seed: s.seed,
+    stateChecksum: currentStateChecksum,
+    inputCount: s.inputHistory.length,
+    inputCounts,
+    difficulty: { id: s.difficulty, name: game.diff.name },
     stage: {
-      current: s.round,
+      current: s.stageId,
       name: stage.name,
       ground: stage.ground,
+      progressionModel: "choose_one_map_at_new_game_start_then_unlock_next_map_permission_after_round_40_boss",
+      fixedForRun: true,
+      currentRunMapLocked: true,
+      runGoal: "selected_map_round_1_to_40_final_boss",
+      unlockRule: "clear_round_40_boss_on_current_unlocked_map",
+      nextMapStartsInCurrentRun: false,
+      autoChangesAfterRoundOrBoss: false,
+      unlockAddsSelectionPermissionOnly: true,
       waypointCount: stage.waypoints.length,
       decorationCount: stage.decorations.length,
     },
+    map: {
+      progressionContract: "choose map once at new game start; play same map through 40R boss; clearing final boss unlocks next map selection permission for a later new game",
+      selectedAtNewGameStart: true,
+      fixedUntilFinalBossRound: 40,
+      fixedForRounds: "1-40",
+      changesBetweenRounds: false,
+      changesAfterFinalBossClear: false,
+      nextMapPermissionOnly: true,
+      nextMapPermissionAppliesToNextNewGame: true,
+      clearRound40BossOnlyUnlocksPermission: true,
+    },
+    manualProof: {
+      elapsedSeconds: manualProofSeconds,
+      targetSeconds: MANUAL_PROOF_TARGET_SECONDS,
+      targetReadyAt: manualProofTargetReadyAt,
+      remainingSeconds: manualProofRemaining,
+      targetMet: manualCurrentFinishReadiness?.ready ?? manualProofRemaining === 0,
+      targetLabel: manualProofTarget.label,
+      conditionStatus: manualProofTarget.status,
+      conditionState: manualProofTarget.state,
+      resultTarget: manualResultTarget,
+      resultChecks: manualResultChecks,
+      resultPassed: manualResultPassed,
+      currentFinishReadiness: manualCurrentFinishReadiness,
+      timeReachedNotified: manualProofTimeReachedNotified,
+      readyNotified: manualProofReadyNotified,
+      startedAt: ctx.scene === "game" ? ctx.runStartedAt : null,
+      commands: manualProofCommands,
+      evidenceFields: ctx.scene === "game"
+        ? {
+            difficulty: s.difficulty,
+            stage: s.stageId,
+            seed: s.seed,
+            dataVersion: s.dataVersion,
+            currentStateChecksum,
+            startedAt: ctx.runStartedAt,
+            inputCount: s.inputHistory.length,
+            inputCounts,
+          }
+        : null,
+    },
+    round: s.round,
     wave: { type: wave.type, enemyName: wave.enemyName, count: wave.count, spawned: s.waveSpawned, killed: s.waveKilled },
-    resources: { life: s.life, gold: s.gold, enemyPressure: s.enemies.length, breakTicks: s.breakTicks },
+    resources: {
+      life: s.life, gold: s.gold,
+      enemyPressure: s.enemies.length,
+      enemyLimit: game.enemyLimit(),
+      breakTicks: s.breakTicks,
+    },
+    unitSummary: {
+      total: s.units.length,
+      gradeCounts,
+      legendOrBetter,
+      legendCommandAttackBonusPct: Math.round((game.legendCommandAttackMult() - 1) * 100),
+      legendCommandEnemyLimitBonus: game.legendCommandEnemyLimitBonus(),
+      maxGrade,
+    },
+    boss: {
+      kills: s.bossKillSeconds,
+      failedRounds: s.bossFailedRounds,
+    },
     units: s.units.slice(0, 12).map((u) => {
       const def = UNIT_BY_ID[u.defId];
       return { uid: u.uid, name: def.name, grade: def.grade, family: def.family, x: Math.round(u.x), y: Math.round(u.y), state: u.state };
     }),
     enemies: s.enemies.slice(0, 16).map((e) => {
-      const p = posAtDist(e.dist, s.round);
+      const p = posAtDist(e.dist, s.stageId);
       return { eid: e.eid, hp: Math.round(e.hp), maxHp: Math.round(e.maxHp), x: Math.round(p.x), y: Math.round(p.y), boss: e.isBoss };
     }),
     selected: [...renderer.selectedUids].sort((a, b) => a - b),
@@ -514,8 +801,10 @@ function advanceTimeForTest(ms: number) {
   for (let i = 0; i < steps; i++) {
     if (ctx.scene === "game" && game.state.phase === "wave") game.advanceTick();
   }
+  if (ctx.scene === "game" && game.state.phase === "ended") markRunEnded();
   renderer.autoStartIn = game.state.breakTicks > 0 ? game.state.breakTicks * DT : null;
   renderer.draw(game.state);
+  maybeNotifyManualProofReady(performance.now());
   renderTopbar(ctx);
   renderLeftPanel(ctx);
   renderRightPanel(ctx);
@@ -531,9 +820,63 @@ Object.assign(window, {
 if (import.meta.env.DEV) {
   Object.assign(window, {
     __randi_dev: {
-      newRun: (seed = "PLAYTEST") => ctx.newRun(seed, "novice"),
+      newRun: (seed = "PLAYTEST", difficultyOrStage: DifficultyId | number = "novice", stageId = 1) => {
+        const difficulty = typeof difficultyOrStage === "number" ? "novice" : difficultyOrStage;
+        const resolvedStageId = typeof difficultyOrStage === "number" ? difficultyOrStage : stageId;
+        ctx.newRun(seed, difficulty, resolvedStageId);
+      },
+      ageRunForManualProof: (seconds: number) => {
+        ctx.runStartedAtMs = performance.now() - Math.max(0, seconds) * 1000;
+        maybeNotifyManualProofReady(performance.now());
+        renderTopbar(ctx);
+      },
       act: (type: string, payload?: Record<string, unknown>) => ctx.act(type, payload),
       state: () => game.state,
+      balanceSnapshot: () => {
+        const familyCounts = new Map<string, number>();
+        for (const u of game.state.units) {
+          const def = UNIT_BY_ID[u.defId];
+          familyCounts.set(def.family, (familyCounts.get(def.family) ?? 0) + 1);
+        }
+        const unitInfo = (defId: string) => {
+          const def = UNIT_BY_ID[defId];
+          return {
+            id: def.id,
+            name: def.name,
+            grade: def.grade,
+            family: def.family,
+            roles: def.roles,
+            score: def.attack * def.attackSpeed * (1 + (def.bossDamageBonus ?? 0)) * (1 + (def.splashRadius ? 0.25 : 0)),
+          };
+        };
+        return {
+          round: game.state.round,
+          phase: game.state.phase,
+          cleared: game.state.cleared,
+          breakTicks: game.state.breakTicks,
+          gold: game.state.gold,
+          unitCap: game.diff.unitCap,
+          enemyPressure: game.state.enemies.length,
+          enemyLimit: game.enemyLimit(),
+          units: game.state.units.map((u) => ({ uid: u.uid, locked: u.locked, ...unitInfo(u.defId) })),
+          selectors: game.state.pendingSelectors.map((s) => ({
+            id: s.id,
+            grade: s.grade,
+            candidates: s.candidateIds.map(unitInfo),
+          })),
+          craftable: analyzeRecipes(game.state)
+            .filter((s) => s.tier === "ok" && s.goldShort === 0)
+            .map((s) => ({ id: s.recipe.id, result: unitInfo(s.recipe.resultUnitId), reasonTag: s.reasonTag ?? "" })),
+          upgrades: UPGRADES.map((u) => ({
+            id: u.id,
+            family: u.family,
+            level: game.state.upgrades[u.id] ?? 0,
+            maxLevel: u.maxLevel,
+            cost: upgradeCost(u, game.state.upgrades[u.id] ?? 0),
+            ownedFamily: familyCounts.get(u.family) ?? 0,
+          })),
+        };
+      },
     },
   });
 }

@@ -48,6 +48,109 @@ impl From<std::io::Error> for CmdError {
 
 type CmdResult<T> = Result<T, CmdError>;
 
+const ALLOWED_SLOTS: [&str; 4] = ["autosave", "slot1", "slot2", "slot3"];
+const MAX_SAVE_BYTES: usize = 2_000_000;
+const MAX_REPORT_BYTES: usize = 1_000_000;
+const MAX_RESULT_BYTES: usize = 64_000;
+
+fn invalid_input(message: impl ToString) -> CmdError {
+    CmdError::new("invalid_input", message, false)
+}
+
+fn validate_slot_id(slot_id: &str) -> CmdResult<()> {
+    if ALLOWED_SLOTS.contains(&slot_id) {
+        Ok(())
+    } else {
+        Err(invalid_input("invalid save slot"))
+    }
+}
+
+fn require_str_len(record: &Value, key: &str, min: usize, max: usize) -> CmdResult<()> {
+    let value = record
+        .get(key)
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| invalid_input(format!("missing {key}")))?;
+    if value.len() < min || value.len() > max {
+        return Err(invalid_input(format!("invalid {key} length")));
+    }
+    Ok(())
+}
+
+fn require_i64_range(record: &Value, key: &str, min: i64, max: i64) -> CmdResult<()> {
+    let value = record
+        .get(key)
+        .and_then(|v| v.as_i64())
+        .ok_or_else(|| invalid_input(format!("missing {key}")))?;
+    if value < min || value > max {
+        return Err(invalid_input(format!("invalid {key} range")));
+    }
+    Ok(())
+}
+
+fn validate_save_record(record: &Value) -> CmdResult<()> {
+    if record.to_string().len() > MAX_SAVE_BYTES {
+        return Err(invalid_input("save payload too large"));
+    }
+
+    require_i64_range(record, "schemaVersion", 1, 10)?;
+    require_i64_range(record, "tick", 0, 2_000_000)?;
+    require_i64_range(record, "round", 1, 40)?;
+    require_i64_range(record, "life", 0, 999)?;
+    require_str_len(record, "appVersion", 1, 32)?;
+    require_str_len(record, "dataVersion", 1, 32)?;
+    require_str_len(record, "savedAt", 1, 64)?;
+    require_str_len(record, "seed", 1, 64)?;
+    require_str_len(record, "stateChecksum", 1, 128)?;
+
+    let difficulty = record_str(record, "difficulty");
+    if difficulty != "novice" && difficulty != "normal" {
+        return Err(invalid_input("invalid difficulty"));
+    }
+
+    let max_grade = record_str(record, "maxGrade");
+    if !["common", "rare", "hero", "legend", "hidden"].contains(&max_grade.as_str()) {
+        return Err(invalid_input("invalid maxGrade"));
+    }
+
+    let input_history_len = record
+        .get("inputHistory")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| invalid_input("missing inputHistory"))?
+        .len();
+    if input_history_len > 20_000 {
+        return Err(invalid_input("input history too large"));
+    }
+
+    Ok(())
+}
+
+fn validate_run_summary(summary: &Value) -> CmdResult<()> {
+    if summary.to_string().len() > MAX_RESULT_BYTES {
+        return Err(invalid_input("result payload too large"));
+    }
+    require_str_len(summary, "playedAt", 1, 64)?;
+    Ok(())
+}
+
+fn validate_report(filename: &str, content: &str) -> CmdResult<()> {
+    if filename.is_empty() || filename.len() > 96 {
+        return Err(invalid_input("invalid report filename length"));
+    }
+    if !(filename.ends_with(".md") || filename.ends_with(".txt")) {
+        return Err(invalid_input("invalid report extension"));
+    }
+    if !filename
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+    {
+        return Err(invalid_input("invalid report filename characters"));
+    }
+    if content.len() > MAX_REPORT_BYTES {
+        return Err(invalid_input("report too large"));
+    }
+    Ok(())
+}
+
 fn init_db(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
         "
@@ -108,6 +211,9 @@ fn save_run_snapshot(
     slot_id: String,
     record: Value,
 ) -> CmdResult<()> {
+    validate_slot_id(&slot_id)?;
+    validate_save_record(&record)?;
+
     let mut conn = db.0.lock().map_err(|e| CmdError::new("lock", e, true))?;
     let tx = conn.transaction()?;
 
@@ -143,6 +249,8 @@ fn save_run_snapshot(
 
 #[tauri::command]
 fn load_run_snapshot(db: tauri::State<'_, Db>, slot_id: String) -> CmdResult<Option<Value>> {
+    validate_slot_id(&slot_id)?;
+
     let conn = db.0.lock().map_err(|e| CmdError::new("lock", e, true))?;
     let mut stmt = conn.prepare("SELECT record FROM save_slots WHERE slot_id = ?1")?;
     let mut rows = stmt.query([&slot_id])?;
@@ -160,15 +268,21 @@ fn load_run_snapshot(db: tauri::State<'_, Db>, slot_id: String) -> CmdResult<Opt
 fn list_save_slots(db: tauri::State<'_, Db>) -> CmdResult<Vec<Value>> {
     let conn = db.0.lock().map_err(|e| CmdError::new("lock", e, true))?;
     let mut stmt = conn.prepare(
-        "SELECT slot_id, saved_at, seed, difficulty, round, life, max_grade, data_version
+        "SELECT slot_id, saved_at, seed, difficulty, round, life, max_grade, data_version, record
          FROM save_slots ORDER BY slot_id",
     )?;
     let rows = stmt.query_map([], |row| {
+        let record_raw: String = row.get(8)?;
+        let stage_id = serde_json::from_str::<Value>(&record_raw)
+            .ok()
+            .and_then(|v| v.get("stageId").and_then(|x| x.as_i64()))
+            .unwrap_or(1);
         Ok(serde_json::json!({
             "slotId": row.get::<_, String>(0)?,
             "savedAt": row.get::<_, String>(1)?,
             "seed": row.get::<_, String>(2)?,
             "difficulty": row.get::<_, String>(3)?,
+            "stageId": stage_id,
             "round": row.get::<_, i64>(4)?,
             "life": row.get::<_, i64>(5)?,
             "maxGrade": row.get::<_, String>(6)?,
@@ -184,6 +298,8 @@ fn list_save_slots(db: tauri::State<'_, Db>) -> CmdResult<Vec<Value>> {
 
 #[tauri::command]
 fn delete_save_slot(db: tauri::State<'_, Db>, slot_id: String) -> CmdResult<()> {
+    validate_slot_id(&slot_id)?;
+
     let conn = db.0.lock().map_err(|e| CmdError::new("lock", e, true))?;
     conn.execute("DELETE FROM save_slots WHERE slot_id = ?1", [&slot_id])?;
     Ok(())
@@ -191,6 +307,8 @@ fn delete_save_slot(db: tauri::State<'_, Db>, slot_id: String) -> CmdResult<()> 
 
 #[tauri::command]
 fn record_run_result(db: tauri::State<'_, Db>, summary: Value) -> CmdResult<()> {
+    validate_run_summary(&summary)?;
+
     let conn = db.0.lock().map_err(|e| CmdError::new("lock", e, true))?;
     let played_at = record_str(&summary, "playedAt");
     conn.execute(
@@ -229,24 +347,33 @@ fn write_run_report(
     content: String,
 ) -> CmdResult<String> {
     // 경로 탈출 방지: 파일명만 허용
-    let safe_name = filename.replace(['/', '\\', ':'], "_");
+    validate_report(&filename, &content)?;
     let reports_dir = paths.data_dir.join("reports");
     fs::create_dir_all(&reports_dir)?;
-    let path = reports_dir.join(safe_name);
+    let path = reports_dir.join(filename);
     fs::write(&path, content)?;
     Ok(path.to_string_lossy().to_string())
 }
 
 #[tauri::command]
 fn open_app_data_dir(paths: tauri::State<'_, AppPaths>) -> CmdResult<()> {
-    let dir = paths.data_dir.clone();
-    #[cfg(target_os = "windows")]
-    std::process::Command::new("explorer").arg(&dir).spawn()?;
-    #[cfg(target_os = "macos")]
-    std::process::Command::new("open").arg(&dir).spawn()?;
-    #[cfg(target_os = "linux")]
-    std::process::Command::new("xdg-open").arg(&dir).spawn()?;
-    Ok(())
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = paths;
+        return Err(CmdError::new("forbidden", "debug only command", false));
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        let dir = paths.data_dir.clone();
+        #[cfg(target_os = "windows")]
+        std::process::Command::new("explorer").arg(&dir).spawn()?;
+        #[cfg(target_os = "macos")]
+        std::process::Command::new("open").arg(&dir).spawn()?;
+        #[cfg(target_os = "linux")]
+        std::process::Command::new("xdg-open").arg(&dir).spawn()?;
+        Ok(())
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -307,6 +434,7 @@ mod tests {
             "savedAt": "2026-06-12T00:00:00Z",
             "seed": "TEST",
             "difficulty": "novice",
+            "stageId": 3,
             "round": 7,
             "life": 18,
             "maxGrade": "rare",

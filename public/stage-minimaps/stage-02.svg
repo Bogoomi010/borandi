@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200" role="img" aria-label="잿빛 고갯길 미니맵">
+  <rect width="320" height="200" rx="16" fill="#25262a"/>
+  <rect x="7" y="7" width="306" height="186" rx="12" fill="#8a8d92" fill-opacity=".08" stroke="#8a8d92" stroke-opacity=".28"/>
+  <path d="M 40 0 V 200 M 0 25 H 320" stroke="#484a4f" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 80 0 V 200 M 0 50 H 320" stroke="#484a4f" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 120 0 V 200 M 0 75 H 320" stroke="#484a4f" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 160 0 V 200 M 0 100 H 320" stroke="#484a4f" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 200 0 V 200 M 0 125 H 320" stroke="#484a4f" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 240 0 V 200 M 0 150 H 320" stroke="#484a4f" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 280 0 V 200 M 0 175 H 320" stroke="#484a4f" stroke-opacity=".18" stroke-width="1"/>
+  <circle cx="80.9" cy="58.8" r="4.6" fill="#665c40" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="178.9" cy="50.2" r="4.6" fill="#6c5439" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="203.2" cy="120.3" r="5.8" fill="#9da2aa" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="120.5" cy="143" r="5.2" fill="#d26ca3" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <path d="M 41.4 43.5 L 144.8 43.5 L 144.8 77.3 L 263.4 77.3 L 263.4 155.9 L 53.5 155.9 L 53.5 116 L 222.4 116" fill="none" stroke="#05070b" stroke-opacity=".65" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 41.4 43.5 L 144.8 43.5 L 144.8 77.3 L 263.4 77.3 L 263.4 155.9 L 53.5 155.9 L 53.5 116 L 222.4 116" fill="none" stroke="#d7c08a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 41.4 43.5 L 144.8 43.5 L 144.8 77.3 L 263.4 77.3 L 263.4 155.9 L 53.5 155.9 L 53.5 116 L 222.4 116" fill="none" stroke="#fff1b8" stroke-opacity=".52" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="41.4" cy="43.5" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="144.8" cy="43.5" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="144.8" cy="77.3" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="263.4" cy="77.3" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="263.4" cy="155.9" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="53.5" cy="155.9" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="53.5" cy="116" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="222.4" cy="116" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="41.4" cy="43.5" r="6.2" fill="#6ee0a0" stroke="#0b0e16" stroke-width="1.5"/>
+  <circle cx="222.4" cy="116" r="6.2" fill="#e85c66" stroke="#0b0e16" stroke-width="1.5"/>
+  <text x="14" y="184" fill="#f3f6ff" font-family="Arial, sans-serif" font-size="13" font-weight="700">2. 잿빛 고갯길</text>
+</svg>

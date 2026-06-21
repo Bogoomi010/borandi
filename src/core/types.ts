@@ -129,14 +129,17 @@ export interface UpgradeDef {
 }
 
 export interface DifficultyDef {
-  id: "novice" | "normal";
+  id: DifficultyId;
   name: string;
   unitCap: number;
   enemyHpMult: number;
+  enemyLimit: number;
   goldMult: number;
   startGold: number;
   startLife: number;
 }
+
+export type DifficultyId = "novice" | "normal" | "intermediate" | "expert" | "master";
 
 // ===== 런타임 상태 =====
 
@@ -209,8 +212,7 @@ export interface GameInput {
   tick: number;
   type: "summon" | "merge3" | "craft" | "sell" | "upgrade" | "toggleLock"
       | "startWave" | "nextRound" | "pickSelector" | "setSpeed"
-      | "cmdMove" | "cmdAttackMove" | "cmdAttack" | "cmdStop"
-      | "devSpawn"; // DEV전용: 원하는 유닛 즉시 생성 (출시 전 제거)
+      | "cmdMove" | "cmdAttackMove" | "cmdAttack" | "cmdStop";
   payload?: Record<string, unknown>;
 }
 
@@ -218,6 +220,7 @@ export interface GameState {
   dataVersion: string;
   seed: string;
   difficulty: DifficultyDef["id"];
+  stageId: number;
   tick: number;
   time: number; // 게임 시간(초)
   round: number;
@@ -255,12 +258,19 @@ export interface GameState {
 
 export interface ResultSummary {
   seed: string;
+  difficultyId: DifficultyId;
   difficulty: string;
+  stageId: number;
+  stageName: string;
   dataVersion: string;
+  stateChecksum: string;
   cleared: boolean;
   reachedRound: number;
   life: number;
   maxGrade: Grade;
+  legendCount: number;
+  hiddenCount: number;
+  legendOrBetterCount: number;
   missionsDone: number;
   missionsTotal: number;
   topDealers: { name: string; grade: Grade; damage: number }[];
@@ -270,5 +280,10 @@ export interface ResultSummary {
   pityTriggered: number;
   craftCount: number;
   merge3Count: number;
+  inputCount: number;
+  inputCounts: Record<string, number>;
   playedAt: string;
+  manualStartedAt?: string;
+  wallSeconds?: number;
+  unlockedNextStage?: boolean;
 }

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200" role="img" aria-label="납골당 소용돌이 미니맵">
+  <rect width="320" height="200" rx="16" fill="#161f2d"/>
+  <rect x="7" y="7" width="306" height="186" rx="12" fill="#50a4c8" fill-opacity=".08" stroke="#50a4c8" stroke-opacity=".28"/>
+  <path d="M 40 0 V 200 M 0 25 H 320" stroke="#2e5d7c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 80 0 V 200 M 0 50 H 320" stroke="#2e5d7c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 120 0 V 200 M 0 75 H 320" stroke="#2e5d7c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 160 0 V 200 M 0 100 H 320" stroke="#2e5d7c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 200 0 V 200 M 0 125 H 320" stroke="#2e5d7c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 240 0 V 200 M 0 150 H 320" stroke="#2e5d7c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 280 0 V 200 M 0 175 H 320" stroke="#2e5d7c" stroke-opacity=".18" stroke-width="1"/>
+  <circle cx="133.8" cy="52.7" r="6.6" fill="#9b9fb0" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="70.6" cy="108" r="4.5" fill="#a4a6ad" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="210.5" cy="136.2" r="5.3" fill="#8a5440" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="240.9" cy="100.6" r="5.3" fill="#d3ca8a" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <path d="M 44.4 42.9 L 272.5 42.9 L 272.5 157.1 L 49.9 157.1 L 49.9 68.7 L 245.2 68.7 L 245.2 130.7 L 90 130.7 L 90 97.5 L 208.7 97.5" fill="none" stroke="#05070b" stroke-opacity=".65" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 44.4 42.9 L 272.5 42.9 L 272.5 157.1 L 49.9 157.1 L 49.9 68.7 L 245.2 68.7 L 245.2 130.7 L 90 130.7 L 90 97.5 L 208.7 97.5" fill="none" stroke="#d7c08a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 44.4 42.9 L 272.5 42.9 L 272.5 157.1 L 49.9 157.1 L 49.9 68.7 L 245.2 68.7 L 245.2 130.7 L 90 130.7 L 90 97.5 L 208.7 97.5" fill="none" stroke="#fff1b8" stroke-opacity=".52" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="44.4" cy="42.9" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="272.5" cy="42.9" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="272.5" cy="157.1" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="49.9" cy="157.1" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="49.9" cy="68.7" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="245.2" cy="68.7" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="245.2" cy="130.7" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="90" cy="130.7" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="90" cy="97.5" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="208.7" cy="97.5" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="44.4" cy="42.9" r="6.2" fill="#6ee0a0" stroke="#0b0e16" stroke-width="1.5"/>
+  <circle cx="208.7" cy="97.5" r="6.2" fill="#e85c66" stroke="#0b0e16" stroke-width="1.5"/>
+  <text x="14" y="184" fill="#f3f6ff" font-family="Arial, sans-serif" font-size="13" font-weight="700">7. 납골당 소용돌이</text>
+</svg>

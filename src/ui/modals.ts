@@ -2,23 +2,56 @@
 
 import type { AppCtx } from "./ctx";
 import { el, openModal, toast } from "./widgets";
-import { GRADE_LABEL, FAMILY_LABEL, ROLE_LABEL, type ResultSummary } from "../core/types";
+import { GRADE_LABEL, FAMILY_LABEL, ROLE_LABEL, type DifficultyId, type ResultSummary } from "../core/types";
 import { UNIT_BY_ID } from "../data/units";
 import { DIFFICULTIES } from "../data/difficulty";
+import { STAGES, stageById } from "../data/stages";
+import { DATA_VERSION } from "../data/version";
 import { randomSeed } from "../core/rng";
 import { stateChecksum } from "../core/checksum";
 import {
   deleteSlot, listSlots, loadSlot, makeSaveRecord, recordResult,
-  saveSlot, writeReport, isTauri, openAppDataDir, type SlotMeta,
+  saveSlot, writeReport, isTauri, openAppDataDir, canOpenAppDataDir, type SlotMeta,
 } from "../save/saveApi";
 import { replay } from "../core/engine";
 import { runSimulation, reportToMarkdown } from "../sim/runner";
+import {
+  BALANCE_GATE_DEFAULT_SEEDS,
+  BALANCE_SCENARIOS,
+  balanceGateToJson,
+  balanceGateToMarkdown,
+  evaluateBalanceGate,
+  type BalanceGateResult,
+  type BalanceScenarioResult,
+} from "../sim/balanceGate";
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
+import { initialNewRunStageId } from "./settings";
+import { FINAL_ROUND } from "../data/waves";
+import { manualProofFinishReadiness, manualProofTargetFor, type ManualProofTargetStatus } from "../core/manualProof";
+import { manualProofResultChecklist, manualProofResultLogNote, manualProofResultTarget } from "../core/manualProofResult";
+import {
+  manualStartCommand as buildManualStartCommand,
+  manualDryRunCommand,
+  manualNextCommand,
+  manualNextJsonCommand,
+  manualPendingIdCommand as buildManualPendingIdCommand,
+  manualPlanCommand,
+  manualPreflightCommand,
+  manualPreflightJsonCommand,
+  manualSheetCommand,
+  manualStartId,
+  manualStartNextCommand as buildManualStartNextCommand,
+  manualStartValidateSaveCommand,
+  manualSummaryCommand,
+  manualSummaryJsonCommand,
+  shellArg,
+} from "../core/manualProofCommands";
 
 // ---------- 선택권 ----------
 
 let selectorOpen = false;
 
+// COMPONENT: SelectorModal - reward chooser for pending unit selector tickets.
 export function openSelectorModal(ctx: AppCtx) {
   const s = ctx.game.state;
   if (selectorOpen || s.pendingSelectors.length === 0) return;
@@ -62,17 +95,241 @@ export function openSelectorModal(ctx: AppCtx) {
 
 // ---------- 결과 ----------
 
+function legendOrBetterCount(ctx: AppCtx): number {
+  return ctx.game.state.units.filter((unit) => {
+    const grade = UNIT_BY_ID[unit.defId].grade;
+    return grade === "legend" || grade === "hidden";
+  }).length;
+}
+
+function manualStartCommand(ctx: AppCtx): string {
+  const s = ctx.game.state;
+  const target = manualProofTargetFor(s.difficulty, legendOrBetterCount(ctx));
+  return buildManualStartCommand({
+    difficultyId: s.difficulty,
+    stageId: s.stageId,
+    seed: s.seed,
+    startedAt: ctx.runStartedAt,
+    notes: target.label,
+  });
+}
+
+function manualPendingIdCommand(ctx: AppCtx): string {
+  const s = ctx.game.state;
+  const target = manualProofTargetFor(s.difficulty, legendOrBetterCount(ctx));
+  return buildManualPendingIdCommand({
+    difficultyId: s.difficulty,
+    stageId: s.stageId,
+    seed: s.seed,
+    startedAt: ctx.runStartedAt,
+    notes: target.label,
+  });
+}
+
+function manualStartNextCommand(ctx: AppCtx): string {
+  const s = ctx.game.state;
+  return buildManualStartNextCommand({
+    difficultyId: s.difficulty,
+    stageId: s.stageId,
+    seed: s.seed,
+    startedAt: ctx.runStartedAt,
+  });
+}
+
+export function currentManualProofSummary(ctx: AppCtx, nowIso = new Date().toISOString(), nowMs = performance.now()): ResultSummary {
+  const summary = ctx.game.resultSummary();
+  summary.playedAt = nowIso;
+  summary.manualStartedAt = ctx.runStartedAt;
+  summary.unlockedNextStage = ctx.lastRunUnlockedNext;
+  summary.wallSeconds = Math.max(1, Math.round((nowMs - ctx.runStartedAtMs) / 1000));
+  return summary;
+}
+
+function currentRunManualProofNote(target: ManualProofTargetStatus): string {
+  if (target.state === "ok") {
+    return "현재 보유 조건은 목표에 맞습니다. 12분 이상 실제 플레이 후 결과 화면의 기록 명령으로 저장하세요.";
+  }
+  if (target.state === "warn") {
+    return "현재 보유 조건은 이 목표 증거로 인정되기 어렵습니다. 결과는 실제 플레이 시간으로 남길 수 있지만 목표 세션은 다시 필요할 수 있습니다.";
+  }
+  return "아직 목표 결과까지 확인해야 합니다. 12분 이상 플레이한 뒤 결과 화면 체크리스트에서 최종 충족 여부를 확인하세요.";
+}
+
+function manualInputTypes(r: ResultSummary): string {
+  return Object.keys(r.inputCounts).sort().join(",");
+}
+
+function manualInputCounts(r: ResultSummary): string {
+  return Object.entries(r.inputCounts)
+    .filter(([, count]) => count > 0)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([type, count]) => `${type}:${count}`)
+    .join(",");
+}
+
+export function manualPlaylogCommand(r: ResultSummary): string {
+  const seconds = Math.max(1, Math.round(r.wallSeconds ?? 0));
+  const result = r.cleared ? "clear" : "loss";
+  const args = [
+    "yarn manual-playlog",
+    `--difficulty=${r.difficultyId}`,
+    `--seconds=${seconds}`,
+    `--result=${result}`,
+    `--stage=${r.stageId}`,
+    `--round=${r.reachedRound}`,
+    `--seed=${shellArg(r.seed)}`,
+    `--legends=${r.legendOrBetterCount}`,
+    `--maxGrade=${r.maxGrade}`,
+    `--dataVersion=${shellArg(r.dataVersion)}`,
+    `--stateChecksum=${shellArg(r.stateChecksum)}`,
+    `--inputCount=${r.inputCount}`,
+  ];
+  const inputTypes = manualInputTypes(r);
+  const inputCounts = manualInputCounts(r);
+  if (inputTypes) args.push(`--inputTypes=${shellArg(inputTypes)}`);
+  if (inputCounts) args.push(`--inputCounts=${shellArg(inputCounts)}`);
+  if (r.manualStartedAt) args.push(`--startedAt=${shellArg(r.manualStartedAt)}`);
+  if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
+  args.push(`--notes=${shellArg(manualProofResultLogNote(r))}`);
+  return args.join(" ");
+}
+
+export function manualPlaylogDryRunCommand(r: ResultSummary): string {
+  return manualDryRunCommand(manualPlaylogCommand(r));
+}
+
+export function manualPlaylogFinishCommand(r: ResultSummary): string {
+  const startedAt = r.manualStartedAt ?? r.playedAt;
+  const id = manualStartId(r.difficultyId, r.stageId, r.seed, startedAt);
+  const result = r.cleared ? "clear" : "loss";
+  const args = [
+    "yarn manual-playlog",
+    `--finish=${shellArg(id)}`,
+    `--result=${result}`,
+    `--round=${r.reachedRound}`,
+    `--legends=${r.legendOrBetterCount}`,
+    `--maxGrade=${r.maxGrade}`,
+    `--dataVersion=${shellArg(r.dataVersion)}`,
+    `--stateChecksum=${shellArg(r.stateChecksum)}`,
+    `--inputCount=${r.inputCount}`,
+  ];
+  const inputTypes = manualInputTypes(r);
+  const inputCounts = manualInputCounts(r);
+  if (inputTypes) args.push(`--inputTypes=${shellArg(inputTypes)}`);
+  if (inputCounts) args.push(`--inputCounts=${shellArg(inputCounts)}`);
+  if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
+  args.push(`--notes=${shellArg(manualProofResultLogNote(r))}`);
+  return args.join(" ");
+}
+
+export function manualPlaylogFinishDryRunCommand(r: ResultSummary): string {
+  return manualDryRunCommand(manualPlaylogFinishCommand(r));
+}
+
+export function manualPlaylogFinishLatestCommand(r: ResultSummary): string {
+  const result = r.cleared ? "clear" : "loss";
+  const args = [
+    "yarn manual-playlog",
+    "--finish-latest",
+    `--result=${result}`,
+    `--round=${r.reachedRound}`,
+    `--legends=${r.legendOrBetterCount}`,
+    `--maxGrade=${r.maxGrade}`,
+    `--dataVersion=${shellArg(r.dataVersion)}`,
+    `--stateChecksum=${shellArg(r.stateChecksum)}`,
+    `--inputCount=${r.inputCount}`,
+  ];
+  const inputTypes = manualInputTypes(r);
+  const inputCounts = manualInputCounts(r);
+  if (inputTypes) args.push(`--inputTypes=${shellArg(inputTypes)}`);
+  if (inputCounts) args.push(`--inputCounts=${shellArg(inputCounts)}`);
+  if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
+  args.push(`--notes=${shellArg(manualProofResultLogNote(r))}`);
+  return args.join(" ");
+}
+
+export function manualPlaylogFinishLatestDryRunCommand(r: ResultSummary): string {
+  return manualDryRunCommand(manualPlaylogFinishLatestCommand(r));
+}
+
+export function manualPlaylogThenNextCommand(r: ResultSummary): string {
+  return `${manualPlaylogCommand(r)} && yarn manual-playlog --next`;
+}
+
+export function manualPlaylogFinishLatestThenNextCommand(r: ResultSummary): string {
+  return `${manualPlaylogFinishLatestCommand(r)} && yarn manual-playlog --next`;
+}
+
+export function manualPlaylogResultExportJson(r: ResultSummary): string {
+  return JSON.stringify({
+    schemaVersion: 1,
+    kind: "manual-playlog-result",
+    exportedAt: new Date().toISOString(),
+    notes: manualProofResultLogNote(r),
+    summary: r,
+  }, null, 2);
+}
+
+function manualPlaylogResultEmbeddedJsonCommand(json: string, dryRun: boolean, thenNext = false): string {
+  const marker = "BORANDI_MANUAL_RESULT_JSON";
+  const afterCommand = thenNext ? " && yarn manual-playlog --next" : "";
+  return [
+    `cat <<'${marker}' | yarn manual-playlog --from-result=-${dryRun ? " --dry-run" : ""}${afterCommand}`,
+    json,
+    marker,
+  ].join("\n");
+}
+
+function manualPlaylogResultValidateSaveNextCommand(json: string): string {
+  const marker = "BORANDI_MANUAL_RESULT_JSON";
+  return [
+    `tmpfile=$(mktemp "\${TMPDIR:-/tmp}/borandi-manual-result.XXXXXX") && {`,
+    `cat > "$tmpfile" <<'${marker}'`,
+    json,
+    marker,
+    `yarn manual-playlog --from-result="$tmpfile" --dry-run && yarn manual-playlog --from-result="$tmpfile" && yarn manual-playlog --next`,
+    `status=$?`,
+    `rm -f "$tmpfile"`,
+    `test $status -eq 0`,
+    `}`,
+  ].join("\n");
+}
+
+function mapPermissionMessage(r: ResultSummary): string {
+  const finalBossCleared = r.cleared &&
+    r.reachedRound >= FINAL_ROUND &&
+    r.bossKills.some((boss) => boss.round === FINAL_ROUND);
+  if (finalBossCleared) {
+    return "40R 최종 보스를 클리어했습니다. 다음 새 게임에서도 전체 맵을 자유롭게 선택할 수 있습니다.";
+  }
+  return "이 판에서는 맵이 바뀌지 않습니다. 다음 새 게임에서는 전체 맵 중 원하는 맵을 바로 선택할 수 있습니다.";
+}
+
 export function buildReportMarkdown(r: ResultSummary): string {
+  const proofTarget = manualProofResultTarget(r);
+  const proofChecks = manualProofResultChecklist(r);
   const lines = [
     `# 차원 균열 랜덤 디펜스 결과`,
     ``,
-    `- 결과: ${r.cleared ? "클리어 🎉" : "패배"}`,
-    `- 도달 스테이지: ${r.reachedRound}`,
+    `- 결과: ${r.cleared ? "클리어" : "패배"}`,
+    `- 맵: ${r.stageId}. ${r.stageName}`,
+    `- 맵 진행 방식: 새 게임 시작 때 고른 맵으로 1~40R 최종 보스까지 고정`,
+    `- 선택 가능 맵: ${mapPermissionMessage(r)}`,
+    `- 도달 라운드: ${r.reachedRound}`,
     `- 시드: \`${r.seed}\` / 난이도: ${r.difficulty} / 데이터 버전: ${r.dataVersion}`,
+    `- 상태 체크섬: \`${r.stateChecksum}\``,
     `- 남은 라이프: ${r.life}`,
     `- 최고 등급: ${GRADE_LABEL[r.maxGrade]}`,
+    `- 전설/히든: ${r.legendCount}/${r.hiddenCount}`,
     `- 미션: ${r.missionsDone}/${r.missionsTotal}`,
     `- 조합 ${r.craftCount}회 · 3합성 ${r.merge3Count}회 · 보정 발동 ${r.pityTriggered}회`,
+    `- 플레이 입력: ${r.inputCount}회${Object.keys(r.inputCounts).length > 0 ? ` (${Object.entries(r.inputCounts).map(([type, count]) => `${type} ${count}`).join(", ")})` : ""}`,
+    ...(r.wallSeconds ? [`- 실제 플레이 시간: ${(r.wallSeconds / 60).toFixed(1)}분`] : []),
+    ...(r.wallSeconds ? [`- 수동 증거 판정: ${proofTarget}`] : []),
+    ``,
+    `## 수동 증거 체크리스트`,
+    ``,
+    ...proofChecks.map((check) => `- ${check.ok ? "충족" : "부족"}: ${check.label} (${check.detail})`),
     ``,
     `## 주요 딜러`,
     ``,
@@ -88,24 +345,96 @@ export function buildReportMarkdown(r: ResultSummary): string {
   if (r.failHint) {
     lines.push("", "## 개선 힌트", "", `- ${r.failHint}`);
   }
+  if (r.wallSeconds) {
+    lines.push(
+      "",
+      "## 수동 플레이 로그",
+      "",
+      `- 판정: ${proofTarget}`,
+      "",
+      "## 저장 전 검증",
+      "",
+      "```bash",
+      manualPlaylogDryRunCommand(r),
+      "```",
+      "",
+      "## 실제 저장",
+      "",
+      "```bash",
+      manualPlaylogCommand(r),
+      "```",
+      "",
+      "## 기록 후 다음 확인",
+      "",
+      "```bash",
+      manualPlaylogThenNextCommand(r),
+      "```",
+      "",
+      "## 시작 마커 저장 전 검증",
+      "",
+      "```bash",
+      manualPlaylogFinishDryRunCommand(r),
+      "```",
+      "",
+      "## 시작 마커로 기록",
+      "",
+      "```bash",
+      manualPlaylogFinishCommand(r),
+      "```",
+      "",
+      "## 최근 시작 마커 저장 전 검증",
+      "",
+      "```bash",
+      manualPlaylogFinishLatestDryRunCommand(r),
+      "```",
+      "",
+      "## 가장 최근 시작 마커로 기록",
+      "",
+      "```bash",
+      manualPlaylogFinishLatestCommand(r),
+      "```",
+      "",
+      "## 최근 시작 마커 기록 후 다음 확인",
+      "",
+      "```bash",
+      manualPlaylogFinishLatestThenNextCommand(r),
+      "```",
+    );
+  }
   lines.push("", `played at ${r.playedAt}`);
   return lines.join("\n");
 }
 
 let resultShown = false;
 
+// COMPONENT: ResultModal - opens the end-of-run summary and report/export actions.
 export function maybeShowResult(ctx: AppCtx) {
   const s = ctx.game.state;
   if (s.phase !== "ended" || resultShown) return;
   resultShown = true;
 
   const summary = ctx.game.resultSummary();
-  summary.playedAt = new Date().toISOString();
+  summary.playedAt = ctx.runEndedAt ?? new Date().toISOString();
+  summary.manualStartedAt = ctx.runStartedAt;
+  summary.unlockedNextStage = ctx.lastRunUnlockedNext;
+  const endedAtMs = ctx.runEndedAtMs ?? performance.now();
+  const wallSeconds = Math.max(1, Math.round((endedAtMs - ctx.runStartedAtMs) / 1000));
+  summary.wallSeconds = wallSeconds;
   ctx.audio.sfx(summary.cleared ? "victory" : "defeat");
   void recordResult(summary).catch(() => toast("결과 저장 실패", "danger"));
 
   openModal((body, close) => {
-    body.appendChild(el("h2", "", summary.cleared ? "🎉 15스테이지 클리어!" : `${summary.reachedRound}스테이지에서 패배`));
+    const proofTarget = manualProofResultTarget(summary);
+    const proofChecks = manualProofResultChecklist(summary);
+    const proofPassed = proofChecks.every((check) => check.ok);
+    body.appendChild(el("h2", "", summary.cleared ? `선택한 맵 40라운드 보스 클리어!` : `${summary.reachedRound}라운드에서 패배`));
+    body.appendChild(el(
+      "div",
+      proofPassed ? "result-proof-ok" : "result-hint",
+      proofPassed
+        ? `수동 목표 증거 충족: ${proofTarget}. 아래 로그 명령으로 저장하세요.`
+        : `수동 목표 증거 미충족: ${proofTarget}. 아래 체크리스트의 부족 항목을 확인하세요.`,
+    ));
 
     const grid = el("div", "result-stats");
     const kv = (k: string, v: string) => {
@@ -113,8 +442,14 @@ export function maybeShowResult(ctx: AppCtx) {
       grid.appendChild(el("span", "", v));
     };
     kv("시드", summary.seed);
+    kv("맵", `${summary.stageId}. ${summary.stageName}`);
+    kv("맵 진행", "새 게임에서 고른 맵으로 1~40R 보스까지 고정");
+    kv("맵 선택", mapPermissionMessage(summary));
     kv("난이도", summary.difficulty);
     kv("최고 등급", GRADE_LABEL[summary.maxGrade]);
+    kv("전설/히든", `${summary.legendCount} / ${summary.hiddenCount}`);
+    kv("실제 플레이", `${(wallSeconds / 60).toFixed(1)}분`);
+    kv("수동 증거", proofTarget);
     kv("미션", `${summary.missionsDone}/${summary.missionsTotal}`);
     kv("조합/3합성", `${summary.craftCount} / ${summary.merge3Count}`);
     kv("보정 발동", `${summary.pityTriggered}회`);
@@ -132,11 +467,61 @@ export function maybeShowResult(ctx: AppCtx) {
       body.appendChild(table);
     }
 
+    body.appendChild(el("h3", "", "수동 증거 체크리스트"));
+    const proofTable = el("table", "kv-table");
+    for (const check of proofChecks) {
+      const tr = el("tr");
+      tr.appendChild(el("td", "", check.ok ? "충족" : "부족"));
+      tr.appendChild(el("td", "", check.label));
+      tr.appendChild(el("td", "", check.detail));
+      proofTable.appendChild(tr);
+    }
+    body.appendChild(proofTable);
+
     if (summary.failHint) {
       body.appendChild(el("div", "result-hint", `💡 ${summary.failHint}`));
     }
 
     const row = el("div", "row-btns");
+    const manualCommand = manualPlaylogCommand(summary);
+    const manualDryRunSaveCommand = manualPlaylogDryRunCommand(summary);
+    const manualFinishCommand = manualPlaylogFinishCommand(summary);
+    const manualFinishDryRunCommand = manualPlaylogFinishDryRunCommand(summary);
+    const manualFinishLatestCommand = manualPlaylogFinishLatestCommand(summary);
+    const manualFinishLatestDryRunCommand = manualPlaylogFinishLatestDryRunCommand(summary);
+    const manualThenNextCommand = manualPlaylogThenNextCommand(summary);
+    const manualFinishLatestThenNextCommand = manualPlaylogFinishLatestThenNextCommand(summary);
+    const manualResultJson = manualPlaylogResultExportJson(summary);
+    const manualClipboardDryRunCommand = "yarn manual-playlog --from-clipboard --dry-run";
+    const manualClipboardCommand = "yarn manual-playlog --from-clipboard";
+    const manualEmbeddedJsonDryRunCommand = manualPlaylogResultEmbeddedJsonCommand(manualResultJson, true);
+    const manualEmbeddedJsonCommand = manualPlaylogResultEmbeddedJsonCommand(manualResultJson, false);
+    const manualEmbeddedJsonThenNextCommand = manualPlaylogResultEmbeddedJsonCommand(manualResultJson, false, true);
+    const manualEmbeddedJsonValidateSaveNextCommand = manualPlaylogResultValidateSaveNextCommand(manualResultJson);
+
+    body.appendChild(el("h3", "", "수동 플레이 로그"));
+    body.appendChild(el("h3", "", "결과 JSON 저장 후 검증"));
+    body.appendChild(el("pre", "report", "yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --dry-run"));
+    body.appendChild(el("h3", "", "클립보드 JSON 저장 전 검증"));
+    body.appendChild(el("pre", "report", manualClipboardDryRunCommand));
+    body.appendChild(el("h3", "", "클립보드 JSON 실제 저장"));
+    body.appendChild(el("pre", "report", manualClipboardCommand));
+    body.appendChild(el("h3", "", "저장 전 검증"));
+    body.appendChild(el("pre", "report", manualDryRunSaveCommand));
+    body.appendChild(el("h3", "", "실제 저장"));
+    body.appendChild(el("pre", "report", manualCommand));
+    body.appendChild(el("h3", "", "기록 후 다음 확인"));
+    body.appendChild(el("pre", "report", manualThenNextCommand));
+    body.appendChild(el("h3", "", "시작 마커 저장 전 검증"));
+    body.appendChild(el("pre", "report", manualFinishDryRunCommand));
+    body.appendChild(el("h3", "", "시작 마커로 기록"));
+    body.appendChild(el("pre", "report", manualFinishCommand));
+    body.appendChild(el("h3", "", "최근 시작 마커 저장 전 검증"));
+    body.appendChild(el("pre", "report", manualFinishLatestDryRunCommand));
+    body.appendChild(el("h3", "", "가장 최근 시작 마커로 기록"));
+    body.appendChild(el("pre", "report", manualFinishLatestCommand));
+    body.appendChild(el("h3", "", "최근 시작 마커 기록 후 다음 확인"));
+    body.appendChild(el("pre", "report", manualFinishLatestThenNextCommand));
 
     const exportBtn = el("button", "", "리포트 내보내기 (.md)");
     exportBtn.onclick = async () => {
@@ -152,16 +537,151 @@ export function maybeShowResult(ctx: AppCtx) {
     };
     row.appendChild(exportBtn);
 
+    const exportJsonBtn = el("button", "", "증거 JSON 내보내기");
+    exportJsonBtn.onclick = async () => {
+      try {
+        const path = await writeReport(
+          `randi-manual-result-${summary.seed}-${Date.now()}.json`,
+          manualResultJson,
+        );
+        toast(`증거 JSON 저장: ${path}`, "ok", 4000);
+      } catch {
+        toast("증거 JSON 저장 실패", "danger");
+      }
+    };
+    row.appendChild(exportJsonBtn);
+
+    const copyJsonBtn = el("button", "", "증거 JSON 복사");
+    copyJsonBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualResultJson);
+        toast("증거 JSON을 복사했습니다. 터미널에서 --from-clipboard --dry-run을 실행하세요", "ok", 4000);
+      } catch {
+        toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn");
+      }
+    };
+    row.appendChild(copyJsonBtn);
+
+    const copyEmbeddedJsonDryRun = el("button", "", "JSON포함 검증 복사");
+    copyEmbeddedJsonDryRun.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualEmbeddedJsonDryRunCommand);
+        toast("JSON 포함 검증 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn");
+      }
+    };
+    row.appendChild(copyEmbeddedJsonDryRun);
+
+    const copyEmbeddedJsonSave = el("button", "", "JSON포함 저장 복사");
+    copyEmbeddedJsonSave.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualEmbeddedJsonCommand);
+        toast("JSON 포함 저장 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn");
+      }
+    };
+    row.appendChild(copyEmbeddedJsonSave);
+
+    const copyEmbeddedJsonSaveNext = el("button", "", "JSON포함 저장+다음 복사");
+    copyEmbeddedJsonSaveNext.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualEmbeddedJsonThenNextCommand);
+        toast("JSON 포함 저장 후 다음 확인 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn");
+      }
+    };
+    row.appendChild(copyEmbeddedJsonSaveNext);
+
+    const copyEmbeddedJsonValidateSaveNext = el("button", "", "JSON검증+저장+다음 복사");
+    copyEmbeddedJsonValidateSaveNext.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualEmbeddedJsonValidateSaveNextCommand);
+        toast("JSON 검증 후 저장 및 다음 확인 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn");
+      }
+    };
+    row.appendChild(copyEmbeddedJsonValidateSaveNext);
+
+    const copyDryRun = el("button", "", "검증 명령 복사");
+    copyDryRun.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualDryRunSaveCommand);
+        toast("저장 전 dry-run 검증 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
+      }
+    };
+    row.appendChild(copyDryRun);
+
+    const copyLog = el("button", "", "로그 명령 복사");
+    copyLog.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualCommand);
+        toast("수동 플레이 로그 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
+      }
+    };
+    row.appendChild(copyLog);
+
+    const copyLogNext = el("button", "", "기록+다음 복사");
+    copyLogNext.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualThenNextCommand);
+        toast("기록 후 다음 세션 확인 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
+      }
+    };
+    row.appendChild(copyLogNext);
+
+    const copyFinish = el("button", "", "마커기록 복사");
+    copyFinish.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualFinishCommand);
+        toast("시작 마커 기반 기록 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
+      }
+    };
+    row.appendChild(copyFinish);
+
+    const copyFinishLatest = el("button", "", "최근마커 기록 복사");
+    copyFinishLatest.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualFinishLatestCommand);
+        toast("가장 최근 시작 마커 기록 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
+      }
+    };
+    row.appendChild(copyFinishLatest);
+
+    const copyFinishLatestNext = el("button", "", "최근기록+다음 복사");
+    copyFinishLatestNext.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualFinishLatestThenNextCommand);
+        toast("최근 시작 마커 기록 후 다음 확인 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
+      }
+    };
+    row.appendChild(copyFinishLatestNext);
+
     const titleBtn = el("button", "", "타이틀로");
     titleBtn.onclick = () => { resetResultShown(); close(); ctx.goTitle(); };
     row.appendChild(titleBtn);
 
     const sameSeed = el("button", "", "같은 시드 재시작");
-    sameSeed.onclick = () => { resultShown = false; close(); ctx.newRun(summary.seed, ctx.game.state.difficulty); };
+    sameSeed.onclick = () => { resultShown = false; close(); ctx.newRun(summary.seed, ctx.game.state.difficulty, ctx.game.state.stageId); };
     row.appendChild(sameSeed);
 
     const newBtn = el("button", "primary", "새 게임");
-    newBtn.onclick = () => { resultShown = false; close(); openNewRunModal(ctx); };
+    newBtn.onclick = () => { close(); openNewRunModal(ctx); };
     row.appendChild(newBtn);
 
     body.appendChild(row);
@@ -172,18 +692,120 @@ export function resetResultShown() { resultShown = false; }
 
 // ---------- 새 게임 ----------
 
+// COMPONENT: NewRunModal - difficulty chooser and random seed launcher.
+const MANUAL_BALANCE_TARGETS: Array<{
+  difficultyId: DifficultyId;
+  difficulty: string;
+  target: string;
+  length: string;
+}> = [
+  { difficultyId: "novice", difficulty: "입문자", target: "무전설 40R 클리어", length: "12분 이상" },
+  { difficultyId: "normal", difficulty: "일반", target: "1~2전설 40R 클리어", length: "12분 이상" },
+  { difficultyId: "intermediate", difficulty: "중급자", target: "5전설 이상 40R 클리어", length: "12분 이상" },
+  { difficultyId: "expert", difficulty: "고수", target: "5전설 이하 실패", length: "12분 이상" },
+  { difficultyId: "expert", difficulty: "고수", target: "6전설 이상 40R 클리어", length: "12분 이상" },
+  { difficultyId: "master", difficulty: "초고수", target: "실패 기록", length: "12분 이상" },
+];
+
+const MANUAL_BALANCE_OBSERVATIONS: Array<{
+  difficultyId: DifficultyId;
+  difficulty: string;
+  target: string;
+  length: string;
+}> = [
+  { difficultyId: "normal", difficulty: "일반", target: "무전설 경계 확인", length: "12분 이상" },
+  { difficultyId: "intermediate", difficulty: "중급자", target: "2전설 경계 확인", length: "12분 이상" },
+  { difficultyId: "expert", difficulty: "고수", target: "제한 없음 성장 확인", length: "12분 이상" },
+  { difficultyId: "master", difficulty: "초고수", target: "추가 실패 확인", length: "12분 이상" },
+];
+
+const MANUAL_START_WORKFLOW = [
+  "다음 목표 난이도로 새 게임을 시작하고 상단의 실제 시드를 확인",
+  "시작 검증 명령의 GAME_SEED_HERE를 실제 시드로 바꿔 --dry-run 실행",
+  "검증이 통과하면 같은 명령에서 --dry-run을 빼고 시작 마커 저장",
+  "12분 이상 실제로 플레이하고 목표 결과 조건 확인",
+  "결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 실행 후 실제 finish 저장",
+];
+
+function manualResultExpected(target?: ManualProofTargetStatus): Record<string, string> {
+  switch (target?.label) {
+    case "입문자 무전설 40R 클리어":
+      return { result: "clear", round: "40", legends: "0", maxGrade: "hero" };
+    case "일반 1~2전설 40R 클리어":
+      return { result: "clear", round: "40", legends: "1~2", maxGrade: "legend" };
+    case "중급자 5전설 이상 40R 클리어":
+      return { result: "clear", round: "40", legends: "5+", maxGrade: "legend|hidden" };
+    case "고수 5전설 이하 실패":
+      return { result: "loss", round: "RESULT_ROUND", legends: "0~5", maxGrade: "hero|legend" };
+    case "고수 6전설 이상 40R 클리어":
+      return { result: "clear", round: "40", legends: "6+", maxGrade: "legend|hidden" };
+    case "초고수 실패 기록":
+      return { result: "loss", round: "RESULT_ROUND", legends: "FINAL_LEGENDS", maxGrade: "MAX_GRADE" };
+    default:
+      return { result: "clear|loss", round: "RESULT_ROUND", legends: "FINAL_LEGENDS", maxGrade: "MAX_GRADE" };
+  }
+}
+
+function appendManualResultFieldChecklist(body: HTMLElement, target?: ManualProofTargetStatus) {
+  const expected = manualResultExpected(target);
+  body.appendChild(el("h3", "", "결과 기록 필드"));
+  const table = el("table", "kv-table");
+  const rows = [
+    ["seed", "새 게임 시작 후 상단 시드 또는 결과 화면", "실제 게임 시드"],
+    ["startedAt", "시작 마커 저장 명령 또는 pending 시작 마커", "실제 시작 시각"],
+    ["endedAt", "결과 화면 RESULT_ENDED_AT", "실제 종료 시각"],
+    ["dataVersion", "결과 화면 RESULT_DATA_VERSION", DATA_VERSION],
+    ["stateChecksum", "결과 화면 RESULT_CHECKSUM", "8자리 checksum"],
+    ["inputCount", "결과 화면 플레이 입력 수", "12 이상"],
+    ["inputTypes", "결과 화면 플레이 입력 종류", "setSpeed 제외 1개 이상"],
+    ["inputCounts", "결과 화면 입력별 횟수", "합계가 inputCount와 일치"],
+    ["result", "결과 화면 클리어/실패 상태", expected.result],
+    ["round", "결과 화면 도달 라운드", expected.round],
+    ["legends", "결과 화면 전설 이상 수", expected.legends],
+    ["maxGrade", "결과 화면 최고 등급", expected.maxGrade],
+    ["minutes", "시작/종료 시각으로 계산된 실제 플레이 시간", "12분 이상"],
+  ];
+  for (const [field, source, value] of rows) {
+    const tr = el("tr");
+    tr.appendChild(el("td", "", field));
+    tr.appendChild(el("td", "", source));
+    tr.appendChild(el("td", "", value));
+    table.appendChild(tr);
+  }
+  body.appendChild(table);
+}
+
+function manualTargetHint(difficultyId: DifficultyId): string {
+  const targets = MANUAL_BALANCE_TARGETS
+    .filter((target) => target.difficultyId === difficultyId)
+    .map((target) => target.target);
+  const observations = MANUAL_BALANCE_OBSERVATIONS
+    .filter((target) => target.difficultyId === difficultyId)
+    .map((target) => `관찰: ${target.target}`);
+  return [...targets, ...observations].join(" / ");
+}
+
+function stageMinimapUrl(stageId: number): string {
+  return `/stage-minimaps/stage-${String(stageId).padStart(2, "0")}.svg`;
+}
+
 export function openNewRunModal(ctx: AppCtx, dismissable = true) {
   openModal((body, close) => {
     body.appendChild(el("h2", "", "새 게임"));
 
     body.appendChild(el("h3", "", "난이도"));
-    let chosen = "novice";
-    const diffRow = el("div", "choice-grid");
+    let chosen: DifficultyId = "novice";
+    let chosenStage = initialNewRunStageId(ctx.game.state.stageId, STAGES.length);
+    const diffRow = el("div", "choice-grid difficulty-choice-grid");
     const diffBtns: HTMLButtonElement[] = [];
     for (const d of DIFFICULTIES) {
-      const b = el("button", "choice-btn") as HTMLButtonElement;
+      const b = el("button", "choice-btn difficulty-choice") as HTMLButtonElement;
       b.appendChild(el("span", "cname", d.name));
-      b.appendChild(el("span", "cdesc", `보유 ${d.unitCap}기 · 적 체력 x${d.enemyHpMult} · 시작 ${d.startGold}골드`));
+      const tooltip = el("span", "difficulty-tooltip");
+      tooltip.appendChild(el("span", "tooltip-title", `${d.name} 난이도`));
+      tooltip.appendChild(el("span", "", `수동 목표: ${manualTargetHint(d.id)}`));
+      tooltip.appendChild(el("span", "", `보유 ${d.unitCap}기 · 적 체력 x${d.enemyHpMult} · 누적 ${d.enemyLimit} · 시작 ${d.startGold}골드`));
+      b.appendChild(tooltip);
       if (d.id === chosen) b.style.borderColor = "var(--accent)";
       b.onclick = () => {
         chosen = d.id;
@@ -195,6 +817,39 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
     }
     body.appendChild(diffRow);
 
+    body.appendChild(el("h3", "", "이번 판 고정 맵 선택"));
+    body.appendChild(el("div", "modal-note map-rule-note", `전체 ${STAGES.length}개 맵을 자유롭게 선택할 수 있습니다. 선택한 맵 하나로 1R부터 40R 최종 보스까지 진행합니다.`));
+    const stageRow = el("div", "choice-grid stage-choice-grid");
+    const stageBtns: HTMLButtonElement[] = [];
+    for (const stage of STAGES) {
+      const b = el("button", "choice-btn stage-choice") as HTMLButtonElement;
+      b.appendChild(el("span", "cname", `${stage.id}. ${stage.name}`));
+      const tooltip = el("span", "stage-tooltip");
+      const img = el("img") as HTMLImageElement;
+      img.src = stageMinimapUrl(stage.id);
+      img.alt = `${stage.name} 미니맵`;
+      tooltip.appendChild(img);
+      tooltip.appendChild(el("span", "tooltip-title", `${stage.id}. ${stage.name}`));
+      tooltip.appendChild(el("span", "", stage.subtitle));
+      b.appendChild(tooltip);
+      if (stage.id === chosenStage) b.style.borderColor = "var(--accent)";
+      b.onclick = () => {
+        chosenStage = stage.id;
+        stageBtns.forEach((x) => (x.style.borderColor = "var(--line)"));
+        b.style.borderColor = "var(--accent)";
+      };
+      stageBtns.push(b);
+      stageRow.appendChild(b);
+    }
+    body.appendChild(stageRow);
+    body.appendChild(el("div", "result-hint", "스테이지 진행 중 맵 전환은 없습니다. 새 게임 시작 때 선택한 맵 하나가 이번 판의 전체 40라운드 맵입니다."));
+
+    const startRun = () => {
+      const seed = randomSeed(); // 시드는 내부 RNG/재현성용으로 항상 무작위 생성
+      close();
+      resetResultShown();
+      ctx.newRun(seed, chosen, chosenStage);
+    };
     const row = el("div", "row-btns");
     if (dismissable) {
       const cancel = el("button", "", "취소");
@@ -202,19 +857,405 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
       row.appendChild(cancel);
     }
     const start = el("button", "primary", "시작");
-    start.onclick = () => {
-      const seed = randomSeed(); // 시드는 내부 RNG/재현성용으로 항상 무작위 생성
-      close();
-      resetResultShown();
-      ctx.newRun(seed, chosen as "novice" | "normal");
-    };
+    start.onclick = startRun;
     row.appendChild(start);
     body.appendChild(row);
   }, dismissable);
 }
 
+// ---------- 수동 밸런스 증거 ----------
+
+export function openManualProofGuideModal(ctx?: AppCtx) {
+  openModal((body, close) => {
+    body.appendChild(el("h2", "", "수동 밸런스 증거"));
+    body.appendChild(el("div", "modal-note", "결과 화면의 로그 명령을 실행한 뒤, 아래 요약 명령으로 남은 증거를 확인합니다."));
+
+    const dataVersion = ctx?.game.state.dataVersion ?? DATA_VERSION;
+    const currentStartCommand = ctx?.scene === "game" ? manualStartCommand(ctx) : "";
+    const currentStartNextCommand = ctx?.scene === "game" ? manualStartNextCommand(ctx) : "";
+    const currentPendingIdCommand = ctx?.scene === "game" ? manualPendingIdCommand(ctx) : "";
+    const currentPendingIdJsonCommand = currentPendingIdCommand ? `${currentPendingIdCommand} --json` : "";
+    const currentStartDryRunCommand = currentStartCommand ? manualDryRunCommand(currentStartCommand) : "";
+    const currentStartNextDryRunCommand = currentStartNextCommand ? manualDryRunCommand(currentStartNextCommand) : "";
+    const currentStartValidateSaveCommand = currentStartCommand
+      ? manualStartValidateSaveCommand(currentStartCommand, currentPendingIdCommand)
+      : "";
+    const currentStartNextValidateSaveCommand = currentStartNextCommand
+      ? manualStartValidateSaveCommand(currentStartNextCommand, currentPendingIdCommand)
+      : "";
+    const currentCheckpointSummary = ctx?.scene === "game" ? currentManualProofSummary(ctx) : null;
+    const currentFinishReadiness = currentCheckpointSummary
+      ? manualProofFinishReadiness({
+        elapsedSeconds: currentCheckpointSummary.wallSeconds ?? 0,
+        inputCount: currentCheckpointSummary.inputCount,
+        inputCounts: currentCheckpointSummary.inputCounts,
+      })
+      : null;
+    const currentFinishCheckpointCommand = currentCheckpointSummary && currentFinishReadiness?.ready ? manualPlaylogFinishCommand(currentCheckpointSummary) : "";
+    const currentFinishCheckpointDryRunCommand = currentCheckpointSummary ? manualPlaylogFinishDryRunCommand(currentCheckpointSummary) : "";
+    const currentFinishLatestCheckpointCommand = currentCheckpointSummary && currentFinishReadiness?.ready ? manualPlaylogFinishLatestCommand(currentCheckpointSummary) : "";
+    const currentFinishLatestCheckpointDryRunCommand = currentCheckpointSummary ? manualPlaylogFinishLatestDryRunCommand(currentCheckpointSummary) : "";
+    const summaryCommand = manualSummaryCommand();
+    const planCommand = manualPlanCommand();
+    const sheetCommand = manualSheetCommand();
+    const nextCommand = manualNextCommand();
+    const nextJsonCommand = manualNextJsonCommand();
+    const startNextCommand = currentStartNextCommand || "yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE";
+    const startNextDryRunCommand = manualDryRunCommand(startNextCommand);
+    const pendingCommand = "yarn manual-playlog --pending";
+    const preflightCommand = manualPreflightCommand();
+    const preflightJsonCommand = manualPreflightJsonCommand();
+    const summaryJsonCommand = manualSummaryJsonCommand();
+    const primaryStartCheckCommand = currentStartNextDryRunCommand || preflightCommand;
+    const primaryStartMarkerCommand = currentStartNextCommand || startNextCommand;
+    const currentTarget = ctx?.scene === "game"
+      ? manualProofTargetFor(ctx.game.state.difficulty, legendOrBetterCount(ctx))
+      : undefined;
+    body.appendChild(el("h3", "", "먼저 할 일"));
+    body.appendChild(el(
+      "div",
+      currentStartNextCommand ? "result-proof-ok" : "result-hint",
+      currentStartNextCommand
+        ? "현재 판의 실제 시드로 다음 필요 수동 세션 dry-run 검증을 먼저 실행하세요. 검증이 PASS일 때만 시작 마커를 저장합니다."
+        : "새 게임을 시작하기 전에 시작 전 점검을 먼저 실행하고, 출력된 다음 목표 난이도로 새 게임을 시작하세요.",
+    ));
+    body.appendChild(el("h3", "", "1. 시작 전 검증"));
+    body.appendChild(el("pre", "report", primaryStartCheckCommand));
+    body.appendChild(el("h3", "", "2. 시작 마커 저장"));
+    body.appendChild(el("pre", "report", primaryStartMarkerCommand));
+    if (currentPendingIdCommand) {
+      body.appendChild(el("h3", "", "3. 시작 마커 저장 확인"));
+      body.appendChild(el("pre", "report", currentPendingIdCommand));
+      body.appendChild(el("div", "modal-note", "시작 마커 저장 명령을 실행한 직후 이 확인 명령이 PASS 상태로 끝나는지 보고 12분 이상 플레이를 시작하세요."));
+    }
+    if (currentStartNextValidateSaveCommand || currentStartValidateSaveCommand) {
+      body.appendChild(el("h3", "", "한 번에 검증+저장+확인"));
+      body.appendChild(el("pre", "report", currentStartNextValidateSaveCommand || currentStartValidateSaveCommand));
+      body.appendChild(el("div", "modal-note", "위 명령은 dry-run 검증이 통과할 때만 시작 마커를 저장하고, 바로 pending-id 확인까지 실행합니다."));
+    }
+    body.appendChild(el("h3", "", "현재 증거 버전"));
+    body.appendChild(el("pre", "report", `DATA_VERSION ${dataVersion}`));
+    body.appendChild(el("div", "modal-note", "결과 기록이나 --finish 명령의 --dataVersion, --stateChecksum, --endedAt은 결과 화면에 표시된 실제 값을 그대로 사용하세요."));
+    if (ctx?.scene === "game" && currentTarget) {
+      const s = ctx.game.state;
+      const legends = legendOrBetterCount(ctx);
+      body.appendChild(el("h3", "", "현재 판 목표 상태"));
+      const statusTable = el("table", "kv-table");
+      const rows = [
+        ["난이도", DIFFICULTIES.find((d) => d.id === s.difficulty)?.name ?? s.difficulty],
+        ["전설/히든", String(legends)],
+        ["목표", currentTarget.label],
+        ["조건", currentTarget.status],
+      ];
+      for (const [k, v] of rows) {
+        const tr = el("tr");
+        tr.appendChild(el("td", "", k));
+        tr.appendChild(el("td", "", v));
+        statusTable.appendChild(tr);
+      }
+      body.appendChild(statusTable);
+      body.appendChild(el("div", currentTarget.state === "warn" ? "result-hint" : "modal-note", currentRunManualProofNote(currentTarget)));
+    }
+    if (currentStartCommand) {
+      body.appendChild(el("h3", "", "현재 판 시작 마커"));
+      if (currentStartNextCommand) {
+        body.appendChild(el("pre", "report", currentStartNextDryRunCommand));
+        body.appendChild(el("div", "modal-note", "먼저 위 검증 명령으로 현재 판이 다음 필요 세션에 맞는지 확인한 뒤, 아래 실제 시작 마커를 저장하세요."));
+        body.appendChild(el("pre", "report", currentStartNextCommand));
+        body.appendChild(el("div", "modal-note", "현재 판이 다음 필요 세션과 같은 난이도라면 위 단축 명령을 쓰세요. 아니면 아래 직접 시작 마커를 사용하세요."));
+      }
+      body.appendChild(el("pre", "report", currentStartDryRunCommand));
+      body.appendChild(el("pre", "report", currentStartCommand));
+      body.appendChild(el("pre", "report", currentPendingIdCommand));
+      body.appendChild(el("div", "modal-note", "직접 시작 마커에는 현재 목표 라벨이 함께 저장됩니다. 검증 출력의 finish 템플릿이 목표 조건과 맞는지 확인한 뒤 저장하세요."));
+      body.appendChild(el("div", "modal-note", "플레이 시작 직후 한 번 실행해두면 결과 화면을 놓쳐도 --finish 명령으로 같은 시작 시각을 재사용할 수 있습니다."));
+    }
+    if (currentFinishCheckpointDryRunCommand && currentFinishReadiness) {
+      body.appendChild(el("h3", "", "현재 상태 finish 점검"));
+      body.appendChild(el(
+        "div",
+        currentFinishReadiness.ready ? "result-proof-ok" : "result-hint",
+        currentFinishReadiness.ready
+          ? "현재 상태는 수동 증거 저장 최소 조건을 만족합니다. 그래도 결과 화면의 endedAt/stateChecksum 값으로 최종 검증한 뒤 저장하세요."
+          : `아직 실제 저장 전입니다: ${currentFinishReadiness.blockers.join(", ")}. 아래 dry-run으로 현재 부족 사유만 점검하세요.`,
+      ));
+      body.appendChild(el("pre", "report", currentFinishCheckpointDryRunCommand));
+      body.appendChild(el("pre", "report", currentFinishLatestCheckpointDryRunCommand));
+      if (currentFinishCheckpointCommand) {
+        body.appendChild(el("pre", "report", currentFinishCheckpointCommand));
+      }
+      if (currentFinishLatestCheckpointCommand) {
+        body.appendChild(el("pre", "report", currentFinishLatestCheckpointCommand));
+      }
+      body.appendChild(el("div", "modal-note", "진행 중인 판의 현재 라운드/전설/체크섬 기준 명령입니다. 결과 화면이 나오면 결과 화면의 endedAt/stateChecksum 값으로 다시 검증한 뒤 저장하세요."));
+    }
+    body.appendChild(el("h3", "", "실제 세션 기록 순서"));
+    const workflow = el("ol", "modal-note");
+    for (const step of MANUAL_START_WORKFLOW) {
+      workflow.appendChild(el("li", "", step));
+    }
+    body.appendChild(workflow);
+    appendManualResultFieldChecklist(body, currentTarget);
+    body.appendChild(el("h3", "", "상태 확인"));
+    body.appendChild(el("pre", "report", preflightCommand));
+    body.appendChild(el("pre", "report", preflightJsonCommand));
+    body.appendChild(el("pre", "report", pendingCommand));
+    body.appendChild(el("pre", "report", nextCommand));
+    body.appendChild(el("pre", "report", nextJsonCommand));
+    body.appendChild(el("pre", "report", startNextDryRunCommand));
+    body.appendChild(el("pre", "report", startNextCommand));
+    body.appendChild(el("pre", "report", summaryCommand));
+    body.appendChild(el("pre", "report", planCommand));
+    body.appendChild(el("pre", "report", sheetCommand));
+    body.appendChild(el("pre", "report", summaryJsonCommand));
+
+    body.appendChild(el("h3", "", "필수 목표 세션"));
+    const table = el("table", "kv-table");
+    for (const { difficulty, target, length } of MANUAL_BALANCE_TARGETS) {
+      const tr = el("tr");
+      tr.appendChild(el("td", "", difficulty));
+      tr.appendChild(el("td", "", target));
+      tr.appendChild(el("td", "", length));
+      table.appendChild(tr);
+    }
+    body.appendChild(table);
+    body.appendChild(el("h3", "", "필수 경계 관찰"));
+    const observationTable = el("table", "kv-table");
+    for (const { difficulty, target, length } of MANUAL_BALANCE_OBSERVATIONS) {
+      const tr = el("tr");
+      tr.appendChild(el("td", "", difficulty));
+      tr.appendChild(el("td", "", target));
+      tr.appendChild(el("td", "", length));
+      observationTable.appendChild(tr);
+    }
+    body.appendChild(observationTable);
+    body.appendChild(el("div", "result-hint", "총 120분 이상, 각 난이도 최소 12분 이상, 목표 6개와 경계 관찰 4개가 함께 필요합니다."));
+    body.appendChild(el("h3", "", "권장 플레이 순서"));
+    body.appendChild(el(
+      "div",
+      "modal-note",
+      "위 6개 목표 세션과 4개 경계 관찰을 12분 이상씩 채우면 120분입니다. `yarn manual-playlog --next`와 `--plan`의 다음 필요 항목 순서대로 진행하세요.",
+    ));
+
+    const row = el("div", "row-btns");
+    if (currentStartCommand) {
+      if (currentStartNextCommand) {
+        const copyCurrentStartNextValidateSave = el("button", "", "현재 다음검증+마커 복사");
+        copyCurrentStartNextValidateSave.onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(currentStartNextValidateSaveCommand);
+            toast("현재 판의 다음 필요 세션 검증+저장+확인 명령을 복사했습니다", "ok");
+          } catch {
+            toast("복사 실패: 명령을 직접 선택하세요", "warn");
+          }
+        };
+        row.appendChild(copyCurrentStartNextValidateSave);
+        const copyCurrentStartNextDryRun = el("button", "", "현재 다음검증 복사");
+        copyCurrentStartNextDryRun.onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(currentStartNextDryRunCommand);
+            toast("현재 판 시드의 다음 필요 세션 검증 명령을 복사했습니다", "ok");
+          } catch {
+            toast("복사 실패: 명령을 직접 선택하세요", "warn");
+          }
+        };
+        row.appendChild(copyCurrentStartNextDryRun);
+        const copyCurrentStartNext = el("button", "", "현재 다음마커 복사");
+        copyCurrentStartNext.onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(currentStartNextCommand);
+            toast("현재 판 시드의 다음 필요 세션 시작 명령을 복사했습니다", "ok");
+          } catch {
+            toast("복사 실패: 명령을 직접 선택하세요", "warn");
+          }
+        };
+        row.appendChild(copyCurrentStartNext);
+      }
+      const copyStartValidateSave = el("button", "", "시작검증+마커 복사");
+      copyStartValidateSave.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(currentStartValidateSaveCommand);
+          toast("현재 판 시작 마커 검증+저장+확인 명령을 복사했습니다", "ok");
+        } catch {
+          toast("복사 실패: 명령을 직접 선택하세요", "warn");
+        }
+      };
+      row.appendChild(copyStartValidateSave);
+      const copyStartDryRun = el("button", "", "시작검증 복사");
+      copyStartDryRun.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(currentStartDryRunCommand);
+          toast("현재 판 시작 마커 검증 명령을 복사했습니다", "ok");
+        } catch {
+          toast("복사 실패: 명령을 직접 선택하세요", "warn");
+        }
+      };
+      row.appendChild(copyStartDryRun);
+      const copyStart = el("button", "", "시작마커 복사");
+      copyStart.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(currentStartCommand);
+          toast("현재 판 시작 마커 명령을 복사했습니다", "ok");
+        } catch {
+          toast("복사 실패: 명령을 직접 선택하세요", "warn");
+        }
+      };
+      row.appendChild(copyStart);
+      const copyPendingId = el("button", "", "현재마커 확인 복사");
+      copyPendingId.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(currentPendingIdCommand);
+          toast("현재 판 시작 마커 저장 확인 명령을 복사했습니다", "ok");
+        } catch {
+          toast("복사 실패: 명령을 직접 선택하세요", "warn");
+        }
+      };
+      row.appendChild(copyPendingId);
+      const copyPendingIdJson = el("button", "", "현재마커 JSON 복사");
+      copyPendingIdJson.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(currentPendingIdJsonCommand);
+          toast("현재 판 시작 마커 JSON 확인 명령을 복사했습니다", "ok");
+        } catch {
+          toast("복사 실패: 명령을 직접 선택하세요", "warn");
+        }
+      };
+      row.appendChild(copyPendingIdJson);
+      if (currentFinishCheckpointDryRunCommand) {
+        const copyFinishCheckpointDryRun = el("button", "", "현재 finish검증 복사");
+        copyFinishCheckpointDryRun.onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(currentFinishCheckpointDryRunCommand);
+            toast("현재 상태 기준 finish 검증 명령을 복사했습니다", "ok");
+          } catch {
+            toast("복사 실패: 명령을 직접 선택하세요", "warn");
+          }
+        };
+        row.appendChild(copyFinishCheckpointDryRun);
+      }
+      if (currentFinishCheckpointCommand) {
+        const copyFinishCheckpoint = el("button", "", "현재 finish 복사");
+        copyFinishCheckpoint.onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(currentFinishCheckpointCommand);
+            toast("현재 상태 기준 finish 명령을 복사했습니다", "ok");
+          } catch {
+            toast("복사 실패: 명령을 직접 선택하세요", "warn");
+          }
+        };
+        row.appendChild(copyFinishCheckpoint);
+      }
+    }
+    const copyPending = el("button", "", "대기목록 복사");
+    copyPending.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(pendingCommand);
+        toast("시작 마커 대기목록 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copyPending);
+    const copyPreflight = el("button", "", "시작점검 복사");
+    copyPreflight.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(preflightCommand);
+        toast("수동 플레이 시작 전 점검 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copyPreflight);
+    const copyPreflightJson = el("button", "", "점검JSON 복사");
+    copyPreflightJson.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(preflightJsonCommand);
+        toast("수동 플레이 시작 전 점검 JSON 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copyPreflightJson);
+    const copyNext = el("button", "", "다음 세션 복사");
+    copyNext.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(nextCommand);
+        toast("다음 수동 세션 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copyNext);
+    const copyStartNextDryRun = el("button", "", "다음 시작검증 복사");
+    copyStartNextDryRun.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(startNextDryRunCommand);
+        toast("다음 필요 세션 시작 검증 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copyStartNextDryRun);
+    const copyStartNext = el("button", "", "다음 시작마커 복사");
+    copyStartNext.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(startNextCommand);
+        toast("다음 필요 세션 시작 마커 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copyStartNext);
+    const copySummary = el("button", "", "요약 명령 복사");
+    copySummary.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(summaryCommand);
+        toast("수동 증거 요약 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copySummary);
+    const copyPlan = el("button", "", "계획 명령 복사");
+    copyPlan.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(planCommand);
+        toast("수동 증거 계획 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copyPlan);
+    const copySheet = el("button", "", "시트 명령 복사");
+    copySheet.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(sheetCommand);
+        toast("수동 증거 플레이 시트 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copySheet);
+    const copyJsonSummary = el("button", "", "JSON 명령 복사");
+    copyJsonSummary.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(summaryJsonCommand);
+        toast("수동 증거 JSON 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 명령을 직접 선택하세요", "warn");
+      }
+    };
+    row.appendChild(copyJsonSummary);
+    const closeBtn = el("button", "primary", "닫기");
+    closeBtn.onclick = close;
+    row.appendChild(closeBtn);
+    body.appendChild(row);
+  });
+}
+
 // ---------- 저장/불러오기 슬롯 ----------
 
+// COMPONENT: SaveModal - manual save slot picker.
 export function openSaveModal(ctx: AppCtx) {
   openModal(async (body, close) => {
     body.appendChild(el("h2", "", "수동 저장"));
@@ -225,14 +1266,14 @@ export function openSaveModal(ctx: AppCtx) {
       const left = el("div");
       left.appendChild(el("div", "", `슬롯 ${slotId.slice(-1)}`));
       left.appendChild(el("div", "meta", meta
-        ? `${meta.round}R · ${meta.difficulty} · 시드 ${meta.seed} · ${new Date(meta.savedAt).toLocaleString()}`
+        ? `${stageById(meta.stageId ?? 1).name} · ${meta.round}R · ${meta.difficulty} · 시드 ${meta.seed} · ${new Date(meta.savedAt).toLocaleString()}`
         : "비어 있음"));
       card.appendChild(left);
       card.onclick = async () => {
         try {
           const s = ctx.game.state;
           await saveSlot(slotId, makeSaveRecord({
-            seed: s.seed, difficulty: s.difficulty,
+            seed: s.seed, difficulty: s.difficulty, stageId: s.stageId,
             stateChecksum: stateChecksum(s),
             tick: s.tick, round: s.round, life: s.life,
             maxGrade: ctx.game.maxOwnedGrade(),
@@ -254,6 +1295,7 @@ export function openSaveModal(ctx: AppCtx) {
   });
 }
 
+// COMPONENT: LoadModal - autosave/manual slot loader and delete controls.
 export function openLoadModal(ctx: AppCtx) {
   openModal(async (body, close) => {
     body.appendChild(el("h2", "", "불러오기"));
@@ -265,7 +1307,7 @@ export function openLoadModal(ctx: AppCtx) {
       const left = el("div");
       left.appendChild(el("div", "", meta.slotId === "autosave" ? "자동 저장" : `슬롯 ${meta.slotId.slice(-1)}`));
       left.appendChild(el("div", "meta",
-        `${meta.round}R · 라이프 ${meta.life} · ${meta.difficulty} · 시드 ${meta.seed} · v${meta.dataVersion} · ${new Date(meta.savedAt).toLocaleString()}`));
+        `${stageById(meta.stageId ?? 1).name} · ${meta.round}R · 라이프 ${meta.life} · ${meta.difficulty} · 시드 ${meta.seed} · v${meta.dataVersion} · ${new Date(meta.savedAt).toLocaleString()}`));
       card.appendChild(left);
 
       const delBtn = el("button", "del", "삭제");
@@ -285,7 +1327,7 @@ export function openLoadModal(ctx: AppCtx) {
             toast("현재 데이터 버전과 달라 불러올 수 없습니다.", "warn", 4000);
             return;
           }
-          const replayed = replay(rec.seed, rec.difficulty, rec.inputHistory, rec.tick);
+          const replayed = replay(rec.seed, rec.difficulty, rec.stageId ?? 1, rec.inputHistory, rec.tick);
           if (stateChecksum(replayed.state) !== rec.stateChecksum) {
             toast("체크섬 불일치: 손상된 저장입니다.", "danger", 4000);
             return;
@@ -322,6 +1364,7 @@ export function openLoadModal(ctx: AppCtx) {
 
 // ---------- 시뮬레이션 ----------
 
+// COMPONENT: SimulationModal - runs and exports the 100-seed simulation report.
 export function openSimModal(ctx: AppCtx) {
   openModal((body, close) => {
     body.appendChild(el("h2", "", "자동 시뮬레이션 (100시드)"));
@@ -362,14 +1405,82 @@ export function openSimModal(ctx: AppCtx) {
   });
 }
 
+export function openBalanceGateModal() {
+  openModal((body, close) => {
+    body.appendChild(el("h2", "", "5난이도 밸런스 게이트"));
+    body.appendChild(el("div", "", "현재 기준으로 30시드 자동 플레이 게이트를 실행합니다. 전체 난이도 조건을 확인하므로 시간이 걸릴 수 있습니다."));
+    const out = el("pre", "report", "대기 중…");
+    body.appendChild(out);
+    let lastResult: BalanceGateResult | null = null;
+
+    const row = el("div", "row-btns");
+    const run = el("button", "primary", "실행") as HTMLButtonElement;
+    run.onclick = () => {
+      run.disabled = true;
+      out.textContent = "실행 중…";
+      const progress: string[] = [];
+      const results: BalanceScenarioResult[] = [];
+      const runNext = (index: number) => {
+        if (index >= BALANCE_SCENARIOS.length) {
+          lastResult = evaluateBalanceGate(BALANCE_GATE_DEFAULT_SEEDS, results);
+          out.textContent = balanceGateToMarkdown(lastResult);
+          run.disabled = false;
+          return;
+        }
+        const scenario = BALANCE_SCENARIOS[index];
+        out.textContent = `실행 중…\n${progress.join("\n")}\n${index + 1}/${BALANCE_SCENARIOS.length} ${scenario.label} 계산 중`;
+        setTimeout(() => {
+          const report = runSimulation(BALANCE_GATE_DEFAULT_SEEDS, scenario.difficulty, scenario.options);
+          results.push({ scenario, report });
+          progress.push(`${index + 1}/${BALANCE_SCENARIOS.length} ${scenario.label}: ${(report.clearRate * 100).toFixed(1)}% · 평균 ${report.avgReachedRound.toFixed(1)}R · 전설 ${report.avgLegendCount.toFixed(1)}`);
+          out.textContent = `실행 중…\n${progress.join("\n")}`;
+          runNext(index + 1);
+        }, 20);
+      };
+      runNext(0);
+    };
+    row.appendChild(run);
+
+    const saveMd = el("button", "", "Markdown 저장");
+    saveMd.onclick = async () => {
+      if (!lastResult) return;
+      try {
+        const p = await writeReport(`randi-balance-${Date.now()}.md`, balanceGateToMarkdown(lastResult));
+        toast(`저장: ${p}`, "ok", 4000);
+      } catch {
+        toast("저장 실패", "danger");
+      }
+    };
+    row.appendChild(saveMd);
+
+    const saveJson = el("button", "", "JSON 저장");
+    saveJson.onclick = async () => {
+      if (!lastResult) return;
+      try {
+        const p = await writeReport(`randi-balance-${Date.now()}.json`, balanceGateToJson(lastResult));
+        toast(`저장: ${p}`, "ok", 4000);
+      } catch {
+        toast("저장 실패", "danger");
+      }
+    };
+    row.appendChild(saveJson);
+
+    const closeBtn = el("button", "", "닫기");
+    closeBtn.onclick = close;
+    row.appendChild(closeBtn);
+    body.appendChild(row);
+  });
+}
+
 // ---------- 도움말 ----------
 
+// COMPONENT: HelpModal - keyboard shortcuts and rules reference.
 export function openHelpModal() {
   openModal((body, close) => {
     body.appendChild(el("h2", "", "단축키"));
     const table = el("table", "kv-table");
     const rows: Array<[string, string]> = [
-      ["Space", "다음 스테이지 시작 / 진행 중 일시정지"],
+      ["Space", "다음 라운드 시작 / 진행 중 일시정지"],
       ["Z", "소환"],
       ["X", "선택한 3기 합성"],
       ["Delete / Backspace", "선택 유닛 판매"],
@@ -399,13 +1510,14 @@ export function openHelpModal() {
   });
 }
 
+// COMPONENT: AboutModal - app version/runtime information.
 export function openAboutModal() {
   openModal((body, close) => {
     body.appendChild(el("h2", "", "차원 균열 랜덤 디펜스"));
     body.appendChild(el("div", "", "오리지널 IP 기반 2D 랜덤 디펜스 MVP 프로토타입. 에셋 없이 도형과 색으로만 표현합니다."));
     body.appendChild(el("div", "", `실행 환경: ${isTauri() ? "Tauri 데스크탑" : "브라우저 (저장은 localStorage)"}`));
     const row = el("div", "row-btns");
-    if (isTauri()) {
+    if (canOpenAppDataDir()) {
       const dir = el("button", "", "앱 데이터 폴더 열기");
       dir.onclick = () => void openAppDataDir();
       row.appendChild(dir);

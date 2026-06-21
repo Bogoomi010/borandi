@@ -11,12 +11,15 @@ import { GRADE_LABEL, FAMILY_LABEL, ROLE_LABEL, GRADE_ORDER, type Grade } from "
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
 import { listSlots, isTauri } from "../save/saveApi";
 import { APP_VERSION, DATA_VERSION } from "../data/version";
-import { DIFFICULTY_BY_ID } from "../data/difficulty";
+import { DIFFICULTIES, DIFFICULTY_BY_ID } from "../data/difficulty";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { STAGES } from "../data/stages";
 
 // ---------- 씬 전환 ----------
 
 let titleFxStop: (() => void) | null = null;
 
+// COMPONENT: GameScene - switches visible DOM from title screen to the in-game screen.
 export function showGame(ctx: AppCtx) {
   ctx.scene = "game";
   document.getElementById("title-scene")!.classList.add("hidden");
@@ -25,6 +28,7 @@ export function showGame(ctx: AppCtx) {
   titleFxStop = null;
 }
 
+// COMPONENT: TitleScene - switches visible DOM to the title screen and rebuilds its menu.
 export function showTitle(ctx: AppCtx) {
   ctx.scene = "title";
   document.getElementById("game-scene")!.classList.add("hidden");
@@ -37,6 +41,7 @@ export function showTitle(ctx: AppCtx) {
 
 // ---------- 타이틀 화면 ----------
 
+// COMPONENT: TitleMenu - creates the title logo, main menu buttons, continue state, and footer.
 function buildTitle(ctx: AppCtx) {
   const root = document.getElementById("title-content")!;
   root.innerHTML = "";
@@ -48,7 +53,7 @@ function buildTitle(ctx: AppCtx) {
   const h1 = el("h1");
   h1.innerHTML = "차원 균열<br>랜덤 디펜스";
   logo.appendChild(h1);
-  logo.appendChild(el("div", "title-sub", "랜덤 소환 · 조합 · 미션 · 보스 — 15개 저주 마을 스테이지를 버텨라"));
+  logo.appendChild(el("div", "title-sub", "새 게임 시작 때 전체 맵 자유 선택 · 1~40R 같은 맵 고정"));
   inner.appendChild(logo);
 
   const menu = el("div", "title-menu");
@@ -91,6 +96,7 @@ function buildTitle(ctx: AppCtx) {
 }
 
 /** 타이틀 배경 파티클 (계열 색 균열 조각이 떠오른다) */
+// COMPONENT: TitleBackgroundFx - draws the animated title background canvas.
 function startTitleFx(): () => void {
   const canvas = document.getElementById("title-bg") as HTMLCanvasElement;
   const ctx2d = canvas.getContext("2d");
@@ -170,6 +176,7 @@ function startTitleFx(): () => void {
 
 let pauseOpen = false;
 
+// COMPONENT: PauseMenu - modal command menu shown from Esc during gameplay.
 export function openPauseMenu(ctx: AppCtx) {
   if (pauseOpen || ctx.scene !== "game") return;
   pauseOpen = true;
@@ -212,6 +219,7 @@ export function openPauseMenu(ctx: AppCtx) {
 
 // ---------- 옵션 ----------
 
+// COMPONENT: OptionsOverlay - settings modal for audio, visuals, fullscreen, and gameplay defaults.
 export function openOptionsOverlay(ctx: AppCtx) {
   openModal((body, close) => {
     body.appendChild(el("h2", "", "옵션"));
@@ -310,6 +318,7 @@ export function openOptionsOverlay(ctx: AppCtx) {
 
 // ---------- 도감 ----------
 
+// COMPONENT: CollectionOverlay - profile/dex modal for discovered units and hidden recipes.
 export function openCollection(ctx: AppCtx) {
   openModal((body, close) => {
     body.classList.add("collection");
@@ -323,8 +332,8 @@ export function openCollection(ctx: AppCtx) {
     };
     kv("플레이 횟수", String(profile.runs));
     kv("최고 도달", profile.bestRound > 0 ? `${profile.bestRound}R` : "-");
-    kv("입문 클리어", String(profile.clears["novice"] ?? 0));
-    kv("보통 클리어", String(profile.clears["normal"] ?? 0));
+    kv("선택 가능 맵", `${STAGES.length}/${STAGES.length}`);
+    for (const d of DIFFICULTIES) kv(`${d.name} 클리어`, String(profile.clears[d.id] ?? 0));
     kv("유닛 수집", `${profile.seenUnits.length}/${UNITS.length}`);
     kv("히든 조합 발견", `${profile.foundHiddenRecipes.length}/${RECIPES.filter((r) => r.visibility === "hidden").length}`);
     body.appendChild(stats);
@@ -372,21 +381,10 @@ export function openCollection(ctx: AppCtx) {
 
 // ---------- 시스템 ----------
 
-interface TauriWindowApi {
-  window: {
-    getCurrentWindow(): {
-      close(): Promise<void>;
-      isFullscreen(): Promise<boolean>;
-      setFullscreen(v: boolean): Promise<void>;
-    };
-  };
-}
-
 export function quitApp() {
   if (isTauri()) {
     try {
-      const g = (window as unknown as { __TAURI__: TauriWindowApi }).__TAURI__;
-      void g.window.getCurrentWindow().close();
+      void getCurrentWindow().close();
       return;
     } catch { /* fallthrough */ }
   }
@@ -397,8 +395,7 @@ export function quitApp() {
 export async function toggleFullscreen() {
   if (isTauri()) {
     try {
-      const g = (window as unknown as { __TAURI__: TauriWindowApi }).__TAURI__;
-      const w = g.window.getCurrentWindow();
+      const w = getCurrentWindow();
       const cur = await w.isFullscreen();
       await w.setFullscreen(!cur);
       return;

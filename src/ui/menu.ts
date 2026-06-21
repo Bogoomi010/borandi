@@ -6,9 +6,10 @@ import { el, toast } from "./widgets";
 import {
   openHelpModal, openLoadModal, openNewRunModal,
   openSaveModal, openSimModal, buildReportMarkdown, openAboutModal,
+  openBalanceGateModal, openManualProofGuideModal,
 } from "./modals";
 import { openCollection, openOptionsOverlay, toggleFullscreen, quitApp } from "./scenes";
-import { writeReport, openAppDataDir, isTauri } from "../save/saveApi";
+import { writeReport, openAppDataDir, canOpenAppDataDir } from "../save/saveApi";
 
 interface MenuItem {
   label: string;
@@ -17,6 +18,7 @@ interface MenuItem {
   onClick: () => void;
 }
 
+// COMPONENT: MenuBar - builds the Game/View/Tools/Help dropdowns in #menubar.
 export function renderMenubar(ctx: AppCtx) {
   const root = document.getElementById("menubar")!;
   root.innerHTML = "";
@@ -26,7 +28,7 @@ export function renderMenubar(ctx: AppCtx) {
       title: "Game",
       items: [
         { label: "새 게임", hint: "New Run", onClick: () => openNewRunModal(ctx) },
-        { label: "같은 시드 재시작", onClick: () => ctx.newRun(ctx.game.state.seed, ctx.game.state.difficulty) },
+        { label: "같은 시드 재시작", onClick: () => ctx.newRun(ctx.game.state.seed, ctx.game.state.difficulty, ctx.game.state.stageId) },
         "sep",
         { label: "수동 저장…", hint: "슬롯 3개", onClick: () => openSaveModal(ctx) },
         { label: "불러오기…", onClick: () => openLoadModal(ctx) },
@@ -36,6 +38,8 @@ export function renderMenubar(ctx: AppCtx) {
           onClick: async () => {
             const summary = ctx.game.resultSummary();
             summary.playedAt = new Date().toISOString();
+            summary.manualStartedAt = ctx.runStartedAt;
+            summary.wallSeconds = Math.max(1, Math.round((performance.now() - ctx.runStartedAtMs) / 1000));
             try {
               const p = await writeReport(`randi-run-${summary.seed}-${Date.now()}.md`, buildReportMarkdown(summary));
               toast(`리포트 저장: ${p}`, "ok", 4000);
@@ -53,10 +57,6 @@ export function renderMenubar(ctx: AppCtx) {
       title: "View",
       items: [
         {
-          label: "좌측 패널 접기/펴기",
-          onClick: () => document.getElementById("left-panel")!.classList.toggle("collapsed"),
-        },
-        {
           label: "우측 패널 접기/펴기",
           onClick: () => document.getElementById("right-panel")!.classList.toggle("collapsed"),
         },
@@ -68,10 +68,12 @@ export function renderMenubar(ctx: AppCtx) {
       title: "Tools",
       items: [
         { label: "100시드 시뮬레이션…", onClick: () => openSimModal(ctx) },
+        { label: "5난이도 밸런스 게이트…", onClick: () => openBalanceGateModal() },
+        { label: "수동 밸런스 증거…", onClick: () => openManualProofGuideModal(ctx) },
         "sep",
         {
           label: "앱 데이터 폴더 열기",
-          disabled: () => !isTauri(),
+          disabled: () => !canOpenAppDataDir(),
           onClick: () => void openAppDataDir(),
         },
       ],

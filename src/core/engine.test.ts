@@ -7,8 +7,8 @@ import { RECIPES } from "../data/recipes";
 import { MISSIONS } from "../data/missions";
 import { BOSS_ROUND_LIST, FINAL_ROUND, WAVES } from "../data/waves";
 import { STAGES } from "../data/stages";
-import { SUMMON_TABLE, PITY_TABLE, PITY_THRESHOLD } from "../data/difficulty";
-import { playFullRun } from "../sim/autoPlayer";
+import { DIFFICULTIES, SUMMON_TABLE, PITY_TABLE, PITY_THRESHOLD } from "../data/difficulty";
+import { playFullRun, playOneRound } from "../sim/autoPlayer";
 
 describe("rng", () => {
   it("같은 시드는 같은 수열을 만든다", () => {
@@ -30,6 +30,13 @@ describe("데이터 무결성 (QA 체크리스트)", () => {
     expect(Object.values(SUMMON_TABLE).reduce((a, b) => a + b, 0)).toBe(100);
     expect(Object.values(PITY_TABLE).reduce((a, b) => a + b, 0)).toBe(100);
   });
+  it("요구 난이도 5종이 정의되어 있다", () => {
+    expect(DIFFICULTIES.map((d) => d.id)).toEqual(["novice", "normal", "intermediate", "expert", "master"]);
+  });
+  it("상위 난이도일수록 적 누적 허용치가 줄어든다", () => {
+    const limits = DIFFICULTIES.map((d) => d.enemyLimit);
+    expect(limits).toEqual([...limits].sort((a, b) => b - a));
+  });
   it("조합식에 존재하지 않는 유닛 ID가 없다", () => {
     for (const r of RECIPES) {
       expect(UNIT_BY_ID[r.resultUnitId], `result ${r.resultUnitId}`).toBeDefined();
@@ -42,17 +49,17 @@ describe("데이터 무결성 (QA 체크리스트)", () => {
     const ids = UNITS.map((u) => u.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
-  it("웨이브가 1~15 스테이지 모두 존재한다", () => {
+  it("웨이브가 1~40 라운드 모두 존재한다", () => {
     expect(WAVES.length).toBe(FINAL_ROUND);
     for (let r = 1; r <= FINAL_ROUND; r++) {
       expect(WAVES.find((w) => w.round === r), `round ${r}`).toBeDefined();
     }
   });
-  it("보스 스테이지는 5/10/15이다", () => {
+  it("보스 라운드는 10/20/30/40이다", () => {
     const bossRounds = WAVES.filter((w) => w.type === "boss").map((w) => w.round);
     expect(bossRounds).toEqual(BOSS_ROUND_LIST);
   });
-  it("서로 다른 15개 스테이지 맵이 있다", () => {
+  it("새 게임에서 선택할 수 있는 서로 다른 15개 맵이 있다", () => {
     expect(STAGES.length).toBe(15);
     const shapes = new Set(STAGES.map((s) => JSON.stringify(s.waypoints)));
     expect(shapes.size).toBe(15);
@@ -118,6 +125,46 @@ describe("조합", () => {
     expect(g.state.gold).toBe(140);
   });
 
+  it("전설 지휘 보너스는 5전설 이상부터 공격 배율을 준다", () => {
+    const g = new Game("LEGEND-COMMAND", "intermediate");
+    give(g, "solar_avatar", 4);
+    expect(g.legendCommandAttackMult()).toBe(1);
+
+    give(g, "chrono_marshal", 1);
+    expect(g.legendCommandAttackMult()).toBeCloseTo(1.08);
+
+    give(g, "titan_slayer", 4);
+    expect(g.legendCommandAttackMult()).toBeCloseTo(1.24);
+  });
+
+  it("중급자는 5전설 이상부터 전설 지휘 누적 한도 보너스를 받는다", () => {
+    const g = new Game("INTERMEDIATE-LIMIT-COMMAND", "intermediate");
+    const baseLimit = g.diff.enemyLimit;
+    give(g, "solar_avatar", 4);
+    expect(g.legendCommandEnemyLimitBonus()).toBe(0);
+    expect(g.enemyLimit()).toBe(baseLimit);
+
+    give(g, "chrono_marshal", 1);
+    expect(g.legendCommandEnemyLimitBonus()).toBe(12);
+    expect(g.enemyLimit()).toBe(baseLimit + 12);
+  });
+
+  it("일반 난이도는 1~2전설부터 지휘 보너스를 받는다", () => {
+    const g = new Game("NORMAL-COMMAND", "normal");
+    const baseLimit = g.diff.enemyLimit;
+    expect(g.legendCommandAttackMult()).toBe(1);
+    expect(g.legendCommandEnemyLimitBonus()).toBe(0);
+    expect(g.enemyLimit()).toBe(baseLimit);
+
+    give(g, "solar_avatar", 1);
+    expect(g.legendCommandAttackMult()).toBeCloseTo(1.12);
+    expect(g.legendCommandEnemyLimitBonus()).toBe(6);
+    expect(g.enemyLimit()).toBe(baseLimit + 6);
+
+    give(g, "chrono_marshal", 3);
+    expect(g.legendCommandAttackMult()).toBeCloseTo(1.2);
+  });
+
   it("잠금 유닛은 조합 재료로 소비되지 않는다", () => {
     const g = new Game("LOCK", "novice");
     give(g, "ember_scout", 2);
@@ -152,11 +199,58 @@ describe("조합", () => {
 });
 
 describe("전투/리플레이 재현성", () => {
+  it("새 게임에서 선택한 맵은 40라운드 보스까지 바뀌지 않고 리플레이에도 유지된다", () => {
+    const stageId = 4;
+    const game = new Game("STAGE-STAYS", "novice", stageId);
+    const observedStageIds = [game.state.stageId];
+    const bossCheckpointStages = new Map<number, number>();
+    while (game.state.phase !== "ended") {
+      const roundBeforePlay = game.state.round;
+      playOneRound(game);
+      observedStageIds.push(game.state.stageId);
+      if (game.state.bossKillSeconds[roundBeforePlay] !== undefined) {
+        bossCheckpointStages.set(roundBeforePlay, game.state.stageId);
+      }
+    }
+    const replayed = replay("STAGE-STAYS", "novice", stageId, game.state.inputHistory);
+
+    expect(new Set(observedStageIds)).toEqual(new Set([stageId]));
+    expect(Object.keys(game.state.bossKillSeconds).map(Number).sort((a, b) => a - b)).toEqual([10, 20, 30, 40]);
+    expect([...bossCheckpointStages.entries()]).toEqual([
+      [10, stageId],
+      [20, stageId],
+      [30, stageId],
+      [40, stageId],
+    ]);
+    expect(game.state.stageId).toBe(stageId);
+    expect(game.state.round).toBe(FINAL_ROUND);
+    expect(game.state.bossKillSeconds[FINAL_ROUND]).toBeDefined();
+    expect(replayed.state.stageId).toBe(stageId);
+    expect(replayed.state.round).toBe(FINAL_ROUND);
+    expect(replayed.state.bossKillSeconds[FINAL_ROUND]).toBeDefined();
+    expect(replayed.state.round).toBe(game.state.round);
+    expect(replayed.state.cleared).toBe(game.state.cleared);
+  }, 30000);
+
+  it("라운드 중 맵 변경 시도가 있어도 이번 판 시작 맵으로 되돌린다", () => {
+    const stageId = 4;
+    const game = new Game("STAGE-LOCKED", "novice", stageId);
+
+    game.state.stageId = 9;
+    playOneRound(game);
+    expect(game.state.stageId).toBe(stageId);
+
+    game.state.stageId = 12;
+    const summary = game.resultSummary();
+    expect(summary.stageId).toBe(stageId);
+    expect(game.state.stageId).toBe(stageId);
+  }, 30000);
+
   it("자동 플레이 한 판의 입력 기록을 리플레이하면 같은 체크섬이 나온다", () => {
     const game = new Game("REPLAY-1", "novice");
     playFullRun(game);
     const originalChecksum = stateChecksum(game.state);
-    const replayed = replay("REPLAY-1", "novice", game.state.inputHistory);
+    const replayed = replay("REPLAY-1", "novice", game.state.stageId, game.state.inputHistory);
     expect(stateChecksum(replayed.state)).toBe(originalChecksum);
     expect(replayed.state.round).toBe(game.state.round);
     expect(replayed.state.cleared).toBe(game.state.cleared);

@@ -1,14 +1,15 @@
 // 캔버스 전투판 렌더러 — 에셋 없이 도형과 색으로만 표현한다.
 // 등급 = 테두리 색 + 도형, 계열 = 채움 색.
 
-import { BOARD_H, BOARD_W, pathLengthForRound, waypointsForRound, posAtDist } from "../core/path";
+import { BOARD_H, BOARD_W, pathLengthForStage, waypointsForStage, posAtDist } from "../core/path";
 import type { GameState, Grade } from "../core/types";
 import { UNIT_BY_ID } from "../data/units";
 import { FINAL_ROUND, waveForRound } from "../data/waves";
 import { alien1Walk } from "./sprites";
 import { UNIT_SPRITES, type Facing } from "./unitSprites";
-import { stageForRound, type StageDecorationKind } from "../data/stages";
+import { stageById, type StageDecorationKind } from "../data/stages";
 import tilesetUrl from "../assets/tilesets/dark-fantasy-village-tileset.png";
+import enemyPortalUrl from "../assets/effects/enemy-portal.png";
 
 const GRADE_COLOR: Record<Grade, string> = {
   common: "#9aa1b5", rare: "#4cc3ff", hero: "#b07bff",
@@ -104,6 +105,57 @@ class VillageTileset {
 
 const villageTileset = new VillageTileset();
 
+class EnemyPortalAsset {
+  private img = new Image();
+  loaded = false;
+
+  constructor() {
+    this.img.onload = () => {
+      this.loaded = true;
+    };
+    this.img.src = enemyPortalUrl;
+  }
+
+  draw(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
+    const pulse = 1 + Math.sin(time * 2.4) * 0.035;
+    const size = 108 * pulse;
+    ctx.save();
+    ctx.translate(x, y);
+
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.38 + Math.sin(time * 3.1) * 0.08;
+    ctx.fillStyle = "#7b4dff";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 42 * pulse, 24 * pulse, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 1;
+
+    if (this.loaded) {
+      ctx.rotate(Math.sin(time * 0.35) * 0.035);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(this.img, -size / 2, -size / 2, size, size);
+      ctx.restore();
+      return;
+    }
+
+    // 이미지 로드 전 fallback. 실제 에셋이 뜨기 전에도 출발 지점이 비어 보이지 않게 한다.
+    ctx.strokeStyle = "#9b6dff";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 34, 20, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = "#53d9ff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 31, time % (Math.PI * 2), time % (Math.PI * 2) + Math.PI * 1.15);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+const enemyPortal = new EnemyPortalAsset();
+
 export class BoardRenderer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -164,7 +216,7 @@ export class BoardRenderer {
     const { x, y } = this.toBoard(clientX, clientY);
     for (let i = state.enemies.length - 1; i >= 0; i--) {
       const e = state.enemies[i];
-      const p = posAtDist(e.dist, state.round);
+      const p = posAtDist(e.dist, state.stageId);
       const r = e.isBoss ? 48 : 26;
       if (Math.hypot(p.x - x, p.y - y) <= r) return e.eid;
     }
@@ -183,17 +235,17 @@ export class BoardRenderer {
   draw(state: GameState) {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, BOARD_W, BOARD_H);
-    const stage = stageForRound(state.round);
-    const waypoints = waypointsForRound(state.round);
-    const pathLength = pathLengthForRound(state.round);
+    const stage = stageById(state.stageId);
+    const waypoints = waypointsForStage(state.stageId);
+    const pathLength = pathLengthForStage(state.stageId);
 
     ctx.fillStyle = GROUND_COLOR[stage.ground];
     ctx.fillRect(0, 0, BOARD_W, BOARD_H);
 
-    this.drawGroundTexture(stage.ground, state.round);
+    this.drawGroundTexture(stage.ground, state.stageId);
     this.drawDecorations(stage.decorations.filter((d) => d.y < 250));
 
-    // 경로 (스테이지별 닫힌 루프)
+    // 경로 (새 게임에서 선택한 맵의 닫힌 루프)
     ctx.lineWidth = 34;
     ctx.strokeStyle = "#1d2230";
     ctx.lineJoin = "round";
@@ -210,8 +262,8 @@ export class BoardRenderer {
     // 진행 방향 화살표
     ctx.fillStyle = "#3a4263";
     for (let d = 160; d < pathLength; d += 260) {
-      const p = posAtDist(d, state.round);
-      const p2 = posAtDist(d + 8, state.round);
+      const p = posAtDist(d, state.stageId);
+      const p2 = posAtDist(d + 8, state.stageId);
       const ang = Math.atan2(p2.y - p.y, p2.x - p.x);
       ctx.save();
       ctx.translate(p.x, p.y);
@@ -231,6 +283,7 @@ export class BoardRenderer {
     ctx.fillText(stage.subtitle, 14, 38);
 
     this.drawDecorations(stage.decorations.filter((d) => d.y >= 250));
+    this.drawEnemyPortal(waypoints[0][0], waypoints[0][1], state.time);
 
     // 유닛
     for (const u of state.units) {
@@ -326,7 +379,7 @@ export class BoardRenderer {
     this.enemyHp = new Map();
     let boss: GameState["enemies"][number] | null = null;
     for (const e of state.enemies) {
-      const p = posAtDist(e.dist, state.round);
+      const p = posAtDist(e.dist, state.stageId);
       if (e.isBoss) boss = e;
       const slowed = e.slows.length > 0;
       const stunned = e.stunUntil > state.time;
@@ -348,7 +401,7 @@ export class BoardRenderer {
       }
 
       // 진행 방향: 살짝 앞 지점과 비교해 좌우 반전 결정
-      const ahead = posAtDist(e.dist + 4, state.round);
+      const ahead = posAtDist(e.dist + 4, state.stageId);
       const faceLeft = ahead.x < p.x - 0.01;
 
       // 상태/속성 틴트 (우선순위: 기절 > 둔화 > 장갑 > 보스)
@@ -430,7 +483,7 @@ export class BoardRenderer {
       ctx.fillStyle = "rgba(255,209,74,.95)";
       ctx.font = "bold 14px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(`${state.round}스테이지 시작까지 ${secs}초 (Space로 바로 시작)`, BOARD_W / 2, BOARD_H - 14);
+      ctx.fillText(`${state.round}라운드 시작까지 ${secs}초 (Space로 바로 시작)`, BOARD_W / 2, BOARD_H - 14);
       ctx.textAlign = "left";
     }
 
@@ -541,6 +594,10 @@ export class BoardRenderer {
         ctx.strokeRect(d.x, d.y, 28, 28);
       }
     }
+  }
+
+  private drawEnemyPortal(x: number, y: number, time: number) {
+    enemyPortal.draw(this.ctx, x, y, time);
   }
 }
 

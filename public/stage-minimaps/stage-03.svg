@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200" role="img" aria-label="마른풀 순환로 미니맵">
+  <rect width="320" height="200" rx="16" fill="#1f2d20"/>
+  <rect x="7" y="7" width="306" height="186" rx="12" fill="#6f9f58" fill-opacity=".08" stroke="#6f9f58" stroke-opacity=".28"/>
+  <path d="M 40 0 V 200 M 0 25 H 320" stroke="#3f623e" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 80 0 V 200 M 0 50 H 320" stroke="#3f623e" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 120 0 V 200 M 0 75 H 320" stroke="#3f623e" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 160 0 V 200 M 0 100 H 320" stroke="#3f623e" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 200 0 V 200 M 0 125 H 320" stroke="#3f623e" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 240 0 V 200 M 0 150 H 320" stroke="#3f623e" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 280 0 V 200 M 0 175 H 320" stroke="#3f623e" stroke-opacity=".18" stroke-width="1"/>
+  <circle cx="202" cy="101.2" r="4.8" fill="#5f9b4b" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="229.4" cy="56.4" r="5.8" fill="#b84c70" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="90" cy="112.3" r="5.8" fill="#a66e3c" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="217.8" cy="146.1" r="5.2" fill="#9a7043" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <path d="M 47.5 44.7 L 264 44.7 L 264 83.4 L 169.7 83.4 L 169.7 155.9 L 47.5 155.9" fill="none" stroke="#05070b" stroke-opacity=".65" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 47.5 44.7 L 264 44.7 L 264 83.4 L 169.7 83.4 L 169.7 155.9 L 47.5 155.9" fill="none" stroke="#d7c08a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 47.5 44.7 L 264 44.7 L 264 83.4 L 169.7 83.4 L 169.7 155.9 L 47.5 155.9" fill="none" stroke="#fff1b8" stroke-opacity=".52" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="47.5" cy="44.7" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="264" cy="44.7" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="264" cy="83.4" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="169.7" cy="83.4" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="169.7" cy="155.9" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="47.5" cy="155.9" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="47.5" cy="44.7" r="6.2" fill="#6ee0a0" stroke="#0b0e16" stroke-width="1.5"/>
+  <circle cx="47.5" cy="155.9" r="6.2" fill="#e85c66" stroke="#0b0e16" stroke-width="1.5"/>
+  <text x="14" y="184" fill="#f3f6ff" font-family="Arial, sans-serif" font-size="13" font-weight="700">3. 마른풀 순환로</text>
+</svg>

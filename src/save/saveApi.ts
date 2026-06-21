@@ -1,8 +1,9 @@
 // 저장 계층: Tauri 환경이면 Rust command(SQLite), 아니면 localStorage fallback.
 // 게임 판정 로직은 절대 여기 두지 않는다.
 
-import type { GameInput, ResultSummary } from "../core/types";
+import type { DifficultyId, GameInput, ResultSummary } from "../core/types";
 import { SCHEMA_VERSION, APP_VERSION, DATA_VERSION } from "../data/version";
+import { invoke, isTauri as tauriRuntime } from "@tauri-apps/api/core";
 
 export interface SaveRecord {
   schemaVersion: number;
@@ -10,7 +11,8 @@ export interface SaveRecord {
   dataVersion: string;
   savedAt: string;
   seed: string;
-  difficulty: "novice" | "normal";
+  difficulty: DifficultyId;
+  stageId: number;
   stateChecksum: string;
   tick: number;
   round: number;
@@ -24,24 +26,23 @@ export interface SlotMeta {
   savedAt: string;
   seed: string;
   difficulty: string;
+  stageId: number;
   round: number;
   life: number;
   maxGrade: string;
   dataVersion: string;
 }
 
-// Tauri API는 npm 패키지 대신 withGlobalTauri(window.__TAURI__)를 사용한다.
-interface TauriGlobal {
-  core: { invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> };
+export function isTauri(): boolean {
+  return tauriRuntime();
 }
 
-export function isTauri(): boolean {
-  return typeof window !== "undefined" && "__TAURI__" in window;
+export function canOpenAppDataDir(): boolean {
+  return isTauri() && import.meta.env.DEV;
 }
 
 async function tauriInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  const g = (window as unknown as { __TAURI__: TauriGlobal }).__TAURI__;
-  return g.core.invoke<T>(cmd, args);
+  return invoke<T>(cmd, args);
 }
 
 // ---------- localStorage fallback ----------
@@ -88,7 +89,7 @@ export async function listSlots(): Promise<SlotMeta[]> {
     if (r) {
       out.push({
         slotId, savedAt: r.savedAt, seed: r.seed, difficulty: r.difficulty,
-        round: r.round, life: r.life, maxGrade: r.maxGrade, dataVersion: r.dataVersion,
+        stageId: r.stageId ?? 1, round: r.round, life: r.life, maxGrade: r.maxGrade, dataVersion: r.dataVersion,
       });
     }
   }
@@ -136,11 +137,11 @@ export async function writeReport(filename: string, content: string): Promise<st
 }
 
 export async function openAppDataDir(): Promise<void> {
-  if (isTauri()) await tauriInvoke("open_app_data_dir");
+  if (canOpenAppDataDir()) await tauriInvoke("open_app_data_dir");
 }
 
 export function makeSaveRecord(args: {
-  seed: string; difficulty: "novice" | "normal"; stateChecksum: string;
+  seed: string; difficulty: DifficultyId; stageId: number; stateChecksum: string;
   tick: number; round: number; life: number; maxGrade: string;
   inputHistory: GameInput[];
 }): SaveRecord {

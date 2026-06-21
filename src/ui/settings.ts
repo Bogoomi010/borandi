@@ -1,6 +1,9 @@
 // 게임 설정과 플레이어 프로필(도감/기록) 영속화.
 // Tauri 웹뷰에서도 localStorage가 동작하므로 두 환경 공통으로 사용한다.
 
+import { FINAL_STAGE } from "../data/stages";
+import { FINAL_ROUND } from "../data/waves";
+
 export interface Settings {
   master: number;       // 0~1
   sfx: number;          // 0~1
@@ -45,10 +48,11 @@ export interface Profile {
   runs: number;
   clears: Record<string, number>; // difficulty -> 클리어 수
   bestRound: number;
+  unlockedStage: number;        // 이전 진행 모델의 기록값. 새 게임 맵 선택은 전체 맵을 허용한다.
 }
 
 const DEFAULT_PROFILE: Profile = {
-  seenUnits: [], foundHiddenRecipes: [], runs: 0, clears: {}, bestRound: 0,
+  seenUnits: [], foundHiddenRecipes: [], runs: 0, clears: {}, bestRound: 0, unlockedStage: 1,
 };
 
 export function loadProfile(): Profile {
@@ -67,6 +71,10 @@ function saveProfile(p: Profile) {
   } catch { /* noop */ }
 }
 
+export function maxSelectableStageId(unlockedStage: number): number {
+  return Math.max(1, Math.min(Math.floor(unlockedStage || 1), FINAL_STAGE));
+}
+
 export function profileMarkSeen(unitIds: string[], hiddenRecipeIds: string[]) {
   const p = loadProfile();
   let changed = false;
@@ -79,10 +87,54 @@ export function profileMarkSeen(unitIds: string[], hiddenRecipeIds: string[]) {
   if (changed) saveProfile(p);
 }
 
-export function profileRecordRun(cleared: boolean, difficulty: string, round: number) {
+export function canUnlockNextStage(
+  cleared: boolean,
+  round: number,
+  stageId: number,
+  unlockedStage: number,
+  finalBossCleared: boolean,
+): boolean {
+  // 맵은 라운드 사이에 전환되지 않는다. 이 값은 이전 진행 모델의
+  // 순차 클리어 기록으로만 남기며, 새 게임의 맵 선택을 제한하지 않는다.
+  return cleared &&
+    round === FINAL_ROUND &&
+    finalBossCleared &&
+    stageId === maxSelectableStageId(unlockedStage) &&
+    maxSelectableStageId(unlockedStage) < FINAL_STAGE;
+}
+
+export function playableStageId(requestedStageId: number, unlockedStage: number): number {
+  const requested = Math.max(1, Math.min(Math.floor(requestedStageId || 1), FINAL_STAGE));
+  return requested;
+}
+
+export function defaultNewRunStageId(currentStageId: number, unlockedStage: number): number {
+  // 새 게임에서는 전체 맵을 자유롭게 고를 수 있다. 모달 기본값은
+  // 자동 추천 없이 현재/이전 선택 맵을 유지한다.
+  return playableStageId(currentStageId, unlockedStage);
+}
+
+export function initialNewRunStageId(currentStageId: number, unlockedStage: number): number {
+  // 전체 맵을 자유 선택하되, 모달을 열 때 임의의 다른 맵으로 이동하지 않는다.
+  return playableStageId(currentStageId, unlockedStage);
+}
+
+export function profileRecordRun(
+  cleared: boolean,
+  difficulty: string,
+  round: number,
+  stageId: number,
+  finalBossCleared: boolean,
+): boolean {
   const p = loadProfile();
   p.runs++;
+  let unlockedNext = false;
   if (cleared) p.clears[difficulty] = (p.clears[difficulty] ?? 0) + 1;
   if (round > p.bestRound) p.bestRound = round;
+  if (canUnlockNextStage(cleared, round, stageId, p.unlockedStage, finalBossCleared)) {
+    p.unlockedStage = stageId + 1;
+    unlockedNext = true;
+  }
   saveProfile(p);
+  return unlockedNext;
 }

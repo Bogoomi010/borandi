@@ -3,24 +3,27 @@
 
 import { Rng } from "./rng";
 import {
-  SLOTS, UNIT_MIN_DIST, pathLengthForRound,
+  SLOTS, UNIT_MIN_DIST, pathLengthForStage,
   clampToField, posAtDist,
 } from "./path";
 import type {
   EnemyState, GameInput, GameState, Grade, MissionState, OwnedUnit,
   PendingSelector, Phase, ResultSummary, RewardDef, UnitDef,
+  DifficultyId,
 } from "./types";
 import { GRADE_ORDER } from "./types";
 import { UNIT_BY_ID, unitsOfGrade } from "../data/units";
 import { RECIPE_BY_ID } from "../data/recipes";
 import { MISSIONS, MISSION_BY_ID } from "../data/missions";
 import { FINAL_ROUND, bossForRound, waveForRound } from "../data/waves";
+import { stageById } from "../data/stages";
 import { UPGRADE_BY_ID, UPGRADES, upgradeCost } from "../data/upgrades";
 import {
   DIFFICULTY_BY_ID, HERO_PITY_ROUND, PITY_TABLE, PITY_THRESHOLD,
   SELL_REFUND, SUMMON_COST, SUMMON_TABLE,
 } from "../data/difficulty";
 import { DATA_VERSION } from "../data/version";
+import { stateChecksum } from "./checksum";
 
 export const TICK_RATE = 20;
 export const DT = 1 / TICK_RATE;
@@ -37,14 +40,19 @@ const LEASH_RANGE = 220;       // 앵커에서 이 거리를 넘으면 추적 �
 const ARRIVE_EPS = 10;         // 목적지 도착 판정(px)
 
 // ===== 라운드/패배 파라미터 =====
-/** 루프를 도는 적이 다음 라운드 시작 시점에 이 수 이상이면 패배 */
-export const LOSE_THRESHOLD = 80;
 /** 스폰 완료 후 다음 라운드까지 최대 대기(틱). 20틱=1초 → 60초 */
 const ROUND_BREAK_MAX = 1200;
 /** 적을 전멸시킨 시점부터 다음 라운드까지 대기(틱) → 10초 */
 const ROUND_BREAK_CLEARED = 200;
 /** 1라운드 시작 전 대기(틱) → 10초 */
 const INITIAL_BREAK_TICKS = 200;
+const LEGEND_COMMAND_THRESHOLD = 5;
+const LEGEND_COMMAND_STEP = 0.08;
+const LEGEND_COMMAND_MAX = 0.24;
+const NORMAL_LEGEND_COMMAND_STEP = 0.12;
+const NORMAL_LEGEND_COMMAND_MAX = 0.20;
+const NORMAL_LEGEND_COMMAND_LIMIT_BONUS = 6;
+const INTERMEDIATE_LEGEND_COMMAND_LIMIT_BONUS = 12;
 
 export interface ActionResult { ok: boolean; reason?: string; }
 
@@ -54,16 +62,19 @@ const fail = (reason: string): ActionResult => ({ ok: false, reason });
 export class Game {
   state: GameState;
   private rng: Rng;
+  private readonly runStageId: number;
   private spawnTimer = 0;
   /** 외부(UI) 알림 콜백 */
   onEvent: ((kind: string, text: string) => void) | null = null;
 
-  constructor(seed: string, difficulty: "novice" | "normal") {
+  constructor(seed: string, difficulty: DifficultyId, stageId = 1) {
     const diff = DIFFICULTY_BY_ID[difficulty];
-    this.rng = new Rng(`${DATA_VERSION}:${seed}:${difficulty}`);
+    const stage = stageById(stageId);
+    this.runStageId = stage.id;
+    this.rng = new Rng(`${DATA_VERSION}:${seed}:${difficulty}:${stage.id}`);
     this.state = {
       dataVersion: DATA_VERSION,
-      seed, difficulty,
+      seed, difficulty, stageId: stage.id,
       tick: 0, time: 0,
       round: 1, phase: "wave", breakTicks: INITIAL_BREAK_TICKS,
       life: diff.startLife, gold: diff.startGold,
@@ -84,10 +95,14 @@ export class Game {
       waveSpawned: 0, waveKilled: 0,
       speed: 1,
     };
-    this.log("system", `시드 ${seed} · 난이도 ${diff.name}로 시작`);
+    this.log("system", `시드 ${seed} · 난이도 ${diff.name} · 이번 판 고정 맵 ${stage.name}로 시작`);
   }
 
   get diff() { return DIFFICULTY_BY_ID[this.state.difficulty]; }
+
+  private enforceRunStage() {
+    this.state.stageId = this.runStageId;
+  }
 
   private log(kind: GameState["log"][number]["kind"], text: string) {
     this.state.log.push({ round: this.state.round, kind, text });
@@ -124,11 +139,6 @@ export class Game {
       case "cmdAttackMove": return this.cmdMoveLike("attackMove", p.unitIds as number[], p.x as number, p.y as number);
       case "cmdAttack": return this.cmdAttack(p.unitIds as number[], p.targetEid as number);
       case "cmdStop": return this.cmdStop(p.unitIds as number[]);
-      case "devSpawn": { // DEV전용: 보유칸 무시하고 즉시 생성
-        if (this.state.phase === "ended") return fail("게임이 끝났습니다.");
-        if (!UNIT_BY_ID[p.defId as string]) return fail("존재하지 않는 유닛입니다.");
-        return this.addUnit(p.defId as string, "DEV 생성") ? ok : fail("생성 실패");
-      }
       case "pickSelector": return this.pickSelector(p.selectorId as string, p.unitId as string);
       case "setSpeed": {
         this.state.speed = p.speed as 1 | 2 | 3;
@@ -462,10 +472,11 @@ export class Game {
 
   /** 휴식 종료 → 현재 round의 적 스폰 시작. 이 시점에 패배/승리를 판정한다. */
   private beginRoundSpawning() {
+    this.enforceRunStage();
     const s = this.state;
     if (s.round > FINAL_ROUND) { this.endGame(true); return; } // 모든 라운드 생존 → 승리
     // 다음 라운드가 시작되는 순간 루프에 쌓인 적이 임계 이상이면 패배
-    if (s.enemies.length >= LOSE_THRESHOLD) {
+    if (s.enemies.length >= this.enemyLimit()) {
       this.log("system", `누적 적 ${s.enemies.length}마리 — 방어선 붕괴`);
       this.endGame(false);
       return;
@@ -492,6 +503,7 @@ export class Game {
 
   /** 현재 round의 적 스폰 완료 → 보상 후 다음 라운드 휴식으로 전환 */
   private completeRound() {
+    this.enforceRunStage();
     const s = this.state;
     const wave = waveForRound(s.round);
     const gold = Math.round(wave.goldReward * this.diff.goldMult);
@@ -501,7 +513,6 @@ export class Game {
     this.checkMissions();
     this.expireMissions();
     if (s.round >= FINAL_ROUND) {
-      s.round++;
       this.endGame(true);
       return;
     }
@@ -510,9 +521,15 @@ export class Game {
   }
 
   private endGame(cleared: boolean) {
+    this.enforceRunStage();
     this.state.cleared = cleared;
     this.state.phase = "ended";
-    this.log("system", cleared ? "15스테이지 클리어!" : `${this.state.round}라운드에서 패배`);
+    this.log(
+      "system",
+      cleared
+        ? `${stageById(this.state.stageId).name} 40라운드 최종 보스 클리어! 다음 새 게임에서도 원하는 맵을 선택할 수 있습니다.`
+        : `${this.state.round}라운드에서 패배`,
+    );
   }
 
   // ===================== 전투 tick =====================
@@ -520,6 +537,7 @@ export class Game {
   /** 고정 timestep 1회 진행. 적 루프·유닛 AI는 라운드 사이 휴식 중에도 계속 돈다. */
   advanceTick() {
     if (this.state.phase !== "wave") return; // 게임 진행 중에는 항상 "wave"
+    this.enforceRunStage();
     const s = this.state;
     s.tick++;
     s.time += DT;
@@ -563,14 +581,14 @@ export class Game {
     this.moveEnemies();
     this.tickUnits(boss?.slowResist ?? 0);
 
-    // 일반 스테이지는 스폰 완료 시 정산한다. 마지막 스테이지는 남은 적까지 모두 처치해야 클리어한다.
-    if (s.waveSpawned >= wave.count && (s.round < FINAL_ROUND || s.enemies.length === 0)) this.completeRound();
+    // 일반 라운드는 스폰 완료 시 정산한다. 보스 라운드는 보스를 처치해야 정산한다.
+    if (s.waveSpawned >= wave.count && (wave.type !== "boss" || s.waveKilled >= wave.count)) this.completeRound();
   }
 
   /** 적을 루프(사각형 둘레)로 이동. 누수/탈출 없음 — 끝에 닿으면 처음으로 순환. */
   private moveEnemies() {
     const s = this.state;
-    const pathLength = pathLengthForRound(s.round);
+    const pathLength = pathLengthForStage(s.stageId);
     for (const e of s.enemies) {
       if (e.stunUntil > s.time) continue;
       e.slows = e.slows.filter((sl) => sl.until > s.time);
@@ -586,11 +604,42 @@ export class Game {
 
   private upLv(id: string): number { return this.state.upgrades[id] ?? 0; }
 
+  private legendOrBetterCount(): number {
+    return this.state.units.filter((u) => {
+      const grade = UNIT_BY_ID[u.defId].grade;
+      return grade === "legend" || grade === "hidden";
+    }).length;
+  }
+
+  legendCommandAttackMult(): number {
+    const count = this.legendOrBetterCount();
+    if (this.state.difficulty === "normal") {
+      return 1 + Math.min(NORMAL_LEGEND_COMMAND_MAX, count * NORMAL_LEGEND_COMMAND_STEP);
+    }
+    const stacks = Math.max(0, count - LEGEND_COMMAND_THRESHOLD + 1);
+    return 1 + Math.min(LEGEND_COMMAND_MAX, stacks * LEGEND_COMMAND_STEP);
+  }
+
+  legendCommandEnemyLimitBonus(): number {
+    const count = this.legendOrBetterCount();
+    if (this.state.difficulty === "normal") {
+      return count >= 1 ? NORMAL_LEGEND_COMMAND_LIMIT_BONUS : 0;
+    }
+    if (this.state.difficulty === "intermediate") {
+      return count >= LEGEND_COMMAND_THRESHOLD ? INTERMEDIATE_LEGEND_COMMAND_LIMIT_BONUS : 0;
+    }
+    return 0;
+  }
+
+  enemyLimit(): number {
+    return this.diff.enemyLimit + this.legendCommandEnemyLimitBonus();
+  }
+
   /** 사거리/시야 radius 안에서 타게팅 우선순위에 따른 적 1기 (없으면 null) */
   private pickTarget(u: OwnedUnit, d: UnitDef, radius: number): EnemyState | null {
     const cands: EnemyState[] = [];
     for (const e of this.state.enemies) {
-      const p = posAtDist(e.dist, this.state.round);
+      const p = posAtDist(e.dist, this.state.stageId);
       if (Math.hypot(p.x - u.x, p.y - u.y) <= radius) cands.push(e);
     }
     if (cands.length === 0) return null;
@@ -666,7 +715,7 @@ export class Game {
 
       // leash: 자동 교전/지정 공격에서 적이 앵커로부터 너무 멀면 포기·복귀
       if (target && (u.order.kind === "attack" || u.order.kind === "none")) {
-        const tp = posAtDist(target.dist, s.round);
+        const tp = posAtDist(target.dist, s.stageId);
         if (Math.hypot(tp.x - u.anchorX, tp.y - u.anchorY) > LEASH_RANGE) {
           target = null;
           if (u.order.kind === "attack") u.order = { kind: "none" };
@@ -675,7 +724,7 @@ export class Game {
 
       // 이동 목표 결정
       if (target && u.order.kind !== "hold") {
-        const tp = posAtDist(target.dist, s.round);
+        const tp = posAtDist(target.dist, s.stageId);
         moveTo = Math.hypot(tp.x - u.x, tp.y - u.y) > attackR ? { x: tp.x, y: tp.y } : null;
       } else if (!target && u.order.kind === "none") {
         if (Math.hypot(u.x - u.anchorX, u.y - u.anchorY) > ARRIVE_EPS) moveTo = { x: u.anchorX, y: u.anchorY };
@@ -699,7 +748,7 @@ export class Game {
 
       // 사격 (사거리 안 + 쿨다운)
       if (target && u.cooldown <= 0) {
-        const tp = posAtDist(target.dist, s.round);
+        const tp = posAtDist(target.dist, s.stageId);
         if (Math.hypot(tp.x - u.x, tp.y - u.y) <= attackR) this.fireAt(u, d, target, lv, bossSlowResist);
       }
     }
@@ -715,7 +764,7 @@ export class Game {
     const atkSpeed = d.attackSpeed * (d.family === "storm" ? 1 + 0.1 * lv.storm : 1);
     u.cooldown = 1 / atkSpeed;
 
-    let atk = d.attack * (d.family === "flame" ? 1 + 0.12 * lv.flame : 1);
+    let atk = d.attack * this.legendCommandAttackMult() * (d.family === "flame" ? 1 + 0.12 * lv.flame : 1);
     if (e.isBoss && d.bossDamageBonus) {
       const bonus = d.bossDamageBonus + (d.family === "iron" ? 0.15 * lv.iron : 0);
       atk *= 1 + bonus;
@@ -723,10 +772,10 @@ export class Game {
     u.totalDamage += this.applyDamage(e, atk, d.attackType, lv.void);
 
     if (d.splashRadius) {
-      const tp = posAtDist(e.dist, s.round);
+      const tp = posAtDist(e.dist, s.stageId);
       for (const c of s.enemies) {
         if (c === e) continue;
-        const cp = posAtDist(c.dist, s.round);
+        const cp = posAtDist(c.dist, s.stageId);
         if (Math.hypot(cp.x - tp.x, cp.y - tp.y) <= d.splashRadius) {
           u.totalDamage += this.applyDamage(c, atk * 0.6, d.attackType, lv.void);
         }
@@ -964,7 +1013,10 @@ export class Game {
   }
 
   resultSummary(): ResultSummary {
+    this.enforceRunStage();
     const s = this.state;
+    const legendCount = s.units.filter((u) => UNIT_BY_ID[u.defId].grade === "legend").length;
+    const hiddenCount = s.units.filter((u) => UNIT_BY_ID[u.defId].grade === "hidden").length;
     const dealers = [...s.units]
       .sort((a, b) => b.totalDamage - a.totalDamage)
       .slice(0, 3)
@@ -973,14 +1025,25 @@ export class Game {
         grade: UNIT_BY_ID[u.defId].grade,
         damage: Math.round(u.totalDamage),
       }));
+    const inputCounts = s.inputHistory.reduce<Record<string, number>>((counts, input) => {
+      counts[input.type] = (counts[input.type] ?? 0) + 1;
+      return counts;
+    }, {});
     return {
       seed: s.seed,
+      difficultyId: s.difficulty,
       difficulty: this.diff.name,
+      stageId: s.stageId,
+      stageName: stageById(s.stageId).name,
       dataVersion: s.dataVersion,
+      stateChecksum: stateChecksum(s),
       cleared: s.cleared,
       reachedRound: s.round,
       life: s.life,
       maxGrade: this.maxOwnedGrade(),
+      legendCount,
+      hiddenCount,
+      legendOrBetterCount: legendCount + hiddenCount,
       missionsDone: s.missions.filter((m) => m.status === "done").length,
       missionsTotal: s.missions.length,
       topDealers: dealers,
@@ -992,6 +1055,8 @@ export class Game {
       pityTriggered: s.summonStats.pityTriggered,
       craftCount: s.craftCount,
       merge3Count: s.merge3Count,
+      inputCount: s.inputHistory.length,
+      inputCounts,
       playedAt: "",
     };
   }
@@ -1000,12 +1065,13 @@ export class Game {
 /** 리플레이: 기록된 입력으로 게임을 재실행. stopAtTick까지 진행 후 정지. */
 export function replay(
   seed: string,
-  difficulty: "novice" | "normal",
+  difficulty: DifficultyId,
+  stageId: number,
   inputHistory: GameInput[],
   stopAtTick?: number,
   maxTicks = 2_000_000,
 ): Game {
-  const game = new Game(seed, difficulty);
+  const game = new Game(seed, difficulty, stageId);
   let i = 0;
   let guard = 0;
   while (guard++ < maxTicks) {
