@@ -9,6 +9,7 @@ import { alien1Walk } from "./sprites";
 import { UNIT_SPRITES, type Facing } from "./unitSprites";
 import { stageById, type StageDecorationKind } from "../data/stages";
 import tilesetUrl from "../assets/tilesets/dark-fantasy-village-tileset.png";
+import enemyPortalUrl from "../assets/effects/enemy-portal.png";
 
 const GRADE_COLOR: Record<Grade, string> = {
   common: "#9aa1b5", rare: "#4cc3ff", hero: "#b07bff",
@@ -103,6 +104,57 @@ class VillageTileset {
 }
 
 const villageTileset = new VillageTileset();
+
+class EnemyPortalAsset {
+  private img = new Image();
+  loaded = false;
+
+  constructor() {
+    this.img.onload = () => {
+      this.loaded = true;
+    };
+    this.img.src = enemyPortalUrl;
+  }
+
+  draw(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
+    const pulse = 1 + Math.sin(time * 2.4) * 0.035;
+    const size = 108 * pulse;
+    ctx.save();
+    ctx.translate(x, y);
+
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.38 + Math.sin(time * 3.1) * 0.08;
+    ctx.fillStyle = "#7b4dff";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 42 * pulse, 24 * pulse, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 1;
+
+    if (this.loaded) {
+      ctx.rotate(Math.sin(time * 0.35) * 0.035);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(this.img, -size / 2, -size / 2, size, size);
+      ctx.restore();
+      return;
+    }
+
+    // 이미지 로드 전 fallback. 실제 에셋이 뜨기 전에도 출발 지점이 비어 보이지 않게 한다.
+    ctx.strokeStyle = "#9b6dff";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 34, 20, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = "#53d9ff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 31, time % (Math.PI * 2), time % (Math.PI * 2) + Math.PI * 1.15);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+const enemyPortal = new EnemyPortalAsset();
 
 export class BoardRenderer {
   private canvas: HTMLCanvasElement;
@@ -231,6 +283,7 @@ export class BoardRenderer {
     ctx.fillText(stage.subtitle, 14, 38);
 
     this.drawDecorations(stage.decorations.filter((d) => d.y >= 250));
+    this.drawEnemyPortal(waypoints[0][0], waypoints[0][1], state.time);
 
     // 유닛
     for (const u of state.units) {
@@ -541,6 +594,10 @@ export class BoardRenderer {
         ctx.strokeRect(d.x, d.y, 28, 28);
       }
     }
+  }
+
+  private drawEnemyPortal(x: number, y: number, time: number) {
+    enemyPortal.draw(this.ctx, x, y, time);
   }
 }
 
