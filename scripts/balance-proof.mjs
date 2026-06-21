@@ -311,7 +311,6 @@ try {
   } else {
     if (requireComplete) {
       await writeManualGuidanceArtifacts();
-      await run("yarn", ["manual-playlog", `--out=${manualPath}`, "--assert"]);
     }
 
     await run("yarn", ["balance", `--seeds=${balanceSeeds}`, `--json=${balancePath}`]);

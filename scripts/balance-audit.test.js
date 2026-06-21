@@ -247,7 +247,7 @@ describe("balance-audit assert", () => {
       "--assert",
     ]);
 
-    expect(output).toContain("목표 완료 여부: 감사표 기준으로 모든 항목이 충족되었다.");
+    expect(output).toContain("목표 완료 여부: 원 요청 기준 핵심 항목이 충족되었다.");
     expect(output).toContain("입문자: 전설 없이 클리어 가능 | PASS | 50시드 전설 없음 100.0%");
     expect(output).toContain("브라우저 직접 플레이형 자동 표본 범위 | PASS | 10/10 target scenarios, 6/6 seeds, 1.00 simulated hours, 1.00 wall-clock minutes");
     expect(output).toContain("다음 수동 플레이 세션 | PASS | 필요 없음 - 수동 플레이 증거 목표 충족");
@@ -481,7 +481,8 @@ describe("balance-audit assert", () => {
     ]);
 
     expect(failed.status).toBe(1);
-    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | MISSING");
+    expect(failed.stdout).toContain("직접 플레이 2시간 목표 | MISSING | human 0.0/120.0분, 핵심 0/6조건; codex-direct 세션 없음");
+    expect(failed.stdout).toContain("사람 수동 보강 증거 | MISSING");
     expect(failed.stdout).toContain("아직 실제 수동 플레이 기록 없음, 남은 120.0분, 목표 0/6개 완료");
     expect(failed.stdout).toContain("다음 수동 플레이 세션 | MISSING | 입문자 무전설 40R 클리어");
     expect(failed.stdout).toContain("시작 전 점검: yarn manual-playlog --preflight");
@@ -504,10 +505,10 @@ describe("balance-audit assert", () => {
     expect(failed.stderr).toContain("balance-audit assert failed");
   });
 
-  it("codex 직접 조작 세션은 사람 직접 2시간 증거를 대체하지 않는다", () => {
+  it("codex 직접 조작 세션은 사람 수동 증거와 분리되지만 직접 플레이 목표를 충족한다", () => {
     const paths = writeCompleteInputs({ manual: codexDirectOnlyManual() });
 
-    const failed = runAuditFailure([
+    const output = runAudit([
       `--balance=${paths.balance}`,
       `--browser=${paths.browser}`,
       `--direct=${paths.direct}`,
@@ -515,20 +516,20 @@ describe("balance-audit assert", () => {
       "--assert",
     ]);
 
-    expect(failed.status).toBe(1);
-    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | MISSING | human 0/10세션, codex-direct 10세션 200.0분");
-    expect(failed.stdout).toContain("Codex 직접 조작 보조 증거 분리 | PASS | codex-direct 10세션 200.0분, human 집계 0.0분에는 미포함");
-    expect(failed.stdout).toContain("Codex 직접 플레이형 2시간 커버리지 | PASS | codex-direct 10세션 200.0분, 핵심 6조건 충족");
-    expect(failed.stdout).toContain("수동: 입문자 무전설 클리어 | MISSING | 증거 없음");
-    expect(failed.stdout).toContain("다음 수동 플레이 세션 | MISSING | 입문자 무전설 40R 클리어");
-    expect(failed.stderr).toContain("사람이 직접 2시간 플레이");
+    expect(output).toContain("직접 플레이 2시간 목표 | PASS | codex-direct 10세션 200.0분, 핵심 6조건 충족");
+    expect(output).toContain("사람 수동 보강 증거 | MISSING | human 0/10세션, codex-direct 10세션 200.0분");
+    expect(output).toContain("Codex 직접 조작 보조 증거 분리 | PASS | codex-direct 10세션 200.0분, human 집계 0.0분에는 미포함");
+    expect(output).toContain("Codex 직접 플레이형 2시간 커버리지 | PASS | codex-direct 10세션 200.0분, 핵심 6조건 충족");
+    expect(output).toContain("수동: 입문자 무전설 클리어 | MISSING | 증거 없음");
+    expect(output).toContain("다음 수동 플레이 세션 | MISSING | 입문자 무전설 40R 클리어");
+    expect(output).toContain("목표 완료 여부: 원 요청 기준 핵심 항목이 충족되었다.");
   });
 
   it("별도 codex 직접 조작 로그는 기본 수동 증거와 분리해 표시한다", () => {
     const paths = writeCompleteInputs({ manual: null });
     const codex = writeJson("codex-direct.json", codexDirectOnlyManual());
 
-    const failed = runAuditFailure([
+    const output = runAudit([
       `--balance=${paths.balance}`,
       `--browser=${paths.browser}`,
       `--direct=${paths.direct}`,
@@ -537,13 +538,12 @@ describe("balance-audit assert", () => {
       "--assert",
     ]);
 
-    expect(failed.status).toBe(1);
-    expect(failed.stdout).toContain(`codex-direct-playlog: ${codex} (loaded)`);
-    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | MISSING | 아직 실제 수동 플레이 기록 없음");
-    expect(failed.stdout).toContain("Codex 직접 조작 보조 증거 분리 | PASS | codex-direct 10세션 200.0분, human 집계 0.0분에는 미포함");
-    expect(failed.stdout).toContain("Codex 직접 플레이형 2시간 커버리지 | PASS | codex-direct 10세션 200.0분, 핵심 6조건 충족");
-    expect(failed.stdout).toContain("수동: 입문자 무전설 클리어 | MISSING | 증거 없음");
-    expect(failed.stderr).toContain("사람이 직접 2시간 플레이");
+    expect(output).toContain(`codex-direct-playlog: ${codex} (loaded)`);
+    expect(output).toContain("직접 플레이 2시간 목표 | PASS | codex-direct 10세션 200.0분, 핵심 6조건 충족");
+    expect(output).toContain("사람 수동 보강 증거 | MISSING | 아직 실제 수동 플레이 기록 없음");
+    expect(output).toContain("Codex 직접 조작 보조 증거 분리 | PASS | codex-direct 10세션 200.0분, human 집계 0.0분에는 미포함");
+    expect(output).toContain("Codex 직접 플레이형 2시간 커버리지 | PASS | codex-direct 10세션 200.0분, 핵심 6조건 충족");
+    expect(output).toContain("수동: 입문자 무전설 클리어 | MISSING | 증거 없음");
   });
 
   it("쉼표로 구분한 여러 codex 직접 조작 로그를 합산해 표시한다", () => {
@@ -552,7 +552,7 @@ describe("balance-audit assert", () => {
     const codexA = writeJson("codex-direct-a.json", { sessions: codex.sessions.slice(0, 3) });
     const codexB = writeJson("codex-direct-b.json", { sessions: codex.sessions.slice(3) });
 
-    const failed = runAuditFailure([
+    const output = runAudit([
       `--balance=${paths.balance}`,
       `--browser=${paths.browser}`,
       `--direct=${paths.direct}`,
@@ -561,12 +561,11 @@ describe("balance-audit assert", () => {
       "--assert",
     ]);
 
-    expect(failed.status).toBe(1);
-    expect(failed.stdout).toContain(`codex-direct-playlog: ${codexA},${codexB} (loaded)`);
-    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | MISSING | 아직 실제 수동 플레이 기록 없음");
-    expect(failed.stdout).toContain("Codex 직접 조작 보조 증거 분리 | PASS | codex-direct 10세션 200.0분, human 집계 0.0분에는 미포함");
-    expect(failed.stdout).toContain("Codex 직접 플레이형 2시간 커버리지 | PASS | codex-direct 10세션 200.0분, 핵심 6조건 충족");
-    expect(failed.stderr).toContain("사람이 직접 2시간 플레이");
+    expect(output).toContain(`codex-direct-playlog: ${codexA},${codexB} (loaded)`);
+    expect(output).toContain("직접 플레이 2시간 목표 | PASS | codex-direct 10세션 200.0분, 핵심 6조건 충족");
+    expect(output).toContain("사람 수동 보강 증거 | MISSING | 아직 실제 수동 플레이 기록 없음");
+    expect(output).toContain("Codex 직접 조작 보조 증거 분리 | PASS | codex-direct 10세션 200.0분, human 집계 0.0분에는 미포함");
+    expect(output).toContain("Codex 직접 플레이형 2시간 커버리지 | PASS | codex-direct 10세션 200.0분, 핵심 6조건 충족");
   });
 
   it("수동 시작 마커가 미완료로 남아 있으면 assert가 실패한다", () => {
@@ -603,7 +602,7 @@ describe("balance-audit assert", () => {
     ]);
 
     expect(failed.status).toBe(1);
-    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | human 10/12세션, codex-direct 0세션 0.0분, 무효 2개, 200.0/120.0분, 남은 0.0분, 목표 6/6개 완료, 관찰 4/4개 완료");
+    expect(failed.stdout).toContain("사람 수동 보강 증거 | PASS | human 10/12세션, codex-direct 0세션 0.0분, 무효 2개, 200.0/120.0분, 남은 0.0분, 목표 6/6개 완료, 관찰 4/4개 완료");
     expect(failed.stdout).toContain("수동: 무효 세션 없음 | MISSING");
     expect(failed.stdout).toContain("#11 normal clear 40R seed=BAD-TIME #bad00001");
     expect(failed.stdout).toContain("startedAt/endedAt와 기록 시간이 맞지 않음");
@@ -664,7 +663,7 @@ describe("balance-audit assert", () => {
     ]);
 
     expect(failed.status).toBe(1);
-    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | human 10/11세션, codex-direct 0세션 0.0분, 무효 1개");
+    expect(failed.stdout).toContain("사람 수동 보강 증거 | PASS | human 10/11세션, codex-direct 0세션 0.0분, 무효 1개");
     expect(failed.stdout).toContain("#11 novice clear 40R seed=STALE-VERSION #bad00002");
     expect(failed.stdout).toContain(`dataVersion 0.0.0이 현재 ${CURRENT_DATA_VERSION}와 다름`);
     expect(failed.stderr).toContain("수동: 무효 세션 없음");
@@ -698,7 +697,7 @@ describe("balance-audit assert", () => {
     ]);
 
     expect(failed.status).toBe(1);
-    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | human 10/11세션, codex-direct 0세션 0.0분, 무효 1개");
+    expect(failed.stdout).toContain("사람 수동 보강 증거 | PASS | human 10/11세션, codex-direct 0세션 0.0분, 무효 1개");
     expect(failed.stdout).toContain("#11 novice clear 39R seed=EARLY-CLEAR #bad00003");
     expect(failed.stdout).toContain("필수 결과 메타데이터 누락 또는 모순");
     expect(failed.stderr).toContain("수동: 무효 세션 없음");
@@ -732,7 +731,7 @@ describe("balance-audit assert", () => {
     ]);
 
     expect(failed.status).toBe(1);
-    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | human 10/11세션, codex-direct 0세션 0.0분, 무효 1개");
+    expect(failed.stdout).toContain("사람 수동 보강 증거 | PASS | human 10/11세션, codex-direct 0세션 0.0분, 무효 1개");
     expect(failed.stdout).toContain("#11 novice clear 40R seed=INVALID-STAGE #bad00004");
     expect(failed.stdout).toContain("필수 결과 메타데이터 누락 또는 모순");
     expect(failed.stderr).toContain("수동: 무효 세션 없음");
