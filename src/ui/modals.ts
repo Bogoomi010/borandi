@@ -268,10 +268,11 @@ export function manualPlaylogResultExportJson(r: ResultSummary): string {
   }, null, 2);
 }
 
-function manualPlaylogResultEmbeddedJsonCommand(json: string, dryRun: boolean): string {
+function manualPlaylogResultEmbeddedJsonCommand(json: string, dryRun: boolean, thenNext = false): string {
   const marker = "BORANDI_MANUAL_RESULT_JSON";
+  const afterCommand = thenNext ? " && yarn manual-playlog --next" : "";
   return [
-    `cat <<'${marker}' | yarn manual-playlog --from-result=-${dryRun ? " --dry-run" : ""}`,
+    `cat <<'${marker}' | yarn manual-playlog --from-result=-${dryRun ? " --dry-run" : ""}${afterCommand}`,
     json,
     marker,
   ].join("\n");
@@ -484,6 +485,7 @@ export function maybeShowResult(ctx: AppCtx) {
     const manualClipboardCommand = "yarn manual-playlog --from-clipboard";
     const manualEmbeddedJsonDryRunCommand = manualPlaylogResultEmbeddedJsonCommand(manualResultJson, true);
     const manualEmbeddedJsonCommand = manualPlaylogResultEmbeddedJsonCommand(manualResultJson, false);
+    const manualEmbeddedJsonThenNextCommand = manualPlaylogResultEmbeddedJsonCommand(manualResultJson, false, true);
 
     body.appendChild(el("h3", "", "수동 플레이 로그"));
     body.appendChild(el("h3", "", "결과 JSON 저장 후 검증"));
@@ -569,6 +571,17 @@ export function maybeShowResult(ctx: AppCtx) {
       }
     };
     row.appendChild(copyEmbeddedJsonSave);
+
+    const copyEmbeddedJsonSaveNext = el("button", "", "JSON포함 저장+다음 복사");
+    copyEmbeddedJsonSaveNext.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualEmbeddedJsonThenNextCommand);
+        toast("JSON 포함 저장 후 다음 확인 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn");
+      }
+    };
+    row.appendChild(copyEmbeddedJsonSaveNext);
 
     const copyDryRun = el("button", "", "검증 명령 복사");
     copyDryRun.onclick = async () => {
