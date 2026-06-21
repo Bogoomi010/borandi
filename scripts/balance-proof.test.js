@@ -31,6 +31,7 @@ function session(index, difficulty, result, legends, maxGrade, round = 40, minut
     maxGrade,
     inputCount: 12,
     inputTypes: ["summon", "startWave"],
+    inputCounts: { summon: 10, startWave: 2 },
     dataVersion: "0.8.4",
     stateChecksum: `${(0x30000000 + index).toString(16)}`,
   };
@@ -95,7 +96,7 @@ const liveNextArtifact = {
     targetRowsTotal: 6,
   },
   next: { label: "입문자 무전설 40R 클리어" },
-  resultFieldChecklist: Array.from({ length: 11 }, (_, index) => ({ field: `field${index}` })),
+  resultFieldChecklist: Array.from({ length: 13 }, (_, index) => ({ field: `field${index}` })),
 };
 
 function writeManualArtifactCheckFakeYarn(logPath) {
@@ -166,7 +167,7 @@ if [ "$1" = "--silent" ] && [ "$2" = "manual-playlog" ]; then
       printf '%s\\n' '{"canStart":true,"remainingMinutes":120,"targetRowsPassed":0,"targetRowsTotal":6}'
     fi
     if [ "$arg" = "--next-json" ]; then
-      printf '%s\\n' '{"passed":false,"current":{"validSessionCount":0,"totalMinutes":0,"remainingMinutes":120,"targetRowsPassed":0,"targetRowsTotal":6},"next":{"label":"입문자 무전설 40R 클리어"},"resultFieldChecklist":[{},{},{},{},{},{},{},{},{},{},{}]}'
+      printf '%s\\n' '{"passed":false,"current":{"validSessionCount":0,"totalMinutes":0,"remainingMinutes":120,"targetRowsPassed":0,"targetRowsTotal":6},"next":{"label":"입문자 무전설 40R 클리어"},"resultFieldChecklist":[{},{},{},{},{},{},{},{},{},{},{},{},{}]}'
     fi
     if [ "$arg" = "--plan-json" ]; then
       printf '%s\\n' '{"passed":false,"steps":[{"label":"입문자 무전설 40R 클리어"}]}'

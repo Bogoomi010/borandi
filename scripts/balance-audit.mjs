@@ -373,6 +373,8 @@ function hasCompleteManualMetadata(session) {
   const stateChecksum = String(session.stateChecksum ?? "");
   const inputCount = Number(session.inputCount ?? 0);
   const inputTypes = inputTypesForSession(session);
+  const inputCounts = inputCountsForSession(session);
+  const inputCountsTotal = inputCountTotal(inputCounts);
   return ["novice", "normal", "intermediate", "expert", "master"].includes(difficulty) &&
     ["clear", "cleared", "win", "won", "victory", "loss", "lose", "lost", "fail", "failed", "defeat", "quit"].includes(result) &&
     isValidStageId(stage) &&
@@ -384,7 +386,13 @@ function hasCompleteManualMetadata(session) {
     seed.length > 0 &&
     dataVersion.length > 0 &&
     /^[0-9a-f]{8}$/i.test(stateChecksum) &&
-    (source !== "human-playtest" || (Number.isFinite(inputCount) && inputCount >= MIN_HUMAN_PLAYTEST_INPUT_COUNT && inputTypes.length > 0));
+    (source !== "human-playtest" || (
+      Number.isFinite(inputCount) &&
+      inputCount >= MIN_HUMAN_PLAYTEST_INPUT_COUNT &&
+      inputTypes.length > 0 &&
+      Object.keys(inputCounts).length > 0 &&
+      inputCountsTotal === inputCount
+    ));
 }
 
 function isLegendMetadataConsistent(maxGrade, legends) {
@@ -425,6 +433,33 @@ function inputTypesForSession(session) {
     .filter(Boolean)
     .filter((type, index, arr) => arr.indexOf(type) === index)
     .sort();
+}
+
+function inputCountsForSession(session) {
+  const value = session.inputCounts;
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const counts = {};
+    for (const [type, count] of Object.entries(value)) {
+      const normalizedType = String(type).trim();
+      const normalizedCount = Number(count);
+      if (normalizedType && Number.isInteger(normalizedCount) && normalizedCount > 0) {
+        counts[normalizedType] = normalizedCount;
+      }
+    }
+    return counts;
+  }
+  const counts = {};
+  for (const part of String(value ?? "").split(",")) {
+    const [rawType, rawCount] = part.split(":");
+    const type = String(rawType ?? "").trim();
+    const count = Number(String(rawCount ?? "").trim());
+    if (type && Number.isInteger(count) && count > 0) counts[type] = count;
+  }
+  return counts;
+}
+
+function inputCountTotal(inputCounts) {
+  return Object.values(inputCounts).reduce((sum, count) => sum + Number(count), 0);
 }
 
 function reachedFinalRound(session) {

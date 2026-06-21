@@ -157,6 +157,14 @@ function manualInputTypes(r: ResultSummary): string {
   return Object.keys(r.inputCounts).sort().join(",");
 }
 
+function manualInputCounts(r: ResultSummary): string {
+  return Object.entries(r.inputCounts)
+    .filter(([, count]) => count > 0)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([type, count]) => `${type}:${count}`)
+    .join(",");
+}
+
 export function manualPlaylogCommand(r: ResultSummary): string {
   const seconds = Math.max(1, Math.round(r.wallSeconds ?? 0));
   const result = r.cleared ? "clear" : "loss";
@@ -175,7 +183,9 @@ export function manualPlaylogCommand(r: ResultSummary): string {
     `--inputCount=${r.inputCount}`,
   ];
   const inputTypes = manualInputTypes(r);
+  const inputCounts = manualInputCounts(r);
   if (inputTypes) args.push(`--inputTypes=${shellArg(inputTypes)}`);
+  if (inputCounts) args.push(`--inputCounts=${shellArg(inputCounts)}`);
   if (r.manualStartedAt) args.push(`--startedAt=${shellArg(r.manualStartedAt)}`);
   if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
   args.push(`--notes=${shellArg(manualProofResultLogNote(r))}`);
@@ -202,7 +212,9 @@ export function manualPlaylogFinishCommand(r: ResultSummary): string {
     `--inputCount=${r.inputCount}`,
   ];
   const inputTypes = manualInputTypes(r);
+  const inputCounts = manualInputCounts(r);
   if (inputTypes) args.push(`--inputTypes=${shellArg(inputTypes)}`);
+  if (inputCounts) args.push(`--inputCounts=${shellArg(inputCounts)}`);
   if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
   args.push(`--notes=${shellArg(manualProofResultLogNote(r))}`);
   return args.join(" ");
@@ -226,7 +238,9 @@ export function manualPlaylogFinishLatestCommand(r: ResultSummary): string {
     `--inputCount=${r.inputCount}`,
   ];
   const inputTypes = manualInputTypes(r);
+  const inputCounts = manualInputCounts(r);
   if (inputTypes) args.push(`--inputTypes=${shellArg(inputTypes)}`);
+  if (inputCounts) args.push(`--inputCounts=${shellArg(inputCounts)}`);
   if (r.playedAt) args.push(`--endedAt=${shellArg(r.playedAt)}`);
   args.push(`--notes=${shellArg(manualProofResultLogNote(r))}`);
   return args.join(" ");
@@ -618,6 +632,7 @@ function appendManualResultFieldChecklist(body: HTMLElement, target?: ManualProo
     ["stateChecksum", "결과 화면 RESULT_CHECKSUM", "8자리 checksum"],
     ["inputCount", "결과 화면 플레이 입력 수", "12 이상"],
     ["inputTypes", "결과 화면 플레이 입력 종류", "1개 이상"],
+    ["inputCounts", "결과 화면 입력별 횟수", "합계가 inputCount와 일치"],
     ["result", "결과 화면 클리어/실패 상태", expected.result],
     ["round", "결과 화면 도달 라운드", expected.round],
     ["legends", "결과 화면 전설 이상 수", expected.legends],

@@ -16,10 +16,12 @@ function runManualPlaylog(args) {
   const needsInputCount = args.some((arg) => arg === "--finish" || arg === "--finish-latest" || arg.startsWith("--finish=") || arg.startsWith("--result="));
   const hasInputCount = args.some((arg) => arg.startsWith("--inputCount="));
   const hasInputTypes = args.some((arg) => arg.startsWith("--inputTypes="));
+  const hasInputCounts = args.some((arg) => arg.startsWith("--inputCounts="));
   const normalizedArgs = [
     ...args,
     ...(needsInputCount && !hasInputCount ? ["--inputCount=12"] : []),
     ...(needsInputCount && !hasInputTypes ? ["--inputTypes=summon,startWave"] : []),
+    ...(needsInputCount && !hasInputCounts ? ["--inputCounts=summon:10,startWave:2"] : []),
   ];
   return execFileSync(process.execPath, ["scripts/manual-playlog.mjs", ...normalizedArgs], {
     cwd: process.cwd(),
@@ -74,6 +76,7 @@ function appendSession(out, {
     `--dataVersion=${CURRENT_DATA_VERSION}`,
     `--stateChecksum=${checksum}`,
     "--inputTypes=summon,startWave",
+    "--inputCounts=summon:10,startWave:2",
     `--startedAt=${startedAt}`,
     `--endedAt=${endedAt}`,
   ]);
@@ -166,6 +169,9 @@ describe("manual-playlog plan", () => {
     expect(preflight.resultFieldChecklist).toEqual(expect.arrayContaining([
       expect.objectContaining({ field: "dataVersion", source: "결과 화면 RESULT_DATA_VERSION", expected: "0.8.4" }),
       expect.objectContaining({ field: "stateChecksum", source: "결과 화면 RESULT_CHECKSUM", expected: "8자리 checksum" }),
+      expect.objectContaining({ field: "inputCount", expected: "12 이상" }),
+      expect.objectContaining({ field: "inputTypes", expected: "1개 이상" }),
+      expect.objectContaining({ field: "inputCounts", expected: "합계가 inputCount와 일치" }),
       expect.objectContaining({ field: "result", expected: "clear" }),
       expect.objectContaining({ field: "round", expected: "40" }),
       expect.objectContaining({ field: "legends", expected: "0" }),
@@ -443,6 +449,9 @@ describe("manual-playlog plan", () => {
       expect.objectContaining({ field: "endedAt", source: "결과 화면 RESULT_ENDED_AT" }),
       expect.objectContaining({ field: "dataVersion", expected: "0.8.4" }),
       expect.objectContaining({ field: "stateChecksum", expected: "8자리 checksum" }),
+      expect.objectContaining({ field: "inputCount", expected: "12 이상" }),
+      expect.objectContaining({ field: "inputTypes", expected: "1개 이상" }),
+      expect.objectContaining({ field: "inputCounts", expected: "합계가 inputCount와 일치" }),
       expect.objectContaining({ field: "result", expected: "clear" }),
       expect.objectContaining({ field: "round", expected: "40" }),
       expect.objectContaining({ field: "legends", expected: "0" }),
@@ -514,6 +523,9 @@ describe("manual-playlog plan", () => {
       expect.objectContaining({ field: "endedAt", source: "결과 화면 RESULT_ENDED_AT" }),
       expect.objectContaining({ field: "dataVersion", expected: "0.8.4" }),
       expect.objectContaining({ field: "stateChecksum", expected: "8자리 checksum" }),
+      expect.objectContaining({ field: "inputCount", expected: "12 이상" }),
+      expect.objectContaining({ field: "inputTypes", expected: "1개 이상" }),
+      expect.objectContaining({ field: "inputCounts", expected: "합계가 inputCount와 일치" }),
       expect.objectContaining({ field: "result", expected: "clear" }),
       expect.objectContaining({ field: "round", expected: "40" }),
       expect.objectContaining({ field: "legends", expected: "0" }),
@@ -563,6 +575,7 @@ describe("manual-playlog plan", () => {
           stateChecksum: "bad00001",
           inputCount: 12,
           inputTypes: ["summon", "startWave"],
+          inputCounts: { summon: 10, startWave: 2 },
         },
         {
           source: "human-playtest",
@@ -580,6 +593,7 @@ describe("manual-playlog plan", () => {
           stateChecksum: "bad00002",
           inputCount: 12,
           inputTypes: ["summon", "startWave"],
+          inputCounts: { summon: 10, startWave: 2 },
         },
         {
           source: "human-playtest",
@@ -597,6 +611,7 @@ describe("manual-playlog plan", () => {
           stateChecksum: "bad00002",
           inputCount: 12,
           inputTypes: ["summon", "startWave"],
+          inputCounts: { summon: 10, startWave: 2 },
         },
       ],
     }, null, 2), "utf8");
@@ -661,6 +676,7 @@ describe("manual-playlog plan", () => {
           stateChecksum: "bad00003",
           inputCount: 12,
           inputTypes: ["summon", "startWave"],
+          inputCounts: { summon: 10, startWave: 2 },
         },
       ],
     }, null, 2), "utf8");
@@ -776,11 +792,11 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("- 플레이 조건: 전설 없이 40R 최종 보스 클리어");
     expect(output).toContain("- 기록 조건: result=clear round=40 legends=0 maxGrade=hero 이하");
     expect(output).toContain("결과가 나오면 먼저 아래 형식으로 저장 전 검증을 실행하세요");
-    expect(output).toContain("yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --inputTypes=RESULT_INPUT_TYPES --endedAt=RESULT_ENDED_AT");
+    expect(output).toContain("yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --inputTypes=RESULT_INPUT_TYPES --inputCounts=RESULT_INPUT_COUNTS --endedAt=RESULT_ENDED_AT");
     expect(output).toContain("--dry-run");
     expect(output).toContain("검증이 통과하면 아래 형식으로 실제 저장하세요");
     expect(output).toContain("yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero");
-    expect(output).toContain("--dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --inputTypes=RESULT_INPUT_TYPES");
+    expect(output).toContain("--dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --inputTypes=RESULT_INPUT_TYPES --inputCounts=RESULT_INPUT_COUNTS");
     expect(output).toContain("--endedAt=RESULT_ENDED_AT");
     expect(output).toContain("RESULT_ENDED_AT은 결과 화면의 종료 시각을 사용하세요");
     expect(output).not.toContain("dry-run 검증용 임시 id 예시");
@@ -793,8 +809,8 @@ describe("manual-playlog plan", () => {
       seed: "NEXT-SEED",
       notes: "입문자 무전설 40R 클리어",
       startedAt: "2026-06-20T02:00:00.000Z",
-      finishCommandTemplate: `yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --inputTypes=RESULT_INPUT_TYPES --endedAt=RESULT_ENDED_AT --out=${shellArg(out)}`,
-      finishDryRunCommandTemplate: `yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --inputTypes=RESULT_INPUT_TYPES --endedAt=RESULT_ENDED_AT --out=${shellArg(out)} --dry-run`,
+      finishCommandTemplate: `yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --inputTypes=RESULT_INPUT_TYPES --inputCounts=RESULT_INPUT_COUNTS --endedAt=RESULT_ENDED_AT --out=${shellArg(out)}`,
+      finishDryRunCommandTemplate: `yarn manual-playlog --finish='novice-1-NEXT-SEED-20260620T020000000Z' --result=clear --round=40 --legends=0 --maxGrade=hero --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --inputTypes=RESULT_INPUT_TYPES --inputCounts=RESULT_INPUT_COUNTS --endedAt=RESULT_ENDED_AT --out=${shellArg(out)} --dry-run`,
     });
   });
 
@@ -1177,9 +1193,11 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("- 상태 체크섬: 20000020");
     expect(output).toContain("- 플레이 입력 수: 12");
     expect(output).toContain("- 플레이 입력 종류: startWave, summon");
+    expect(output).toContain("- 입력별 횟수: summon:10, startWave:2");
     expect(output).toContain('"seed": "DRY-RUN"');
     expect(output).toContain('"inputCount": 12');
     expect(output).toContain('"inputTypes": [');
+    expect(output).toContain('"inputCounts": {');
     expect(existsSync(out)).toBe(false);
   });
 
@@ -1257,6 +1275,59 @@ describe("manual-playlog plan", () => {
     expect(failed.stderr).toContain("--inputTypes 값은 결과 리포트의 플레이 입력 종류");
   });
 
+  it("human-playtest 결과 저장은 결과 화면의 입력별 횟수를 요구한다", () => {
+    const out = makeTempPath("missing-input-counts.json");
+
+    const failed = runManualPlaylogFailure([
+      `--out=${out}`,
+      "--dry-run",
+      "--difficulty=novice",
+      "--seconds=900",
+      "--result=clear",
+      "--stage=1",
+      "--round=40",
+      "--seed=NO-INPUT-COUNTS",
+      "--legends=0",
+      "--maxGrade=hero",
+      `--dataVersion=${CURRENT_DATA_VERSION}`,
+      "--stateChecksum=20000028",
+      "--inputCount=12",
+      "--inputTypes=summon,startWave",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+      "--endedAt=2026-06-20T02:15:00.000Z",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stderr).toContain("--inputCounts 값은 결과 리포트의 입력별 횟수");
+  });
+
+  it("human-playtest 결과 저장은 입력별 횟수 합계가 총 입력 수와 맞아야 한다", () => {
+    const out = makeTempPath("mismatched-input-counts.json");
+
+    const failed = runManualPlaylogFailure([
+      `--out=${out}`,
+      "--dry-run",
+      "--difficulty=novice",
+      "--seconds=900",
+      "--result=clear",
+      "--stage=1",
+      "--round=40",
+      "--seed=BAD-INPUT-COUNTS",
+      "--legends=0",
+      "--maxGrade=hero",
+      `--dataVersion=${CURRENT_DATA_VERSION}`,
+      "--stateChecksum=20000029",
+      "--inputCount=12",
+      "--inputTypes=summon,startWave",
+      "--inputCounts=summon:3,startWave:1",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+      "--endedAt=2026-06-20T02:15:00.000Z",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stderr).toContain("--inputCounts 합계(4)가 --inputCount(12)와 일치해야 합니다");
+  });
+
   it("결과 저장은 RESULT_* 및 GAME_SEED_HERE placeholder 값을 저장하지 않는다", () => {
     const cases = [
       {
@@ -1281,8 +1352,13 @@ describe("manual-playlog plan", () => {
       },
       {
         out: makeTempPath("placeholder-result-input-types.json"),
-        args: ["--seed=REAL-SEED", `--dataVersion=${CURRENT_DATA_VERSION}`, "--stateChecksum=20000027", "--inputCount=12", "--inputTypes=RESULT_INPUT_TYPES", "--endedAt=2026-06-20T02:15:00.000Z"],
+        args: ["--seed=REAL-SEED", `--dataVersion=${CURRENT_DATA_VERSION}`, "--stateChecksum=20000027", "--inputCount=12", "--inputTypes=RESULT_INPUT_TYPES", "--inputCounts=summon:10,startWave:2", "--endedAt=2026-06-20T02:15:00.000Z"],
         message: "--inputTypes=RESULT_INPUT_TYPES는 템플릿 placeholder입니다.",
+      },
+      {
+        out: makeTempPath("placeholder-result-input-counts.json"),
+        args: ["--seed=REAL-SEED", `--dataVersion=${CURRENT_DATA_VERSION}`, "--stateChecksum=20000030", "--inputCount=12", "--inputTypes=summon,startWave", "--inputCounts=RESULT_INPUT_COUNTS", "--endedAt=2026-06-20T02:15:00.000Z"],
+        message: "--inputCounts=RESULT_INPUT_COUNTS는 템플릿 placeholder입니다.",
       },
     ];
 

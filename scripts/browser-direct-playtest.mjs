@@ -164,6 +164,14 @@ function inputTypesFromCounts(inputCounts) {
     .sort();
 }
 
+function inputCountsArg(inputCounts) {
+  return Object.entries(inputCounts ?? {})
+    .filter(([, count]) => Number(count) > 0)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([type, count]) => `${type}:${Number(count)}`)
+    .join(",");
+}
+
 function manualPlaylogCommand({ scenario, seed, simulatedSeconds, final, endedAt }) {
   const session = codexDirectSession({ scenario, seed, simulatedSeconds, final, endedAt });
   return [
@@ -179,6 +187,7 @@ function manualPlaylogCommand({ scenario, seed, simulatedSeconds, final, endedAt
     `--maxGrade=${shellArg(session.maxGrade)}`,
     `--inputCount=${session.inputCount}`,
     ...(session.inputTypes.length > 0 ? [`--inputTypes=${shellArg(session.inputTypes.join(","))}`] : []),
+    ...(Object.keys(session.inputCounts).length > 0 ? [`--inputCounts=${shellArg(inputCountsArg(session.inputCounts))}`] : []),
     `--dataVersion=${shellArg(session.dataVersion)}`,
     `--stateChecksum=${shellArg(session.stateChecksum)}`,
     `--endedAt=${shellArg(session.endedAt)}`,
@@ -207,6 +216,7 @@ function codexDirectSession({ scenario, seed, simulatedSeconds, final, endedAt }
     maxGrade,
     inputCount: Number(final.inputCount ?? 0),
     inputTypes: inputTypesFromCounts(final.inputCounts),
+    inputCounts: final.inputCounts ?? {},
     dataVersion: final.dataVersion,
     stateChecksum: final.stateChecksum,
     notes,
