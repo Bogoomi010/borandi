@@ -1,5 +1,6 @@
 // Append one human playtest session to the manual balance play log.
 
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
@@ -62,6 +63,7 @@ function usage() {
     "  --from-result=FILE.json  # 결과 화면에서 내보낸 수동 증거 JSON을 읽어 결과 세션 저장",
     "  --from-result=-          # 표준입력(stdin)에서 수동 증거 JSON을 읽어 결과 세션 저장",
     "  --from-result-stdin      # --from-result=-와 동일",
+    "  --from-clipboard         # macOS 클립보드(pbpaste)에서 수동 증거 JSON을 읽어 결과 세션 저장",
     "  --finish                 # --finish-latest와 동일",
     "  --dry-run                # 시작/결과 세션을 검증하고 미리보기만 출력, 로그 파일은 쓰지 않음",
     "  --summary             # 현재 수동 로그 충족/미충족 항목만 출력",
@@ -313,7 +315,18 @@ function inputCountsArgValue(inputCounts) {
     .join(",");
 }
 
+function readClipboardText() {
+  try {
+    return execFileSync("pbpaste", { encoding: "utf8", maxBuffer: 10 * 1024 * 1024 });
+  } catch (error) {
+    fail(`--from-clipboard 클립보드를 읽을 수 없습니다. macOS pbpaste를 사용할 수 있는 환경에서 실행하거나 pbpaste | yarn manual-playlog --from-result=- 를 사용하세요.\n${error.message}`);
+  }
+}
+
 function readManualResultExportText(path) {
+  if (path === "clipboard" || args["from-clipboard"] === "true") {
+    return readClipboardText();
+  }
   if (path === "-" || args["from-result-stdin"] === "true") {
     try {
       return readFileSync(0, "utf8");
@@ -343,7 +356,9 @@ function readManualResultExport(path) {
 }
 
 function applyManualResultExportArgs() {
-  const resultPath = args["from-result-stdin"] === "true"
+  const resultPath = args["from-clipboard"] === "true"
+    ? "clipboard"
+    : args["from-result-stdin"] === "true"
     ? "-"
     : args["from-result"] ?? args["from-result-json"];
   if (resultPath === undefined) return;
@@ -710,6 +725,8 @@ function manualProofCommandTemplates(next) {
     fromResult: manualFromResultCommandTemplate(),
     fromResultStdinDryRun: manualFromResultStdinDryRunCommandTemplate(),
     fromResultStdin: manualFromResultStdinCommandTemplate(),
+    fromClipboardDryRun: manualFromClipboardDryRunCommandTemplate(),
+    fromClipboard: manualFromClipboardCommandTemplate(),
     plan: manualPlanCommandTemplate(),
     planJson: `yarn --silent manual-playlog --plan-json${outPathArg()}`,
     sheet: manualSheetCommandTemplate(),
@@ -1081,6 +1098,12 @@ function printManualSheet() {
   console.log("");
   console.log("### 표준입력 저장");
   console.log(codeBlock(manualFromResultStdinCommandTemplate()));
+  console.log("");
+  console.log("### 클립보드 검증");
+  console.log(codeBlock(manualFromClipboardDryRunCommandTemplate()));
+  console.log("");
+  console.log("### 클립보드 저장");
+  console.log(codeBlock(manualFromClipboardCommandTemplate()));
 
   console.log("");
   console.log("## 실행 순서");
@@ -1119,6 +1142,8 @@ function buildNextFromSummary(summary) {
     fromResultCommandTemplate: manualFromResultCommandTemplate(),
     fromResultStdinDryRunCommandTemplate: manualFromResultStdinDryRunCommandTemplate(),
     fromResultStdinCommandTemplate: manualFromResultStdinCommandTemplate(),
+    fromClipboardDryRunCommandTemplate: manualFromClipboardDryRunCommandTemplate(),
+    fromClipboardCommandTemplate: manualFromClipboardCommandTemplate(),
     startWorkflow: manualStartWorkflow(),
   };
 }
@@ -1180,6 +1205,8 @@ function printNext() {
     console.log(`- 표준입력 검증: ${manualFromResultStdinDryRunCommandTemplate()}`);
     console.log(`- 실제 저장: ${manualFromResultCommandTemplate()}`);
     console.log(`- 표준입력 저장: ${manualFromResultStdinCommandTemplate()}`);
+    console.log(`- 클립보드 검증: ${manualFromClipboardDryRunCommandTemplate()}`);
+    console.log(`- 클립보드 저장: ${manualFromClipboardCommandTemplate()}`);
     console.log("");
     console.log("결과 기록 필드:");
     for (const item of next.resultFieldChecklist) {
@@ -1200,7 +1227,7 @@ function manualStartWorkflow() {
     "추천 시작 검증 명령의 GAME_SEED_HERE를 실제 시드로 바꿔 --dry-run 실행",
     "검증이 통과하면 같은 명령에서 --dry-run을 빼고 시작 마커 저장",
     "12분 이상 실제로 플레이하고 목표 결과 조건 확인",
-    "결과 화면에서 증거 JSON을 내보내거나 복사한 뒤 --from-result=PATH_TO_EXPORTED_JSON --dry-run 또는 --from-result=- --dry-run으로 검증",
+    "결과 화면에서 증거 JSON을 내보내거나 복사한 뒤 --from-result=PATH_TO_EXPORTED_JSON --dry-run, --from-result=- --dry-run, 또는 --from-clipboard --dry-run으로 검증",
     "검증이 통과하면 같은 결과 JSON 명령에서 --dry-run을 빼서 저장. 필요하면 결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 후 실제 finish 저장",
   ];
 }
@@ -1231,6 +1258,14 @@ function manualFromResultStdinDryRunCommandTemplate() {
 
 function manualFromResultStdinCommandTemplate() {
   return `yarn manual-playlog --from-result=-${outPathArg()}`;
+}
+
+function manualFromClipboardDryRunCommandTemplate() {
+  return `yarn manual-playlog --from-clipboard${outPathArg()} --dry-run`;
+}
+
+function manualFromClipboardCommandTemplate() {
+  return `yarn manual-playlog --from-clipboard${outPathArg()}`;
 }
 
 function printPreflight() {
@@ -1301,6 +1336,8 @@ function printPreflight() {
     console.log(`- 표준입력 검증: ${manualFromResultStdinDryRunCommandTemplate()}`);
     console.log(`- 실제 저장: ${manualFromResultCommandTemplate()}`);
     console.log(`- 표준입력 저장: ${manualFromResultStdinCommandTemplate()}`);
+    console.log(`- 클립보드 검증: ${manualFromClipboardDryRunCommandTemplate()}`);
+    console.log(`- 클립보드 저장: ${manualFromClipboardCommandTemplate()}`);
     console.log("");
     console.log("전체 수집 계획:");
     console.log(preflight.planCommandTemplate);
@@ -1354,6 +1391,8 @@ function buildPreflight() {
     fromResultCommandTemplate: manualFromResultCommandTemplate(),
     fromResultStdinDryRunCommandTemplate: manualFromResultStdinDryRunCommandTemplate(),
     fromResultStdinCommandTemplate: manualFromResultStdinCommandTemplate(),
+    fromClipboardDryRunCommandTemplate: manualFromClipboardDryRunCommandTemplate(),
+    fromClipboardCommandTemplate: manualFromClipboardCommandTemplate(),
     planCommandTemplate: manualPlanCommandTemplate(),
     remainingPlanStepCount: plan.steps.length,
     remainingPlanPreview: plan.steps.slice(0, 3),

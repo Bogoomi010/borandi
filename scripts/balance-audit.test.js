@@ -490,6 +490,8 @@ describe("balance-audit assert", () => {
     expect(failed.stdout).toContain("결과 JSON 저장: yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON");
     expect(failed.stdout).toContain("복사 JSON 표준입력 검증: pbpaste | yarn manual-playlog --from-result=-");
     expect(failed.stdout).toContain("복사 JSON 표준입력 저장: pbpaste | yarn manual-playlog --from-result=-");
+    expect(failed.stdout).toContain("복사 JSON 클립보드 검증: yarn manual-playlog --from-clipboard");
+    expect(failed.stdout).toContain("복사 JSON 클립보드 저장: yarn manual-playlog --from-clipboard");
     expect(failed.stdout).toContain(`--out=${commandArg(paths.manual)}`);
     expect(failed.stderr).toContain("balance-audit assert failed");
   });

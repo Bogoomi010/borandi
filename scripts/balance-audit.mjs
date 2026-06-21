@@ -611,6 +611,14 @@ function manualFromResultStdinCommandTemplate() {
   return `pbpaste | yarn manual-playlog --from-result=-${manualOutArg()}`;
 }
 
+function manualFromClipboardDryRunCommandTemplate() {
+  return `yarn manual-playlog --from-clipboard${manualOutArg()} --dry-run`;
+}
+
+function manualFromClipboardCommandTemplate() {
+  return `yarn manual-playlog --from-clipboard${manualOutArg()}`;
+}
+
 function manualProofWorkflowEvidence(step) {
   return [
     `시작 전 점검: ${manualPreflightCommandTemplate()}`,
@@ -623,6 +631,8 @@ function manualProofWorkflowEvidence(step) {
     `결과 JSON 저장: ${manualFromResultCommandTemplate()}`,
     `복사 JSON 표준입력 검증: ${manualFromResultStdinDryRunCommandTemplate()}`,
     `복사 JSON 표준입력 저장: ${manualFromResultStdinCommandTemplate()}`,
+    `복사 JSON 클립보드 검증: ${manualFromClipboardDryRunCommandTemplate()}`,
+    `복사 JSON 클립보드 저장: ${manualFromClipboardCommandTemplate()}`,
   ].join("; ");
 }
 
