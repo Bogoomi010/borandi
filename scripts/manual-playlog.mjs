@@ -606,6 +606,72 @@ const targetPlans = [
   },
 ];
 
+const flexibleBalanceObservationPlans = [
+  {
+    kind: "balance-observation",
+    difficulty: "normal",
+    label: "일반 무전설 경계 확인",
+    goal: "전설 없이 일반 난이도를 실제로 플레이해 클리어 접근이 어려운지 확인",
+    logHint: "result=clear|loss round=RESULT_ROUND legends=0 maxGrade=hero 이하",
+  },
+  {
+    kind: "balance-observation",
+    difficulty: "intermediate",
+    label: "중급자 2전설 경계 확인",
+    goal: "전설 2개 이하 중급자 플레이가 5전설 조건보다 확실히 어렵게 느껴지는지 확인",
+    logHint: "result=clear|loss round=RESULT_ROUND legends<=2 maxGrade=legend",
+  },
+  {
+    kind: "balance-observation",
+    difficulty: "expert",
+    label: "고수 제한 없음 성장 확인",
+    goal: "고수 난이도에서 중급자 5전설보다 더 높은 성장량이 필요한지 확인",
+    logHint: "result=clear|loss round=RESULT_ROUND legends=FINAL_LEGENDS maxGrade=MAX_GRADE",
+  },
+  {
+    kind: "balance-observation",
+    difficulty: "master",
+    label: "초고수 추가 실패 확인",
+    goal: "초고수 난이도가 제한 없이 플레이해도 매우 어렵게 유지되는지 추가 확인",
+    logHint: "result=loss 권장, clear이면 밸런스 재검토 신호",
+  },
+];
+
+function buildFlexibleMinuteSteps(flexibleMinutes) {
+  let remaining = flexibleMinutes;
+  const steps = [];
+  for (const plan of flexibleBalanceObservationPlans) {
+    if (remaining <= 0) break;
+    const minutes = Math.min(12, remaining);
+    steps.push({
+      ...plan,
+      minutes,
+      startCommandTemplate: startCommandTemplate(plan),
+      startCommandDryRunTemplate: dryRunCommandTemplate(startCommandTemplate(plan)),
+      startNextCommandTemplate: startNextCommandTemplate(plan),
+      startNextDryRunCommandTemplate: dryRunCommandTemplate(startNextCommandTemplate(plan)),
+      finishTemplate: finishTemplateForNext(plan),
+    });
+    remaining -= minutes;
+  }
+  if (remaining > 0) {
+    steps.push({
+      kind: "total-minutes",
+      difficulty: "any",
+      minutes: remaining,
+      label: "총 120분 추가 보충",
+      goal: `경계 관찰 세션 이후 남는 ${remaining.toFixed(1)}분을 실제 플레이로 추가`,
+      logHint: "요약 명령의 다음 필요 항목을 보며 어떤 난이도든 실제 결과 기록",
+      startCommandTemplate: "",
+      startCommandDryRunTemplate: "",
+      startNextCommandTemplate: startNextCommandTemplate({ difficulty: "any" }),
+      startNextDryRunCommandTemplate: dryRunCommandTemplate(startNextCommandTemplate({ difficulty: "any" })),
+      finishTemplate: finishTemplateForNext(null),
+    });
+  }
+  return steps;
+}
+
 function buildSummary() {
   const log = existsSync(outPath) ? readJson(outPath) : { sessions: [] };
   const allSessions = isExampleManualLog(log) ? [] : (log.sessions ?? []).filter((session) => !isExampleManualSession(session));
@@ -837,21 +903,7 @@ function buildPlanFromSummary(summary) {
         startNextDryRunCommandTemplate: dryRunCommandTemplate(startNextCommandTemplate(item)),
         finishTemplate: finishTemplateForNext(item),
       })),
-      ...(flexibleMinutes > 0
-        ? [{
-          kind: "total-minutes",
-          difficulty: "any",
-          minutes: flexibleMinutes,
-          label: "총 120분 보충",
-          goal: `목표 세션 이후 남는 ${flexibleMinutes.toFixed(1)}분을 실제 플레이로 추가`,
-          logHint: "요약 명령의 다음 필요 항목을 보며 어떤 난이도든 실제 결과 기록",
-          startCommandTemplate: "",
-          startCommandDryRunTemplate: "",
-          startNextCommandTemplate: startNextCommandTemplate({ difficulty: "any" }),
-          startNextDryRunCommandTemplate: dryRunCommandTemplate(startNextCommandTemplate({ difficulty: "any" })),
-          finishTemplate: finishTemplateForNext(null),
-        }]
-        : []),
+      ...buildFlexibleMinuteSteps(flexibleMinutes),
     ],
   };
 }
@@ -1592,6 +1644,14 @@ function finishTemplateForNext(step) {
     maxGrade: "MAX_GRADE",
   };
   if (!step) return base;
+  if (step.kind === "balance-observation") {
+    return {
+      result: "RESULT",
+      round: "ROUND_REACHED",
+      legends: "FINAL_LEGENDS",
+      maxGrade: "MAX_GRADE",
+    };
+  }
   switch (step.label) {
     case "입문자 무전설 40R 클리어":
       return { result: "clear", round: "40", legends: "0", maxGrade: "hero" };

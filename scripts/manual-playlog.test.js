@@ -152,7 +152,7 @@ describe("manual-playlog plan", () => {
     const output = runManualPlaylog([`--out=${out}`, "--preflight"]);
 
     expect(output).toContain("PASS 새 수동 플레이 시작 가능");
-    expect(output).toContain("- 남은 수집 계획: 7단계");
+    expect(output).toContain("- 남은 수집 계획: 10단계");
     expect(output).toContain("추천 시작 검증:");
     expect(output).toContain(`yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`);
     expect(output).toContain("추천 시작 마커:");
@@ -191,7 +191,7 @@ describe("manual-playlog plan", () => {
     expect(preflight.nextStartCommandTemplate).toBe(`yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)}`);
     expect(preflight.nextStartDryRunCommandTemplate).toBe(`yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`);
     expect(preflight.planCommandTemplate).toBe(`yarn manual-playlog --plan --out=${shellArg(out)}`);
-    expect(preflight.remainingPlanStepCount).toBe(7);
+    expect(preflight.remainingPlanStepCount).toBe(10);
     expect(preflight.remainingPlanPreview.map((step) => step.label)).toEqual([
       "입문자 무전설 40R 클리어",
       "일반 1~2전설 40R 클리어",
@@ -402,7 +402,7 @@ describe("manual-playlog plan", () => {
     expect(text).toContain("분 남음");
   });
 
-  it("빈 실제 로그에는 목표 세션 6개와 총 120분 보충 계획이 나온다", () => {
+  it("빈 실제 로그에는 목표 세션 6개와 경계 관찰 48분 계획이 나온다", () => {
     const out = makeTempPath("empty.json");
     const plan = JSON.parse(runManualPlaylog([`--out=${out}`, "--plan-json"]));
 
@@ -412,14 +412,19 @@ describe("manual-playlog plan", () => {
     expect(plan.current.targetRowsPassed).toBe(0);
     expect(plan.current.targetRowsTotal).toBe(6);
     expect(plan.current.targetRowsRemaining).toBe(6);
-    expect(plan.steps).toHaveLength(7);
+    expect(plan.steps).toHaveLength(10);
     expect(plan.steps.slice(0, 6).map((step) => step.kind)).toEqual(Array(6).fill("target-session"));
+    expect(plan.steps.slice(6).map((step) => step.kind)).toEqual(Array(4).fill("balance-observation"));
+    expect(plan.steps.slice(6).map((step) => [step.difficulty, step.label, step.minutes])).toEqual([
+      ["normal", "일반 무전설 경계 확인", 12],
+      ["intermediate", "중급자 2전설 경계 확인", 12],
+      ["expert", "고수 제한 없음 성장 확인", 12],
+      ["master", "초고수 추가 실패 확인", 12],
+    ]);
     expect(plan.steps[6]).toMatchObject({
-      kind: "total-minutes",
-      minutes: 48,
-      label: "총 120분 보충",
-      startNextCommandTemplate: `yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
-      startNextDryRunCommandTemplate: `yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`,
+      startNextCommandTemplate: `yarn manual-playlog --start-next --difficulty=normal --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
+      startNextDryRunCommandTemplate: `yarn manual-playlog --start-next --difficulty=normal --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`,
+      finishTemplate: { result: "RESULT", round: "ROUND_REACHED", legends: "FINAL_LEGENDS", maxGrade: "MAX_GRADE" },
     });
     expect(plan.steps.slice(0, 6).map((step) => step.startNextCommandTemplate)).toEqual([
       "novice", "normal", "intermediate", "expert", "expert", "master",
@@ -446,7 +451,8 @@ describe("manual-playlog plan", () => {
     expect(sheet).toContain(`yarn manual-playlog --from-result=- --out=${shellArg(out)}`);
     expect(sheet).toContain("### 클립보드 저장");
     expect(sheet).toContain(`yarn manual-playlog --from-clipboard --out=${shellArg(out)}`);
-    expect(sheet).toContain("| 7 | total-minutes | any | 총 120분 보충 | 48.0분 | result=loss, round=ROUND_REACHED, legends=FINAL_LEGENDS, maxGrade=MAX_GRADE |");
+    expect(sheet).toContain("| 7 | balance-observation | normal | 일반 무전설 경계 확인 | 12.0분 | result=RESULT, round=ROUND_REACHED, legends=FINAL_LEGENDS, maxGrade=MAX_GRADE |");
+    expect(sheet).toContain("| 10 | balance-observation | master | 초고수 추가 실패 확인 | 12.0분 | result=RESULT, round=ROUND_REACHED, legends=FINAL_LEGENDS, maxGrade=MAX_GRADE |");
     expect(sheet).toContain("| dataVersion | 결과 화면 RESULT_DATA_VERSION | 0.8.4 |");
     expect(sheet).toContain("| stateChecksum | 결과 화면 RESULT_CHECKSUM | 8자리 checksum |");
     expect(sheet).toContain("1. 게임에서 다음 목표 난이도로 새 게임을 시작하고 상단의 실제 시드를 확인");
@@ -462,7 +468,7 @@ describe("manual-playlog plan", () => {
     expect(plan.passed).toBe(false);
     expect(plan.current.validSessionCount).toBe(0);
     expect(plan.current.totalMinutes).toBe(0);
-    expect(plan.steps).toHaveLength(7);
+    expect(plan.steps).toHaveLength(10);
   });
 
   it("다음 필요 세션만 출력할 수 있다", () => {
@@ -1168,7 +1174,7 @@ describe("manual-playlog plan", () => {
     expect(output).not.toContain("--result=loss --round=40 --legends=5");
   });
 
-  it("목표 세션 이후 총 시간 보충 단계도 start-next 추천 명령을 출력한다", () => {
+  it("목표 세션 이후 경계 관찰 단계도 start-next 추천 명령을 출력한다", () => {
     const out = makeTempPath("start-next-flexible-minutes.json");
     const sessions = [
       ["novice", "clear", 40, 0, "hero", "abc20001"],
@@ -1197,14 +1203,14 @@ describe("manual-playlog plan", () => {
     const text = runManualPlaylog([`--out=${out}`, "--next"]);
 
     expect(next.next).toMatchObject({
-      kind: "total-minutes",
-      difficulty: "any",
-      label: "총 120분 보충",
-      minutes: 48,
-      startNextCommandTemplate: `yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
+      kind: "balance-observation",
+      difficulty: "normal",
+      label: "일반 무전설 경계 확인",
+      minutes: 12,
+      startNextCommandTemplate: `yarn manual-playlog --start-next --difficulty=normal --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
     });
     expect(text).toContain("추천 시작 마커:");
-    expect(text).toContain("yarn manual-playlog --start-next --difficulty=DIFFICULTY --seed=GAME_SEED_HERE");
+    expect(text).toContain("yarn manual-playlog --start-next --difficulty=normal --seed=GAME_SEED_HERE");
   });
 
   it("수동 증거 assert는 빈 로그에서 실패 코드와 다음 세션을 출력한다", () => {
