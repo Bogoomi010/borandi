@@ -488,6 +488,9 @@ describe("balance-audit assert", () => {
     expect(failed.stdout).toContain("다음 세션 상세: yarn manual-playlog --next");
     expect(failed.stdout).toContain("다음 세션 JSON: yarn --silent manual-playlog --next-json");
     expect(failed.stdout).toContain("전체 계획: yarn manual-playlog --plan");
+    expect(failed.stdout).toContain("추천 검증+마커+확인: manual_run_id=\"manual-$(date +%Y%m%d%H%M%S)-$$\"");
+    expect(failed.stdout).toContain("--id=\"$manual_run_id\" --difficulty=novice --seed=GAME_SEED_HERE");
+    expect(failed.stdout).toContain("&& yarn manual-playlog --pending-id=\"$manual_run_id\"");
     expect(failed.stdout).toContain("추천 시작 검증: yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
     expect(failed.stdout).toContain("--dry-run");
     expect(failed.stdout).toContain("추천 시작 마커: yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");

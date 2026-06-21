@@ -631,15 +631,29 @@ function manualNextMissing(manual) {
   return manualNextEvidence(manual) !== "필요 없음 - 수동 플레이 증거 목표 충족";
 }
 
-function startNextCommandTemplate(step) {
+function startNextCommandTemplate(step, idValue = "") {
   if (!step) return "";
+  const idArg = idValue ? ` --id=${idValue}` : "";
   const difficultyArg = ` --difficulty=${step.difficulty === "any" ? "DIFFICULTY" : step.difficulty}`;
-  return `yarn manual-playlog --start-next${difficultyArg} --seed=GAME_SEED_HERE${manualOutArg()}`;
+  return `yarn manual-playlog --start-next${idArg}${difficultyArg} --seed=GAME_SEED_HERE${manualOutArg()}`;
 }
 
 function startNextDryRunCommandTemplate(step) {
   const command = startNextCommandTemplate(step);
   return command ? `${command} --dry-run` : "";
+}
+
+function startNextValidateSaveCommandTemplate(step) {
+  if (!step) return "";
+  const idVar = "manual_run_id";
+  const idRef = `"$${idVar}"`;
+  const start = startNextCommandTemplate(step, idRef);
+  return [
+    `${idVar}="manual-$(date +%Y%m%d%H%M%S)-$$"`,
+    `${start} --dry-run`,
+    start,
+    `yarn manual-playlog --pending-id=${idRef}${manualOutArg()}`,
+  ].join(" && ");
 }
 
 function manualOutArg() {
@@ -692,6 +706,7 @@ function manualProofWorkflowEvidence(step) {
     `다음 세션 상세: ${manualNextCommandTemplate()}`,
     `다음 세션 JSON: ${manualNextJsonCommandTemplate()}`,
     `전체 계획: ${manualPlanCommandTemplate()}`,
+    `추천 검증+마커+확인: ${startNextValidateSaveCommandTemplate(step)}`,
     `추천 시작 검증: ${startNextDryRunCommandTemplate(step)}`,
     `추천 시작 마커: ${startNextCommandTemplate(step)}`,
     `결과 JSON 검증: ${manualFromResultDryRunCommandTemplate()}`,

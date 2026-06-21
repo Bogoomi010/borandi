@@ -159,6 +159,10 @@ describe("manual-playlog plan", () => {
 
     expect(output).toContain("PASS 새 수동 플레이 시작 가능");
     expect(output).toContain("- 남은 수집 계획: 10단계");
+    expect(output).toContain("추천 검증+마커+확인:");
+    expect(output).toContain("manual_run_id=\"manual-$(date +%Y%m%d%H%M%S)-$$\"");
+    expect(output).toContain("--id=\"$manual_run_id\" --difficulty=novice --seed=GAME_SEED_HERE");
+    expect(output).toContain(`&& yarn manual-playlog --pending-id="$manual_run_id" --out=${shellArg(out)}`);
     expect(output).toContain("추천 시작 검증:");
     expect(output).toContain(`yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`);
     expect(output).toContain("추천 시작 마커:");
@@ -196,6 +200,9 @@ describe("manual-playlog plan", () => {
     expect(preflight.next.label).toBe("입문자 무전설 40R 클리어");
     expect(preflight.nextStartCommandTemplate).toBe(`yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)}`);
     expect(preflight.nextStartDryRunCommandTemplate).toBe(`yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`);
+    expect(preflight.nextStartValidateSaveCommandTemplate).toContain("manual_run_id=\"manual-$(date +%Y%m%d%H%M%S)-$$\"");
+    expect(preflight.nextStartValidateSaveCommandTemplate).toContain("--id=\"$manual_run_id\" --difficulty=novice --seed=GAME_SEED_HERE");
+    expect(preflight.nextStartValidateSaveCommandTemplate).toContain(`&& yarn manual-playlog --pending-id="$manual_run_id" --out=${shellArg(out)}`);
     expect(preflight.planCommandTemplate).toBe(`yarn manual-playlog --plan --out=${shellArg(out)}`);
     expect(preflight.remainingPlanStepCount).toBe(10);
     expect(preflight.remainingPlanPreview.map((step) => step.label)).toEqual([
@@ -522,6 +529,9 @@ describe("manual-playlog plan", () => {
       "검증이 통과하면 같은 결과 JSON 명령에서 --dry-run을 빼서 저장. 필요하면 결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 후 실제 finish 저장",
     ]);
     const text = runManualPlaylog([`--out=${out}`, "--next"]);
+    expect(text).toContain("추천 검증+마커+확인:");
+    expect(text).toContain("manual_run_id=\"manual-$(date +%Y%m%d%H%M%S)-$$\"");
+    expect(text).toContain("--id=\"$manual_run_id\" --difficulty=novice --seed=GAME_SEED_HERE");
     expect(text).toContain("추천 시작 검증:");
     expect(text).toContain("yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
     expect(text).toContain("--dry-run");
@@ -582,6 +592,7 @@ describe("manual-playlog plan", () => {
       nextJson: `yarn --silent manual-playlog --next-json --out=${shellArg(out)}`,
       startNext: `yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
       startNextDryRun: `yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`,
+      startNextValidateSave: expect.stringContaining(`&& yarn manual-playlog --pending-id="$manual_run_id" --out=${shellArg(out)}`),
     });
     expect(summary.resultFieldChecklist).toEqual(expect.arrayContaining([
       expect.objectContaining({ field: "seed", expected: "실제 게임 시드" }),
@@ -610,6 +621,7 @@ describe("manual-playlog plan", () => {
       label: "입문자 무전설 40R 클리어",
       startNextCommandTemplate: `yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)}`,
       startNextDryRunCommandTemplate: `yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`,
+      startNextValidateSaveCommandTemplate: expect.stringContaining("--id=\"$manual_run_id\" --difficulty=novice --seed=GAME_SEED_HERE"),
       finishTemplate: {
         result: "clear",
         round: "40",

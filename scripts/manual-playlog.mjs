@@ -826,6 +826,7 @@ function manualProofCommandTemplates(next) {
     nextJson: `yarn --silent manual-playlog --next-json${outPathArg()}`,
     startNext: next?.startNextCommandTemplate ?? "",
     startNextDryRun: next?.startNextDryRunCommandTemplate ?? "",
+    startNextValidateSave: next?.startNextValidateSaveCommandTemplate ?? "",
   };
 }
 
@@ -1234,6 +1235,7 @@ function buildNextFromSummary(summary) {
         ...nextStep,
         startNextCommandTemplate: startNextCommandTemplate(nextStep),
         startNextDryRunCommandTemplate: dryRunCommandTemplate(startNextCommandTemplate(nextStep)),
+        startNextValidateSaveCommandTemplate: startNextValidateSaveCommandTemplate(nextStep),
       }
       : null,
     resultFieldChecklist: manualResultFieldChecklist(blockedByPendingStartMarkers ? null : nextStep),
@@ -1276,6 +1278,10 @@ function printNext() {
       console.log(`마무리 조건: result=${next.next.finishTemplate.result} round=${next.next.finishTemplate.round} legends=${next.next.finishTemplate.legends} maxGrade=${next.next.finishTemplate.maxGrade}`);
     }
     if (next.next.startNextCommandTemplate) {
+      if (next.next.startNextValidateSaveCommandTemplate) {
+        console.log("추천 검증+마커+확인:");
+        console.log(next.next.startNextValidateSaveCommandTemplate);
+      }
       if (next.next.startNextDryRunCommandTemplate) {
         console.log("추천 시작 검증:");
         console.log(next.next.startNextDryRunCommandTemplate);
@@ -1416,6 +1422,10 @@ function printPreflight() {
   } else {
     console.log("PASS 새 수동 플레이 시작 가능");
     if (preflight.nextStartCommandTemplate) {
+      if (preflight.nextStartValidateSaveCommandTemplate) {
+        console.log("추천 검증+마커+확인:");
+        console.log(preflight.nextStartValidateSaveCommandTemplate);
+      }
       if (preflight.nextStartDryRunCommandTemplate) {
         console.log("추천 시작 검증:");
         console.log(preflight.nextStartDryRunCommandTemplate);
@@ -1489,6 +1499,7 @@ function buildPreflight() {
     next: summary.next,
     nextStartCommandTemplate: summary.next?.startNextCommandTemplate ?? "",
     nextStartDryRunCommandTemplate: summary.next?.startNextDryRunCommandTemplate ?? "",
+    nextStartValidateSaveCommandTemplate: summary.next?.startNextValidateSaveCommandTemplate ?? "",
     fromResultDryRunCommandTemplate: manualFromResultDryRunCommandTemplate(),
     fromResultCommandTemplate: manualFromResultCommandTemplate(),
     fromResultStdinDryRunCommandTemplate: manualFromResultStdinDryRunCommandTemplate(),
@@ -1720,10 +1731,24 @@ function finishTemplateForNext(step) {
   }
 }
 
-function startNextCommandTemplate(step) {
+function startNextCommandTemplate(step, idValue = "") {
   if (!step) return "";
+  const idArg = idValue ? ` --id=${idValue}` : "";
   const difficultyArg = ` --difficulty=${step.difficulty === "any" ? "DIFFICULTY" : step.difficulty}`;
-  return `yarn manual-playlog --start-next${difficultyArg} --seed=GAME_SEED_HERE${outPathArg()}`;
+  return `yarn manual-playlog --start-next${idArg}${difficultyArg} --seed=GAME_SEED_HERE${outPathArg()}`;
+}
+
+function startNextValidateSaveCommandTemplate(step) {
+  if (!step) return "";
+  const idVar = "manual_run_id";
+  const idRef = `"$${idVar}"`;
+  const start = startNextCommandTemplate(step, idRef);
+  return [
+    `${idVar}="manual-$(date +%Y%m%d%H%M%S)-$$"`,
+    dryRunCommandTemplate(start),
+    start,
+    `yarn manual-playlog --pending-id=${idRef}${outPathArg()}`,
+  ].join(" && ");
 }
 
 function finishCommandTemplate({ id, next }) {
