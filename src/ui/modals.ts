@@ -278,6 +278,21 @@ function manualPlaylogResultEmbeddedJsonCommand(json: string, dryRun: boolean, t
   ].join("\n");
 }
 
+function manualPlaylogResultValidateSaveNextCommand(json: string): string {
+  const marker = "BORANDI_MANUAL_RESULT_JSON";
+  return [
+    `tmpfile=$(mktemp "\${TMPDIR:-/tmp}/borandi-manual-result.XXXXXX") && {`,
+    `cat > "$tmpfile" <<'${marker}'`,
+    json,
+    marker,
+    `yarn manual-playlog --from-result="$tmpfile" --dry-run && yarn manual-playlog --from-result="$tmpfile" && yarn manual-playlog --next`,
+    `status=$?`,
+    `rm -f "$tmpfile"`,
+    `test $status -eq 0`,
+    `}`,
+  ].join("\n");
+}
+
 function mapPermissionMessage(r: ResultSummary): string {
   const finalBossCleared = r.cleared &&
     r.reachedRound >= FINAL_ROUND &&
@@ -486,6 +501,7 @@ export function maybeShowResult(ctx: AppCtx) {
     const manualEmbeddedJsonDryRunCommand = manualPlaylogResultEmbeddedJsonCommand(manualResultJson, true);
     const manualEmbeddedJsonCommand = manualPlaylogResultEmbeddedJsonCommand(manualResultJson, false);
     const manualEmbeddedJsonThenNextCommand = manualPlaylogResultEmbeddedJsonCommand(manualResultJson, false, true);
+    const manualEmbeddedJsonValidateSaveNextCommand = manualPlaylogResultValidateSaveNextCommand(manualResultJson);
 
     body.appendChild(el("h3", "", "수동 플레이 로그"));
     body.appendChild(el("h3", "", "결과 JSON 저장 후 검증"));
@@ -582,6 +598,17 @@ export function maybeShowResult(ctx: AppCtx) {
       }
     };
     row.appendChild(copyEmbeddedJsonSaveNext);
+
+    const copyEmbeddedJsonValidateSaveNext = el("button", "", "JSON검증+저장+다음 복사");
+    copyEmbeddedJsonValidateSaveNext.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualEmbeddedJsonValidateSaveNextCommand);
+        toast("JSON 검증 후 저장 및 다음 확인 명령을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn");
+      }
+    };
+    row.appendChild(copyEmbeddedJsonValidateSaveNext);
 
     const copyDryRun = el("button", "", "검증 명령 복사");
     copyDryRun.onclick = async () => {

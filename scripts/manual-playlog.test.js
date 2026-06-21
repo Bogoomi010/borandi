@@ -135,9 +135,13 @@ describe("manual-playlog plan", () => {
     expect(modalSource).toContain("JSON포함 검증 복사");
     expect(modalSource).toContain("JSON포함 저장 복사");
     expect(modalSource).toContain("JSON포함 저장+다음 복사");
+    expect(modalSource).toContain("JSON검증+저장+다음 복사");
     expect(modalSource).toContain("JSON 포함 검증 명령을 복사했습니다");
     expect(modalSource).toContain("JSON 포함 저장 후 다음 확인 명령을 복사했습니다");
+    expect(modalSource).toContain("JSON 검증 후 저장 및 다음 확인 명령을 복사했습니다");
     expect(modalSource).toContain("&& yarn manual-playlog --next");
+    expect(modalSource).toContain("mktemp");
+    expect(modalSource).toContain("rm -f \"$tmpfile\"");
     expect(modalSource).toContain("클립보드 JSON 실제 저장");
     expect(modalSource).toContain("터미널에서 --from-clipboard --dry-run을 실행하세요");
     expect(modalSource).not.toContain("다음 필요 수동 세션 시작 검증과 시작 마커를 바로 실행할 수 있습니다.");
