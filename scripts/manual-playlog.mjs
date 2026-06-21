@@ -24,6 +24,7 @@ const VALID_STAGE_IDS = readValidStageIds();
 const MIN_MANUAL_TOTAL_MINUTES = 120;
 const MIN_MANUAL_MINUTES_PER_DIFFICULTY = 12;
 const MIN_HUMAN_PLAYTEST_INPUT_COUNT = 12;
+const NON_PLAY_EVIDENCE_INPUT_TYPES = new Set(["setSpeed", "devSpawn"]);
 
 function usage() {
   return [
@@ -40,7 +41,7 @@ function usage() {
     "  --dataVersion=...  # 결과 리포트의 데이터 버전",
     "  --stateChecksum=... # 결과 리포트의 상태 체크섬",
     `  --inputCount=...    # 결과 리포트의 성공한 플레이 입력 수, human-playtest는 ${MIN_HUMAN_PLAYTEST_INPUT_COUNT}회 이상`,
-    "  --inputTypes=...    # 결과 리포트의 플레이 입력 종류, 예: summon,startWave,craft",
+    "  --inputTypes=...    # 결과 리포트의 플레이 입력 종류, 예: summon,startWave,craft. human-playtest는 setSpeed 외 실제 입력 1종 이상",
     "  --inputCounts=...   # 결과 리포트의 입력별 횟수, 예: summon:10,startWave:2",
     "",
     "선택:",
@@ -308,6 +309,13 @@ function inputCountTotal(inputCounts) {
   return Object.values(inputCounts).reduce((sum, count) => sum + Number(count), 0);
 }
 
+function meaningfulInputTypes(inputCounts) {
+  return Object.entries(inputCounts)
+    .filter(([type, count]) => Number(count) > 0 && !NON_PLAY_EVIDENCE_INPUT_TYPES.has(type))
+    .map(([type]) => type)
+    .sort();
+}
+
 function inputCountsArgValue(inputCounts) {
   return Object.entries(normalizeInputCounts(inputCounts))
     .sort(([a], [b]) => a.localeCompare(b))
@@ -408,6 +416,7 @@ function hasCompleteManualMetadata(session) {
   const inputTypes = inputTypesForSession(session);
   const inputCounts = inputCountsForSession(session);
   const inputCountsTotal = inputCountTotal(inputCounts);
+  const meaningfulTypes = meaningfulInputTypes(inputCounts);
   return difficulties.includes(difficulty) &&
     ["clear", "cleared", "win", "won", "victory", "loss", "lose", "lost", "fail", "failed", "defeat", "quit"].includes(result) &&
     isValidStageId(stageValue) &&
@@ -424,6 +433,7 @@ function hasCompleteManualMetadata(session) {
       inputCountValue >= MIN_HUMAN_PLAYTEST_INPUT_COUNT &&
       inputTypes.length > 0 &&
       Object.keys(inputCounts).length > 0 &&
+      meaningfulTypes.length > 0 &&
       inputCountsTotal === inputCountValue
     ));
 }
@@ -839,7 +849,7 @@ function manualResultFieldChecklist(next) {
     { field: "dataVersion", source: "결과 화면 RESULT_DATA_VERSION", required: true, expected: CURRENT_DATA_VERSION },
     { field: "stateChecksum", source: "결과 화면 RESULT_CHECKSUM", required: true, expected: "8자리 checksum" },
     { field: "inputCount", source: "결과 화면 플레이 입력 수", required: true, expected: `${MIN_HUMAN_PLAYTEST_INPUT_COUNT} 이상` },
-    { field: "inputTypes", source: "결과 화면 플레이 입력 종류", required: true, expected: "1개 이상" },
+    { field: "inputTypes", source: "결과 화면 플레이 입력 종류", required: true, expected: "setSpeed 제외 1개 이상" },
     { field: "inputCounts", source: "결과 화면 입력별 횟수", required: true, expected: "합계가 inputCount와 일치" },
     { field: "result", source: "결과 화면 클리어/실패 상태", required: true, expected: finish?.result ?? "clear 또는 loss" },
     { field: "round", source: "결과 화면 도달 라운드", required: true, expected: finish?.round ?? "ROUND_REACHED" },
@@ -2180,8 +2190,12 @@ if (Object.keys(inputCounts).some((type) => !/^[A-Za-z0-9_-]+$/.test(type))) {
   fail("--inputCounts 값은 쉼표로 구분된 입력별 횟수이며 종류에는 영문/숫자/밑줄/하이픈만 사용할 수 있습니다.");
 }
 const inputCountsTotal = inputCountTotal(inputCounts);
+const meaningfulTypes = meaningfulInputTypes(inputCounts);
 if (sessionSource === "human-playtest" && Object.keys(inputCounts).length === 0) {
   fail("--inputCounts 값은 결과 리포트의 입력별 횟수이며, human-playtest 세션에서는 1개 이상이어야 합니다.");
+}
+if (sessionSource === "human-playtest" && meaningfulTypes.length === 0) {
+  fail("--inputCounts에는 소환/라운드 시작/조합 등 실제 플레이 입력이 1종 이상 포함되어야 합니다. setSpeed만으로는 human-playtest 증거가 될 수 없습니다.");
 }
 if (sessionSource === "human-playtest" && inputCount !== undefined && inputCountsTotal !== inputCount) {
   fail(`--inputCounts 합계(${inputCountsTotal})가 --inputCount(${inputCount})와 일치해야 합니다.`);

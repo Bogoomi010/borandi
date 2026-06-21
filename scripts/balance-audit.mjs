@@ -26,6 +26,7 @@ const REQUIRED_DIFFICULTIES = ["novice", "normal", "intermediate", "expert", "ma
 const FINAL_ROUND = 40;
 const CURRENT_DATA_VERSION = readCurrentDataVersion();
 const MIN_HUMAN_PLAYTEST_INPUT_COUNT = 12;
+const NON_PLAY_EVIDENCE_INPUT_TYPES = new Set(["setSpeed", "devSpawn"]);
 const VALID_STAGE_IDS = readValidStageIds();
 
 function readJson(path) {
@@ -398,6 +399,7 @@ function hasCompleteManualMetadata(session) {
   const inputTypes = inputTypesForSession(session);
   const inputCounts = inputCountsForSession(session);
   const inputCountsTotal = inputCountTotal(inputCounts);
+  const meaningfulTypes = meaningfulInputTypes(inputCounts);
   return ["novice", "normal", "intermediate", "expert", "master"].includes(difficulty) &&
     ["clear", "cleared", "win", "won", "victory", "loss", "lose", "lost", "fail", "failed", "defeat", "quit"].includes(result) &&
     isValidStageId(stage) &&
@@ -414,6 +416,7 @@ function hasCompleteManualMetadata(session) {
       inputCount >= MIN_HUMAN_PLAYTEST_INPUT_COUNT &&
       inputTypes.length > 0 &&
       Object.keys(inputCounts).length > 0 &&
+      meaningfulTypes.length > 0 &&
       inputCountsTotal === inputCount
     ));
 }
@@ -483,6 +486,13 @@ function inputCountsForSession(session) {
 
 function inputCountTotal(inputCounts) {
   return Object.values(inputCounts).reduce((sum, count) => sum + Number(count), 0);
+}
+
+function meaningfulInputTypes(inputCounts) {
+  return Object.entries(inputCounts)
+    .filter(([type, count]) => Number(count) > 0 && !NON_PLAY_EVIDENCE_INPUT_TYPES.has(type))
+    .map(([type]) => type)
+    .sort();
 }
 
 function reachedFinalRound(session) {

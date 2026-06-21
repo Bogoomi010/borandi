@@ -214,7 +214,7 @@ describe("manual-playlog plan", () => {
       expect.objectContaining({ field: "dataVersion", source: "결과 화면 RESULT_DATA_VERSION", expected: "0.8.4" }),
       expect.objectContaining({ field: "stateChecksum", source: "결과 화면 RESULT_CHECKSUM", expected: "8자리 checksum" }),
       expect.objectContaining({ field: "inputCount", expected: "12 이상" }),
-      expect.objectContaining({ field: "inputTypes", expected: "1개 이상" }),
+      expect.objectContaining({ field: "inputTypes", expected: "setSpeed 제외 1개 이상" }),
       expect.objectContaining({ field: "inputCounts", expected: "합계가 inputCount와 일치" }),
       expect.objectContaining({ field: "result", expected: "clear" }),
       expect.objectContaining({ field: "round", expected: "40" }),
@@ -512,7 +512,7 @@ describe("manual-playlog plan", () => {
       expect.objectContaining({ field: "dataVersion", expected: "0.8.4" }),
       expect.objectContaining({ field: "stateChecksum", expected: "8자리 checksum" }),
       expect.objectContaining({ field: "inputCount", expected: "12 이상" }),
-      expect.objectContaining({ field: "inputTypes", expected: "1개 이상" }),
+      expect.objectContaining({ field: "inputTypes", expected: "setSpeed 제외 1개 이상" }),
       expect.objectContaining({ field: "inputCounts", expected: "합계가 inputCount와 일치" }),
       expect.objectContaining({ field: "result", expected: "clear" }),
       expect.objectContaining({ field: "round", expected: "40" }),
@@ -601,7 +601,7 @@ describe("manual-playlog plan", () => {
       expect.objectContaining({ field: "dataVersion", expected: "0.8.4" }),
       expect.objectContaining({ field: "stateChecksum", expected: "8자리 checksum" }),
       expect.objectContaining({ field: "inputCount", expected: "12 이상" }),
-      expect.objectContaining({ field: "inputTypes", expected: "1개 이상" }),
+      expect.objectContaining({ field: "inputTypes", expected: "setSpeed 제외 1개 이상" }),
       expect.objectContaining({ field: "inputCounts", expected: "합계가 inputCount와 일치" }),
       expect.objectContaining({ field: "result", expected: "clear" }),
       expect.objectContaining({ field: "round", expected: "40" }),
@@ -1590,6 +1590,33 @@ describe("manual-playlog plan", () => {
 
     expect(failed.status).toBe(1);
     expect(failed.stderr).toContain("--inputCounts 합계(4)가 --inputCount(12)와 일치해야 합니다");
+  });
+
+  it("human-playtest 결과 저장은 setSpeed만 있는 입력 증거를 거부한다", () => {
+    const out = makeTempPath("speed-only-input-counts.json");
+
+    const failed = runManualPlaylogFailure([
+      `--out=${out}`,
+      "--dry-run",
+      "--difficulty=novice",
+      "--seconds=900",
+      "--result=clear",
+      "--stage=1",
+      "--round=40",
+      "--seed=SPEED-ONLY-INPUTS",
+      "--legends=0",
+      "--maxGrade=hero",
+      `--dataVersion=${CURRENT_DATA_VERSION}`,
+      "--stateChecksum=20000031",
+      "--inputCount=12",
+      "--inputTypes=setSpeed",
+      "--inputCounts=setSpeed:12",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+      "--endedAt=2026-06-20T02:15:00.000Z",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stderr).toContain("setSpeed만으로는 human-playtest 증거가 될 수 없습니다");
   });
 
   it("결과 저장은 RESULT_* 및 GAME_SEED_HERE placeholder 값을 저장하지 않는다", () => {

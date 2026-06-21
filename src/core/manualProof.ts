@@ -1,6 +1,7 @@
 import type { DifficultyId } from "./types";
 
 export const MANUAL_PROOF_TARGET_SECONDS = 12 * 60;
+const NON_PLAY_EVIDENCE_INPUT_TYPES = new Set(["setSpeed", "devSpawn"]);
 
 export function manualProofRemainingSeconds(elapsedSeconds: number): number {
   return Math.max(0, MANUAL_PROOF_TARGET_SECONDS - Math.max(0, Math.floor(elapsedSeconds)));
@@ -25,6 +26,7 @@ export interface ManualProofFinishReadiness {
     time: boolean;
     inputCount: boolean;
     inputTypes: boolean;
+    meaningfulInputTypes: boolean;
     inputCountsTotal: boolean;
   };
 }
@@ -36,16 +38,21 @@ export function manualProofFinishReadiness(input: ManualProofFinishReadinessInpu
     return sum + Math.max(0, Math.floor(count));
   }, 0);
   const inputTypes = Object.values(input.inputCounts).filter((count) => count > 0).length;
+  const meaningfulInputTypes = Object.entries(input.inputCounts).filter(([type, count]) => {
+    return count > 0 && !NON_PLAY_EVIDENCE_INPUT_TYPES.has(type);
+  }).length;
   const checks = {
     time: elapsedSeconds >= MANUAL_PROOF_TARGET_SECONDS,
     inputCount: inputCount >= 12,
     inputTypes: inputTypes >= 1,
+    meaningfulInputTypes: meaningfulInputTypes >= 1,
     inputCountsTotal: inputCountsTotal === inputCount,
   };
   const blockers = [
     checks.time ? "" : `수동시간 ${MANUAL_PROOF_TARGET_SECONDS}초 이상 필요`,
     checks.inputCount ? "" : "플레이 입력 12회 이상 필요",
     checks.inputTypes ? "" : "플레이 입력 종류 1개 이상 필요",
+    checks.meaningfulInputTypes ? "" : "소환/라운드 시작/조합 등 실제 플레이 입력 1종 이상 필요",
     checks.inputCountsTotal ? "" : "입력별 횟수 합계가 총 입력 수와 일치해야 함",
   ].filter(Boolean);
   return {

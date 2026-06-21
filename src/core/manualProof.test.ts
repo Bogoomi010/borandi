@@ -35,6 +35,7 @@ describe("수동 증거 목표 표시", () => {
         time: false,
         inputCount: false,
         inputTypes: true,
+        meaningfulInputTypes: true,
         inputCountsTotal: true,
       },
     });
@@ -45,6 +46,14 @@ describe("수동 증거 목표 표시", () => {
     })).toMatchObject({
       ready: true,
       blockers: [],
+    });
+    expect(manualProofFinishReadiness({
+      elapsedSeconds: 720,
+      inputCount: 12,
+      inputCounts: { setSpeed: 12 },
+    })).toMatchObject({
+      ready: false,
+      checks: { meaningfulInputTypes: false },
     });
     expect(manualProofFinishReadiness({
       elapsedSeconds: 720,

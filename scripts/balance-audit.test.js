@@ -609,6 +609,30 @@ describe("balance-audit assert", () => {
     expect(failed.stderr).toContain("수동: 무효 세션 없음");
   });
 
+  it("수동 로그가 setSpeed만 입력 증거로 가진 세션을 무효 처리한다", () => {
+    const manual = completeManual();
+    manual.sessions[0] = {
+      ...manual.sessions[0],
+      inputTypes: ["setSpeed"],
+      inputCounts: { setSpeed: 12 },
+    };
+    const paths = writeCompleteInputs({ manual });
+
+    const failed = runAuditFailure([
+      `--balance=${paths.balance}`,
+      `--browser=${paths.browser}`,
+      `--direct=${paths.direct}`,
+      `--manual=${paths.manual}`,
+      "--assert",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stdout).toContain("수동: 무효 세션 없음 | MISSING");
+    expect(failed.stdout).toContain("#1 novice clear 40R seed=TEST-1 #00000001");
+    expect(failed.stdout).toContain("필수 결과 메타데이터 누락 또는 모순");
+    expect(failed.stderr).toContain("수동: 무효 세션 없음");
+  });
+
   it("현재 데이터 버전이 아닌 수동 세션은 감사에서 무효 처리한다", () => {
     const manual = completeManual();
     manual.sessions.push({

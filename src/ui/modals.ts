@@ -300,7 +300,7 @@ function mapPermissionMessage(r: ResultSummary): string {
     r.bossKills.some((boss) => boss.round === FINAL_ROUND);
   if (r.unlockedNextStage && r.stageId < STAGES.length) {
     const next = stageById(r.stageId + 1);
-    return `이번 판은 선택한 맵에서 종료됩니다. 스테이지 종료나 보스 처치 시 맵이 바뀌지 않으며, 다음 새 게임에서 ${next.id}. ${next.name} 맵을 고를 수 있는 권한만 추가됩니다.`;
+    return `이번 판은 시작할 때 고른 맵에서 종료됩니다. 라운드나 보스 처치 후 맵이 바뀌지 않으며, 다음 새 게임에서 ${next.id}. ${next.name} 맵을 고를 수 있는 권한만 추가됩니다.`;
   }
   if (finalBossCleared && r.stageId >= STAGES.length) {
     return "최종 맵 40R 보스를 클리어했습니다. 더 추가될 맵 선택 권한은 없습니다.";
@@ -761,7 +761,7 @@ function appendManualResultFieldChecklist(body: HTMLElement, target?: ManualProo
     ["dataVersion", "결과 화면 RESULT_DATA_VERSION", DATA_VERSION],
     ["stateChecksum", "결과 화면 RESULT_CHECKSUM", "8자리 checksum"],
     ["inputCount", "결과 화면 플레이 입력 수", "12 이상"],
-    ["inputTypes", "결과 화면 플레이 입력 종류", "1개 이상"],
+    ["inputTypes", "결과 화면 플레이 입력 종류", "setSpeed 제외 1개 이상"],
     ["inputCounts", "결과 화면 입력별 횟수", "합계가 inputCount와 일치"],
     ["result", "결과 화면 클리어/실패 상태", expected.result],
     ["round", "결과 화면 도달 라운드", expected.round],

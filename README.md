@@ -20,10 +20,10 @@ yarn tauri build
 
 ## 맵 진행 / 해금 모델
 
-이 게임은 한 판 안에서 스테이지가 끝날 때마다 맵이 바뀌는 구조가 아니다.
 새 게임을 시작할 때 선택 가능한 맵 중 하나를 고르고, 그 맵에서 1라운드부터 40라운드 최종 보스까지 진행한다.
+한 판 안에서 라운드, 보스, 중간 진행 구간을 넘었다고 맵이 바뀌지 않는다.
 정확히 40라운드 최종 보스를 클리어하면 현재 판은 그 맵에서 종료되며, 다음 새 게임부터 다음 맵을 선택할 수 있는 권한만 추가된다.
-즉, 보스 라운드나 중간 스테이지 경계는 맵 전환 조건이 아니며, 해금은 현재 판 이동이 아니라 다음 새 게임의 맵 선택권이다.
+해금은 현재 판 이동이나 자동 다음 맵 시작이 아니라 다음 새 게임의 맵 선택권이다.
 
 ## 테스트 / 시뮬레이션
 
@@ -105,7 +105,7 @@ yarn check                # npm 의존성 없이 Node만으로 코어 스모크 
 같은 모달의 `검증+마커` 복사 버튼은 시작 마커 dry-run 검증, 실제 저장, pending-id 확인을 `&&`로 묶어 실행하므로 검증 실패 시 마커가 저장되지 않는다.
 진행 중인 판의 현재 상태 finish 구간은 12분 이상, 플레이 입력 12회 이상, 입력 종류 1개 이상, 입력별 횟수 합계 일치 조건을 만족하기 전에는 실제 저장 명령을 숨기고 dry-run 점검 명령과 부족 사유만 보여준다. `render_game_to_text.manualProof.currentFinishReadiness`도 같은 준비 상태와 blockers를 제공한다.
 게임 중 `수동증거` 상단 표시와 준비 완료 토스트도 같은 저장조건 기준을 사용한다. 12분만 채우고 입력 조건이 부족한 경우에는 저장 완료가 아니라 입력 조건 확인 상태로 남는다.
-`yarn manual-playlog --pending`과 `--summary`는 시작 마커별 경과 시간, 12분 목표까지 남은 시간, 정확한 12분 기준 시각을 보여준다. 미완료 시작 마커의 finish 안내는 저장 전 `--dry-run` 검증 명령을 먼저 보여주며, `yarn manual-playlog --assert` 실패 출력과 `yarn balance-audit`의 미완료 수동 증거 행도 `yarn manual-playlog --preflight`, `yarn manual-playlog --next`, `yarn manual-playlog --plan`, 추천 시작 검증, 실제 시작 마커를 함께 출력한다. `yarn manual-playlog --sheet`는 현재 수동 증거 상태, 다음 세션 시작 명령, 남은 120분 계획, 결과 기록 필드를 Markdown 한 장으로 출력한다. `yarn balance-proof`도 기본적으로 현재 수동 상태 JSON을 `output/manual-balance-preflight.json`, 다음 세션 안내를 `output/manual-balance-next.txt`, 같은 JSON을 `output/manual-balance-next.json`, 같은 시트 내용을 `output/manual-balance-play-sheet.md`, 구조화된 남은 계획을 `output/manual-balance-play-plan.json`에 저장한다. `yarn balance-proof --check-manual-artifacts`는 이 파일들이 현재 `manual-playlog` 상태와 어긋나면 실패한다. `yarn balance-proof --require-complete`도 수동 증거가 부족해 실패하기 전에 이 파일들을 먼저 갱신한다. `--summary-json`의 `commandTemplates`에도 같은 preflight/plan/sheet/next/start-next 명령이 들어 있어 UI나 자동화가 수동 증거 수집 명령을 한 번에 읽을 수 있다. `--summary-json`/`--preflight-json`/`--next-json`의 `resultFieldChecklist`는 결과 기록에 필요한 seed, startedAt, endedAt, dataVersion, stateChecksum, inputCount, inputTypes, inputCounts, result, round, legends, maxGrade, minutes와 다음 목표 기준 기대값을 함께 제공하며, human-playtest의 inputCount 기대값은 12 이상이고 inputTypes는 1개 이상이며 inputCounts 합계는 inputCount와 같아야 한다.
+`yarn manual-playlog --pending`과 `--summary`는 시작 마커별 경과 시간, 12분 목표까지 남은 시간, 정확한 12분 기준 시각을 보여준다. 미완료 시작 마커의 finish 안내는 저장 전 `--dry-run` 검증 명령을 먼저 보여주며, `yarn manual-playlog --assert` 실패 출력과 `yarn balance-audit`의 미완료 수동 증거 행도 `yarn manual-playlog --preflight`, `yarn manual-playlog --next`, `yarn manual-playlog --plan`, 추천 시작 검증, 실제 시작 마커를 함께 출력한다. `yarn manual-playlog --sheet`는 현재 수동 증거 상태, 다음 세션 시작 명령, 남은 120분 계획, 결과 기록 필드를 Markdown 한 장으로 출력한다. `yarn balance-proof`도 기본적으로 현재 수동 상태 JSON을 `output/manual-balance-preflight.json`, 다음 세션 안내를 `output/manual-balance-next.txt`, 같은 JSON을 `output/manual-balance-next.json`, 같은 시트 내용을 `output/manual-balance-play-sheet.md`, 구조화된 남은 계획을 `output/manual-balance-play-plan.json`에 저장한다. `yarn balance-proof --check-manual-artifacts`는 이 파일들이 현재 `manual-playlog` 상태와 어긋나면 실패한다. `yarn balance-proof --require-complete`도 수동 증거가 부족해 실패하기 전에 이 파일들을 먼저 갱신한다. `--summary-json`의 `commandTemplates`에도 같은 preflight/plan/sheet/next/start-next 명령이 들어 있어 UI나 자동화가 수동 증거 수집 명령을 한 번에 읽을 수 있다. `--summary-json`/`--preflight-json`/`--next-json`의 `resultFieldChecklist`는 결과 기록에 필요한 seed, startedAt, endedAt, dataVersion, stateChecksum, inputCount, inputTypes, inputCounts, result, round, legends, maxGrade, minutes와 다음 목표 기준 기대값을 함께 제공하며, human-playtest의 inputCount 기대값은 12 이상이고 inputTypes는 `setSpeed`를 제외한 실제 플레이 입력 1개 이상이며 inputCounts 합계는 inputCount와 같아야 한다.
 무효 수동 세션이 남아 있으면 `--start`와 `--start-next`가 새 시작 마커를 만들지 않으므로, `yarn manual-playlog --summary`의 INVALID 사유를 먼저 정리해야 한다.
 
 ## 데스크탑 게임 구성
