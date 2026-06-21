@@ -801,10 +801,13 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
     const diffRow = el("div", "choice-grid difficulty-choice-grid");
     const diffBtns: HTMLButtonElement[] = [];
     for (const d of DIFFICULTIES) {
-      const b = el("button", "choice-btn") as HTMLButtonElement;
+      const b = el("button", "choice-btn difficulty-choice") as HTMLButtonElement;
       b.appendChild(el("span", "cname", d.name));
-      b.appendChild(el("span", "cdesc", `수동 목표: ${manualTargetHint(d.id)}`));
-      b.appendChild(el("span", "cdesc", `보유 ${d.unitCap}기 · 적 체력 x${d.enemyHpMult} · 누적 ${d.enemyLimit} · 시작 ${d.startGold}골드`));
+      const tooltip = el("span", "difficulty-tooltip");
+      tooltip.appendChild(el("span", "tooltip-title", `${d.name} 난이도`));
+      tooltip.appendChild(el("span", "", `수동 목표: ${manualTargetHint(d.id)}`));
+      tooltip.appendChild(el("span", "", `보유 ${d.unitCap}기 · 적 체력 x${d.enemyHpMult} · 누적 ${d.enemyLimit} · 시작 ${d.startGold}골드`));
+      b.appendChild(tooltip);
       if (d.id === chosen) b.style.borderColor = "var(--accent)";
       b.onclick = () => {
         chosen = d.id;
@@ -838,14 +841,11 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
     body.appendChild(stageRow);
     body.appendChild(el("div", "result-hint", "스테이지 진행 중 맵 전환은 없습니다. 새 게임 시작 때 선택한 맵 하나가 이번 판의 전체 40라운드 맵입니다."));
 
-    const startRun = (openProofGuide: boolean) => {
+    const startRun = () => {
       const seed = randomSeed(); // 시드는 내부 RNG/재현성용으로 항상 무작위 생성
       close();
       resetResultShown();
       ctx.newRun(seed, chosen, chosenStage);
-      if (openProofGuide) {
-        window.setTimeout(() => openManualProofGuideModal(ctx), 0);
-      }
     };
     const row = el("div", "row-btns");
     if (dismissable) {
@@ -853,11 +853,8 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
       cancel.onclick = close;
       row.appendChild(cancel);
     }
-    const proofStart = el("button", "", "증거 시작");
-    proofStart.onclick = () => startRun(true);
-    row.appendChild(proofStart);
     const start = el("button", "primary", "시작");
-    start.onclick = () => startRun(false);
+    start.onclick = startRun;
     row.appendChild(start);
     body.appendChild(row);
   }, dismissable);

@@ -1,7 +1,7 @@
 // Append one human playtest session to the manual balance play log.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, writeSync } from "node:fs";
 import { dirname } from "node:path";
 
 const args = Object.fromEntries(
@@ -1029,7 +1029,7 @@ function printSummary() {
 }
 
 function printSummaryJson() {
-  console.log(`${JSON.stringify(buildSummary(), null, 2)}`);
+  printJson(buildSummary());
 }
 
 function printPlan() {
@@ -1073,7 +1073,7 @@ function printPlan() {
 }
 
 function printPlanJson() {
-  console.log(`${JSON.stringify(buildPlan(), null, 2)}`);
+  printJson(buildPlan());
 }
 
 function markdownCell(value) {
@@ -1333,7 +1333,7 @@ function printNext() {
 }
 
 function printNextJson() {
-  console.log(`${JSON.stringify(buildNext(), null, 2)}`);
+  printJson(buildNext());
 }
 
 function manualStartWorkflow() {
@@ -1527,8 +1527,16 @@ function buildPreflight() {
 
 function printPreflightJson() {
   const preflight = buildPreflight();
-  console.log(`${JSON.stringify(preflight, null, 2)}`);
+  const { summary: _summary, ...jsonPreflight } = preflight;
+  printJson({
+    ...jsonPreflight,
+    remainingPlanPreview: preflight.remainingPlanPreview.map((step) => ({ label: step.label })),
+  });
   if (preflight.blocking) process.exitCode = 1;
+}
+
+function printJson(value) {
+  writeSync(1, `${JSON.stringify(value)}\n`);
 }
 
 function pendingSessions(log) {
