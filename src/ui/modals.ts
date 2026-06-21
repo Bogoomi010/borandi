@@ -4,6 +4,7 @@ import type { AppCtx } from "./ctx";
 import { el, openModal, toast } from "./widgets";
 import { GRADE_LABEL, FAMILY_LABEL, ROLE_LABEL, type DifficultyId, type ResultSummary } from "../core/types";
 import { UNIT_BY_ID } from "../data/units";
+import { RELIC_BY_ID } from "../data/relics";
 import { DIFFICULTIES } from "../data/difficulty";
 import { STAGES, stageById } from "../data/stages";
 import { DATA_VERSION } from "../data/version";
@@ -50,6 +51,7 @@ import {
 // ---------- 선택권 ----------
 
 let selectorOpen = false;
+let relicChoiceOpen = false;
 
 // COMPONENT: SelectorModal - reward chooser for pending unit selector tickets.
 export function openSelectorModal(ctx: AppCtx) {
@@ -88,6 +90,54 @@ export function openSelectorModal(ctx: AppCtx) {
     const row = el("div", "row-btns");
     const later = el("button", "", "나중에 선택");
     later.onclick = () => { selectorOpen = false; close(); };
+    row.appendChild(later);
+    body.appendChild(row);
+  }, false);
+}
+
+// ---------- 유물 선택 ----------
+
+const RELIC_RARITY_LABEL = {
+  rare: "희귀",
+  epic: "영웅",
+  legend: "전설",
+} as const;
+
+// COMPONENT: RelicChoiceModal - boss reward relic picker for run-wide bonuses.
+export function openRelicChoiceModal(ctx: AppCtx) {
+  const s = ctx.game.state;
+  if (relicChoiceOpen || s.pendingRelicChoices.length === 0) return;
+  if (s.phase === "ended") return;
+  relicChoiceOpen = true;
+  ctx.audio.sfx("mission");
+  const choice = s.pendingRelicChoices[0];
+
+  openModal((body, close) => {
+    body.appendChild(el("h2", "", "보스 유물 선택"));
+    body.appendChild(el("div", "modal-note", `${choice.source} — 이번 판 동안 유지되는 유물 1개를 고르세요.`));
+    const grid = el("div", "choice-grid relic-choice-grid");
+    for (const id of choice.candidateIds) {
+      const relic = RELIC_BY_ID[id];
+      if (!relic) continue;
+      const btn = el("button", `choice-btn relic-card relic-${relic.rarity}`);
+      btn.appendChild(el("span", "relic-mark", relic.theme === "prism" ? "◇" : relic.theme === "guard" ? "◆" : "✦"));
+      btn.appendChild(el("span", "cname", relic.name));
+      btn.appendChild(el("span", "badge", RELIC_RARITY_LABEL[relic.rarity]));
+      btn.appendChild(el("span", "cdesc", relic.desc));
+      btn.onclick = () => {
+        const res = ctx.act("pickRelic", { choiceId: choice.id, relicId: id });
+        relicChoiceOpen = false;
+        close();
+        if (res && ctx.game.state.pendingRelicChoices.length > 0) {
+          openRelicChoiceModal(ctx);
+        }
+      };
+      grid.appendChild(btn);
+    }
+    body.appendChild(grid);
+    const row = el("div", "row-btns");
+    const later = el("button", "", "나중에 선택");
+    later.onclick = () => { relicChoiceOpen = false; close(); };
     row.appendChild(later);
     body.appendChild(row);
   }, false);

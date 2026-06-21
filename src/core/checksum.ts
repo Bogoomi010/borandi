@@ -26,6 +26,8 @@ export function stateChecksum(s: GameState): string {
     enemies: s.enemies.map((e) => [e.eid, Math.round(e.hp * 100), Math.round(e.dist * 100)]),
     missions: s.missions.map((m) => [m.defId, m.status]),
     upg: s.upgrades,
+    relics: s.relicIds,
+    relicChoices: s.pendingRelicChoices.map((choice) => [choice.id, choice.candidateIds]),
     stats: s.summonStats,
   };
   return fnv1a(JSON.stringify(core));

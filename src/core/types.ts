@@ -83,6 +83,31 @@ export interface RewardDef {
   bossKillBonusGold?: { round: number; gold: number };
 }
 
+export interface RelicEffect {
+  family?: Family;
+  attackMult?: number;
+  attackSpeedMult?: number;
+  splashRadiusBonus?: number;
+  slowPctMult?: number;
+  slowDurationMult?: number;
+  bossDamageMult?: number;
+  armorBreakMult?: number;
+  damageAmpMult?: number;
+  executePctBonus?: number;
+  killGoldBonus?: number;
+  roundGoldMult?: number;
+  enemyLimitBonus?: number;
+}
+
+export interface RelicDef {
+  id: string;
+  name: string;
+  theme: Family | "prism" | "guard";
+  rarity: "rare" | "epic" | "legend";
+  desc: string;
+  effect: RelicEffect;
+}
+
 export interface MissionDef {
   id: string;
   name: string;
@@ -196,6 +221,12 @@ export interface PendingSelector {
   source: string;
 }
 
+export interface PendingRelicChoice {
+  id: string;
+  candidateIds: string[];
+  source: string;
+}
+
 export interface MissionState {
   defId: string;
   status: "active" | "done" | "expired";
@@ -212,6 +243,7 @@ export interface GameInput {
   tick: number;
   type: "summon" | "merge3" | "craft" | "sell" | "upgrade" | "toggleLock"
       | "startWave" | "nextRound" | "pickSelector" | "setSpeed"
+      | "pickRelic"
       | "cmdMove" | "cmdAttackMove" | "cmdAttack" | "cmdStop";
   payload?: Record<string, unknown>;
 }
@@ -233,6 +265,8 @@ export interface GameState {
   discoveredRecipeIds: string[];
   upgrades: Record<string, number>;
   pendingSelectors: PendingSelector[];
+  relicIds: string[];
+  pendingRelicChoices: PendingRelicChoice[];
   summonStats: { rolls: number; consecutiveCommon: number; pityTriggered: number };
   craftCount: number;
   merge3Count: number;

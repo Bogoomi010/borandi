@@ -4,6 +4,7 @@ import type { AppCtx, RightTab } from "./ctx";
 import { el, toast, confirmModal } from "./widgets";
 import { GRADE_LABEL, FAMILY_LABEL, ROLE_LABEL, GRADE_ORDER, type Grade } from "../core/types";
 import { UNIT_BY_ID } from "../data/units";
+import { RELIC_BY_ID } from "../data/relics";
 import { analyzeRecipes, bossOutlook } from "../core/advisor";
 import { MISSION_BY_ID } from "../data/missions";
 import { waveForRound, FINAL_ROUND, BOSS_ROUND_LIST } from "../data/waves";
@@ -11,7 +12,7 @@ import { FINAL_STAGE, stageById } from "../data/stages";
 import { UPGRADES, upgradeCost } from "../data/upgrades";
 import { SUMMON_COST, SELL_REFUND, DIFFICULTY_BY_ID } from "../data/difficulty";
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
-import { openManualProofGuideModal, openSelectorModal } from "./modals";
+import { openManualProofGuideModal, openRelicChoiceModal, openSelectorModal } from "./modals";
 import { MANUAL_PROOF_TARGET_SECONDS, manualProofFinishReadiness, manualProofReadyAt, manualProofRemainingSeconds, manualProofTargetFor } from "../core/manualProof";
 
 // ---------- 상단 상태바 ----------
@@ -97,6 +98,11 @@ export function renderTopbar(ctx: AppCtx) {
   if (s.pendingSelectors.length > 0) {
     const btn = el("button", "pill-btn", `🎁 선택권 ${s.pendingSelectors.length}`);
     btn.onclick = () => openSelectorModal(ctx);
+    root.appendChild(btn);
+  }
+  if (s.pendingRelicChoices.length > 0) {
+    const btn = el("button", "pill-btn", `✦ 유물 ${s.pendingRelicChoices.length}`);
+    btn.onclick = () => openRelicChoiceModal(ctx);
     root.appendChild(btn);
   }
 
@@ -536,6 +542,28 @@ function renderBossTab(ctx: AppCtx, root: HTMLElement) {
       for (const [r, sec] of kills) box.appendChild(row(`${r}R`, `${sec}초`));
     }
   }
+  if (s.relicIds.length > 0 || s.pendingRelicChoices.length > 0) {
+    box.appendChild(el("div", "panel-title", "보유 유물"));
+    if (s.relicIds.length === 0) {
+      box.appendChild(el("div", "meta", "아직 선택한 유물이 없습니다."));
+    }
+    for (const id of s.relicIds) {
+      const relic = RELIC_BY_ID[id];
+      if (!relic) continue;
+      const item = el("div", `relic-row relic-${relic.rarity}`);
+      item.appendChild(el("span", "relic-mark", relic.theme === "prism" ? "◇" : relic.theme === "guard" ? "◆" : "✦"));
+      const text = el("span");
+      text.appendChild(el("strong", "", relic.name));
+      text.appendChild(el("small", "", relic.desc));
+      item.appendChild(text);
+      box.appendChild(item);
+    }
+    if (s.pendingRelicChoices.length > 0) {
+      const pick = el("button", "craft-btn", `유물 선택 ${s.pendingRelicChoices.length}`);
+      pick.onclick = () => openRelicChoiceModal(ctx);
+      box.appendChild(pick);
+    }
+  }
   root.appendChild(box);
 }
 
@@ -778,6 +806,21 @@ export function renderActionbar(ctx: AppCtx) {
     onClick: () => openUpgradeModal(ctx),
   }));
 
+  const relicSub = s.pendingRelicChoices.length > 0
+    ? `${s.pendingRelicChoices.length}개 선택 대기`
+    : s.relicIds.length > 0 ? `${s.relicIds.length}개 보유` : "보스 보상";
+  root.appendChild(btn("유물", relicSub, {
+    disabled: ended || (s.pendingRelicChoices.length === 0 && s.relicIds.length === 0),
+    icon: "passive",
+    onClick: () => {
+      if (s.pendingRelicChoices.length > 0) openRelicChoiceModal(ctx);
+      else {
+        ctx.activeTab = "boss";
+        ctx.refresh();
+      }
+    },
+  }));
+
   root.appendChild(btn("수동증거", "시작마커/목표", {
     disabled: ended,
     onClick: () => openManualProofGuideModal(ctx),
@@ -815,14 +858,17 @@ export function renderActionbar(ctx: AppCtx) {
   // 진행 버튼 — 휴식 중에만 "다음 라운드 시작"
   if (inBreak && !ended) {
     const wave = waveForRound(Math.min(s.round, FINAL_ROUND));
-    const sub = s.pendingSelectors.length > 0
-      ? "🎁 선택권 확인!"
+    const sub = s.pendingRelicChoices.length > 0
+      ? "✦ 유물 선택!"
+      : s.pendingSelectors.length > 0
+        ? "🎁 선택권 확인!"
       : wave.type === "boss" ? "⚠ 보스 라운드" : `${wave.enemyName} x${wave.count}`;
     root.appendChild(btn(`${s.round}라운드 시작 [Space]`, sub, {
       primary: true,
       icon: "skill",
       onClick: () => {
-        if (s.pendingSelectors.length > 0) openSelectorModal(ctx);
+        if (s.pendingRelicChoices.length > 0) openRelicChoiceModal(ctx);
+        else if (s.pendingSelectors.length > 0) openSelectorModal(ctx);
         else ctx.advanceWave();
       },
     }));

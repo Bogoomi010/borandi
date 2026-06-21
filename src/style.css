@@ -390,6 +390,13 @@ canvas#board { max-width: 100%; max-height: 100%; }
 .boss-info .row { display: flex; justify-content: space-between; }
 .boss-info .row .k { color: var(--text-dim); }
 .risk-ok { color: var(--ok); } .risk-warn { color: var(--warn); } .risk-bad { color: var(--danger); }
+.relic-row {
+  display: grid; grid-template-columns: 34px 1fr; gap: 8px; align-items: start;
+  padding: 8px; margin: 4px 0; border: 1px solid var(--line); border-radius: 6px;
+  background: rgba(255, 255, 255, .03);
+}
+.relic-row strong { display: block; font-size: 12px; }
+.relic-row small { display: block; color: var(--text-dim); font-size: 11px; margin-top: 2px; }
 
 .log-list { display: flex; flex-direction: column-reverse; gap: 2px; font-size: 11px; color: var(--text-dim); }
 .log-list .evt-gold { color: var(--gold); }
@@ -752,6 +759,19 @@ canvas#board { max-width: 100%; max-height: 100%; }
 .choice-btn:hover { border-color: var(--accent) !important; box-shadow: 0 0 14px rgba(91, 140, 255, .25); }
 .choice-btn .cname { font-weight: 600; }
 .choice-btn .cdesc { font-size: 11px; line-height: 1.35; color: var(--text-dim); text-align: center; white-space: pre-line; }
+.relic-choice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.relic-card { position: relative; min-height: 150px; align-items: flex-start; text-align: left; }
+.relic-card .cdesc { text-align: left; }
+.relic-card .badge { align-self: flex-start; }
+.relic-mark {
+  display: inline-grid; place-items: center;
+  width: 28px; height: 28px; border-radius: 6px;
+  color: #f4d675; border: 1px solid rgba(244, 214, 117, .55);
+  background: rgba(244, 214, 117, .08); font-weight: 900;
+}
+.relic-rare { border-color: rgba(91, 140, 255, .45) !important; }
+.relic-epic { border-color: rgba(178, 115, 255, .52) !important; }
+.relic-legend { border-color: rgba(240, 195, 60, .65) !important; box-shadow: 0 0 18px rgba(240, 195, 60, .10); }
 .difficulty-choice-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .difficulty-choice {
   position: relative;

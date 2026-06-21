@@ -13,6 +13,7 @@ import type {
 } from "./types";
 import { GRADE_ORDER } from "./types";
 import { UNIT_BY_ID, unitsOfGrade } from "../data/units";
+import { RELICS, RELIC_BY_ID } from "../data/relics";
 import { RECIPE_BY_ID } from "../data/recipes";
 import { MISSIONS, MISSION_BY_ID } from "../data/missions";
 import { FINAL_ROUND, bossForRound, waveForRound } from "../data/waves";
@@ -83,6 +84,8 @@ export class Game {
       discoveredRecipeIds: [],
       upgrades: Object.fromEntries(UPGRADES.map((u) => [u.id, 0])),
       pendingSelectors: [],
+      relicIds: [],
+      pendingRelicChoices: [],
       summonStats: { rolls: 0, consecutiveCommon: 0, pityTriggered: 0 },
       craftCount: 0, merge3Count: 0,
       leakedRounds: [], waveLeaks: 0,
@@ -140,6 +143,7 @@ export class Game {
       case "cmdAttack": return this.cmdAttack(p.unitIds as number[], p.targetEid as number);
       case "cmdStop": return this.cmdStop(p.unitIds as number[]);
       case "pickSelector": return this.pickSelector(p.selectorId as string, p.unitId as string);
+      case "pickRelic": return this.pickRelic(p.choiceId as string, p.relicId as string);
       case "setSpeed": {
         this.state.speed = p.speed as 1 | 2 | 3;
         return ok;
@@ -458,6 +462,54 @@ export class Game {
     return ok;
   }
 
+  // ===================== 유물 =====================
+
+  private relicBonus(key: keyof typeof RELICS[number]["effect"], family?: UnitDef["family"]): number {
+    let total = 0;
+    for (const id of this.state.relicIds) {
+      const effect = RELIC_BY_ID[id]?.effect;
+      if (!effect) continue;
+      if (family !== undefined) {
+        if (effect.family !== family) continue;
+      } else if (effect.family !== undefined) {
+        continue;
+      }
+      const value = effect[key];
+      if (typeof value === "number") total += value;
+    }
+    return total;
+  }
+
+  private grantRelicChoice(source: string) {
+    const available = RELICS
+      .filter((relic) => !this.state.relicIds.includes(relic.id))
+      .map((relic) => relic.id);
+    if (available.length === 0) return;
+    const choice = {
+      id: `relic_${this.state.round}_${this.state.pendingRelicChoices.length}_${this.rng.int(99999)}`,
+      candidateIds: this.rng.shuffle(available).slice(0, Math.min(3, available.length)),
+      source,
+    };
+    this.state.pendingRelicChoices.push(choice);
+    this.log("reward", `${source}: 유물 선택 가능`);
+  }
+
+  private pickRelic(choiceId: string, relicId: string): ActionResult {
+    const g = this.requirePhase(["prepare", "wave", "reward"], "유물 선택");
+    if (!g.ok) return g;
+    const idx = this.state.pendingRelicChoices.findIndex((choice) => choice.id === choiceId);
+    if (idx === -1) return fail("유물 선택지를 찾을 수 없습니다.");
+    const choice = this.state.pendingRelicChoices[idx];
+    if (!choice.candidateIds.includes(relicId)) return fail("후보에 없는 유물입니다.");
+    if (this.state.relicIds.includes(relicId)) return fail("이미 보유한 유물입니다.");
+    const relic = RELIC_BY_ID[relicId];
+    if (!relic) return fail("존재하지 않는 유물입니다.");
+    this.state.pendingRelicChoices.splice(idx, 1);
+    this.state.relicIds.push(relicId);
+    this.log("reward", `유물 획득: ${relic.name}`);
+    return ok;
+  }
+
   // ===================== 라운드 흐름 =====================
 
   /** 라운드 사이 휴식을 건너뛰고 즉시 다음 라운드를 시작 (Space/버튼). */
@@ -506,10 +558,11 @@ export class Game {
     this.enforceRunStage();
     const s = this.state;
     const wave = waveForRound(s.round);
-    const gold = Math.round(wave.goldReward * this.diff.goldMult);
+    const gold = Math.round(wave.goldReward * this.diff.goldMult * (1 + this.relicBonus("roundGoldMult")));
     s.gold += gold;
     this.log("reward", `${s.round}라운드 정리 (+${gold}골드)`);
     if (wave.reward?.selector) this.grantSelector(wave.reward.selector.grade, "보스 보상");
+    if (wave.type === "boss" && s.round < FINAL_ROUND) this.grantRelicChoice(`${s.round}R 보스 보상`);
     this.checkMissions();
     this.expireMissions();
     if (s.round >= FINAL_ROUND) {
@@ -632,7 +685,7 @@ export class Game {
   }
 
   enemyLimit(): number {
-    return this.diff.enemyLimit + this.legendCommandEnemyLimitBonus();
+    return this.diff.enemyLimit + this.legendCommandEnemyLimitBonus() + this.relicBonus("enemyLimitBonus");
   }
 
   /** 사거리/시야 radius 안에서 타게팅 우선순위에 따른 적 1기 (없으면 null) */
@@ -761,34 +814,45 @@ export class Game {
     bossSlowResist: number,
   ) {
     const s = this.state;
-    const atkSpeed = d.attackSpeed * (d.family === "storm" ? 1 + 0.1 * lv.storm : 1);
+    const atkSpeed = d.attackSpeed *
+      (d.family === "storm" ? 1 + 0.1 * lv.storm : 1) *
+      (1 + this.relicBonus("attackSpeedMult", d.family) + this.relicBonus("attackSpeedMult"));
     u.cooldown = 1 / atkSpeed;
 
-    let atk = d.attack * this.legendCommandAttackMult() * (d.family === "flame" ? 1 + 0.12 * lv.flame : 1);
+    let atk = d.attack *
+      this.legendCommandAttackMult() *
+      (d.family === "flame" ? 1 + 0.12 * lv.flame : 1) *
+      (1 + this.relicBonus("attackMult", d.family) + this.relicBonus("attackMult"));
     if (e.isBoss && d.bossDamageBonus) {
-      const bonus = d.bossDamageBonus + (d.family === "iron" ? 0.15 * lv.iron : 0);
+      const bonus = d.bossDamageBonus +
+        (d.family === "iron" ? 0.15 * lv.iron : 0) +
+        this.relicBonus("bossDamageMult", d.family) +
+        this.relicBonus("bossDamageMult");
       atk *= 1 + bonus;
     }
     u.totalDamage += this.applyDamage(e, atk, d.attackType, lv.void);
 
-    if (d.splashRadius) {
+    const splashRadius = (d.splashRadius ?? 0) + this.relicBonus("splashRadiusBonus", d.family) + this.relicBonus("splashRadiusBonus");
+    if (splashRadius > 0) {
       const tp = posAtDist(e.dist, s.stageId);
       for (const c of s.enemies) {
         if (c === e) continue;
         const cp = posAtDist(c.dist, s.stageId);
-        if (Math.hypot(cp.x - tp.x, cp.y - tp.y) <= d.splashRadius) {
+        if (Math.hypot(cp.x - tp.x, cp.y - tp.y) <= splashRadius) {
           u.totalDamage += this.applyDamage(c, atk * 0.6, d.attackType, lv.void);
         }
       }
     }
 
     if (d.slowPct) {
-      let pct = d.slowPct;
+      let pct = d.slowPct * (1 + this.relicBonus("slowPctMult", d.family) + this.relicBonus("slowPctMult"));
       if (e.isBoss) {
         const resist = Math.max(0, bossSlowResist - s.bossSlowResistReduction);
         pct *= 1 - resist;
       }
-      const dur = (d.slowDuration ?? 1.5) * (d.family === "frost" ? 1 + 0.1 * lv.frost : 1);
+      const dur = (d.slowDuration ?? 1.5) *
+        (d.family === "frost" ? 1 + 0.1 * lv.frost : 1) *
+        (1 + this.relicBonus("slowDurationMult", d.family) + this.relicBonus("slowDurationMult"));
       e.slows.push({ pct, until: s.time + dur });
     }
     if (d.stunChance && this.rng.next() < d.stunChance) {
@@ -797,7 +861,8 @@ export class Game {
     }
     if (d.armorBreakPct && e.armorBreakStacks < 3) e.armorBreakStacks++;
     if (d.damageAmpPct && e.ampStacks < 3) e.ampStacks++;
-    if (d.executePct && !e.isBoss && e.hp > 0 && e.hp <= e.maxHp * d.executePct) {
+    const executePct = (d.executePct ?? 0) + this.relicBonus("executePctBonus", d.family) + this.relicBonus("executePctBonus");
+    if (executePct > 0 && !e.isBoss && e.hp > 0 && e.hp <= e.maxHp * executePct) {
       u.totalDamage += e.hp;
       e.hp = 0;
     }
@@ -810,12 +875,12 @@ export class Game {
       attackType === "true" ? 0 :
       attackType === "pierce" ? 0.3 :
       attackType === "magic" ? 0.6 : 1.0;
-    const breakPerStack = 0.1 * (1 + 0.1 * voidLv);
+    const breakPerStack = 0.1 * (1 + 0.1 * voidLv) * (1 + this.relicBonus("armorBreakMult"));
     const effArmor = Math.max(
       0,
       e.armor * armorFactor * (1 - Math.min(0.45, e.armorBreakStacks * breakPerStack)),
     );
-    const amp = 1 + e.ampStacks * 0.04 * (1 + 0.1 * voidLv);
+    const amp = 1 + e.ampStacks * 0.04 * (1 + 0.1 * voidLv) * (1 + this.relicBonus("damageAmpMult"));
     const dmg = raw * (100 / (100 + effArmor)) * amp;
     e.hp -= dmg;
     return dmg;
@@ -836,6 +901,7 @@ export class Game {
           if (d.killGoldBonus) bonus += d.killGoldBonus;
         }
         bonus += this.upLv("upgrade_forest");
+        bonus += this.relicBonus("killGoldBonus");
         if (bonus > 0) s.gold += bonus;
       }
       if (e.isBoss) this.onBossKilled(e);

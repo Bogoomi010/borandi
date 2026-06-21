@@ -23,6 +23,7 @@ import {
   manualPlaylogThenNextCommand,
   currentManualProofSummary,
   maybeShowResult,
+  openRelicChoiceModal,
   openSelectorModal,
   resetResultShown,
 } from "./ui/modals";
@@ -103,6 +104,7 @@ let panelsDirty = true;
 let lastPhase = game.state.phase;
 let lastRound = game.state.round;
 let lastSelectorCount = game.state.pendingSelectors.length;
+let lastRelicChoiceCount = game.state.pendingRelicChoices.length;
 let autosaveTimer: number | null = null;
 let endedHandled = false;
 let manualProofTimeReachedNotified = false;
@@ -193,6 +195,7 @@ const ctx: AppCtx = {
     lastPhase = game.state.phase;
     lastRound = game.state.round;
     lastSelectorCount = game.state.pendingSelectors.length;
+    lastRelicChoiceCount = game.state.pendingRelicChoices.length;
     if (settings.defaultSpeed !== 1) game.dispatch("setSpeed", { speed: settings.defaultSpeed });
     panelsDirty = true;
     showGame(ctx);
@@ -217,6 +220,7 @@ const ctx: AppCtx = {
     lastPhase = game.state.phase;
     lastRound = game.state.round;
     lastSelectorCount = game.state.pendingSelectors.length;
+    lastRelicChoiceCount = game.state.pendingRelicChoices.length;
     panelsDirty = true;
     showGame(ctx);
   },
@@ -274,6 +278,7 @@ function playActionSfx(type: string) {
     case "sell": audio.sfx("sell"); break;
     case "upgrade": audio.sfx("upgrade"); break;
     case "pickSelector": audio.sfx("summonRare"); break;
+    case "pickRelic": audio.sfx("mission"); break;
     case "startWave": {
       const isBoss = game.state.round % 10 === 0;
       audio.sfx(isBoss ? "bossWarn" : "waveStart");
@@ -356,6 +361,11 @@ function loop(now: number) {
       openSelectorModal(ctx);
     }
     lastSelectorCount = game.state.pendingSelectors.length;
+
+    if (game.state.pendingRelicChoices.length > lastRelicChoiceCount && !anyModalOpen()) {
+      openRelicChoiceModal(ctx);
+    }
+    lastRelicChoiceCount = game.state.pendingRelicChoices.length;
 
     if (game.state.phase !== lastPhase) { lastPhase = game.state.phase; panelsDirty = true; }
     maybeNotifyManualProofReady(now);

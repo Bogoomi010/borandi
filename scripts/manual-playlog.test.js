@@ -211,7 +211,7 @@ describe("manual-playlog plan", () => {
       "중급자 5전설 이상 40R 클리어",
     ]);
     expect(preflight.resultFieldChecklist).toEqual(expect.arrayContaining([
-      expect.objectContaining({ field: "dataVersion", source: "결과 화면 RESULT_DATA_VERSION", expected: "0.8.4" }),
+      expect.objectContaining({ field: "dataVersion", source: "결과 화면 RESULT_DATA_VERSION", expected: CURRENT_DATA_VERSION }),
       expect.objectContaining({ field: "stateChecksum", source: "결과 화면 RESULT_CHECKSUM", expected: "8자리 checksum" }),
       expect.objectContaining({ field: "inputCount", expected: "12 이상" }),
       expect.objectContaining({ field: "inputTypes", expected: "setSpeed 제외 1개 이상" }),
@@ -466,7 +466,7 @@ describe("manual-playlog plan", () => {
     expect(sheet).toContain(`yarn manual-playlog --from-clipboard --out=${shellArg(out)}`);
     expect(sheet).toContain("| 7 | balance-observation | normal | 일반 무전설 경계 확인 | 12.0분 | result=RESULT, round=ROUND_REACHED, legends=FINAL_LEGENDS, maxGrade=MAX_GRADE |");
     expect(sheet).toContain("| 10 | balance-observation | master | 초고수 추가 실패 확인 | 12.0분 | result=RESULT, round=ROUND_REACHED, legends=FINAL_LEGENDS, maxGrade=MAX_GRADE |");
-    expect(sheet).toContain("| dataVersion | 결과 화면 RESULT_DATA_VERSION | 0.8.4 |");
+    expect(sheet).toContain(`| dataVersion | 결과 화면 RESULT_DATA_VERSION | ${CURRENT_DATA_VERSION} |`);
     expect(sheet).toContain("| stateChecksum | 결과 화면 RESULT_CHECKSUM | 8자리 checksum |");
     expect(sheet).toContain("1. 게임에서 다음 목표 난이도로 새 게임을 시작하고 상단의 실제 시드를 확인");
     expect(sheet).toContain("판정: 수동 증거 미충족");
@@ -509,7 +509,7 @@ describe("manual-playlog plan", () => {
       expect.objectContaining({ field: "seed", expected: "실제 게임 시드" }),
       expect.objectContaining({ field: "startedAt", expected: "실제 시작 시각" }),
       expect.objectContaining({ field: "endedAt", source: "결과 화면 RESULT_ENDED_AT" }),
-      expect.objectContaining({ field: "dataVersion", expected: "0.8.4" }),
+      expect.objectContaining({ field: "dataVersion", expected: CURRENT_DATA_VERSION }),
       expect.objectContaining({ field: "stateChecksum", expected: "8자리 checksum" }),
       expect.objectContaining({ field: "inputCount", expected: "12 이상" }),
       expect.objectContaining({ field: "inputTypes", expected: "setSpeed 제외 1개 이상" }),
@@ -598,7 +598,7 @@ describe("manual-playlog plan", () => {
       expect.objectContaining({ field: "seed", expected: "실제 게임 시드" }),
       expect.objectContaining({ field: "startedAt", expected: "실제 시작 시각" }),
       expect.objectContaining({ field: "endedAt", source: "결과 화면 RESULT_ENDED_AT" }),
-      expect.objectContaining({ field: "dataVersion", expected: "0.8.4" }),
+      expect.objectContaining({ field: "dataVersion", expected: CURRENT_DATA_VERSION }),
       expect.objectContaining({ field: "stateChecksum", expected: "8자리 checksum" }),
       expect.objectContaining({ field: "inputCount", expected: "12 이상" }),
       expect.objectContaining({ field: "inputTypes", expected: "setSpeed 제외 1개 이상" }),

@@ -1,3 +1,3 @@
-export const DATA_VERSION = "0.8.4"; // 중급자 5전설 진입선 보정
-export const APP_VERSION = "0.8.4";
+export const DATA_VERSION = "0.9.0"; // 보스 유물 선택 보상 추가
+export const APP_VERSION = "0.9.0";
 export const SCHEMA_VERSION = 1;

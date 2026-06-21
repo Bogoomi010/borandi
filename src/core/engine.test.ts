@@ -3,6 +3,7 @@ import { Game, replay } from "./engine";
 import { stateChecksum } from "./checksum";
 import { Rng } from "./rng";
 import { UNITS, UNIT_BY_ID } from "../data/units";
+import { RELICS, RELIC_BY_ID } from "../data/relics";
 import { RECIPES } from "../data/recipes";
 import { MISSIONS } from "../data/missions";
 import { BOSS_ROUND_LIST, FINAL_ROUND, WAVES } from "../data/waves";
@@ -71,6 +72,15 @@ describe("데이터 무결성 (QA 체크리스트)", () => {
   it("미션 ID가 중복되지 않는다", () => {
     const ids = MISSIONS.map((m) => m.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+  it("보스 유물 ID가 중복되지 않고 모든 설명이 배포용 문구를 가진다", () => {
+    const ids = RELICS.map((r) => r.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const relic of RELICS) {
+      expect(RELIC_BY_ID[relic.id]).toBe(relic);
+      expect(relic.name.length).toBeGreaterThan(0);
+      expect(relic.desc.length).toBeGreaterThan(8);
+    }
   });
 });
 
@@ -274,6 +284,34 @@ describe("전투/리플레이 재현성", () => {
     }
     expect(reached10 / n).toBeGreaterThanOrEqual(0.8);
   }, 60000);
+
+  it("보스 처치 후 유물 3택을 받고 선택 입력은 리플레이된다", () => {
+    const game = new Game("RELIC-REPLAY", "novice");
+    while (game.state.phase !== "ended" && game.state.bossKillSeconds[10] === undefined) {
+      playOneRound(game);
+    }
+
+    expect(game.state.bossKillSeconds[10]).toBeDefined();
+    expect(game.state.pendingRelicChoices.length).toBe(1);
+    const choice = game.state.pendingRelicChoices[0];
+    expect(choice.candidateIds.length).toBe(3);
+
+    const relicId = choice.candidateIds[0];
+    const res = game.dispatch("pickRelic", { choiceId: choice.id, relicId });
+    expect(res.ok).toBe(true);
+    expect(game.state.relicIds).toEqual([relicId]);
+    expect(game.state.pendingRelicChoices.length).toBe(0);
+
+    const replayed = replay(
+      "RELIC-REPLAY",
+      "novice",
+      game.state.stageId,
+      game.state.inputHistory,
+      game.state.tick,
+    );
+    expect(replayed.state.relicIds).toEqual(game.state.relicIds);
+    expect(stateChecksum(replayed.state)).toBe(stateChecksum(game.state));
+  }, 30000);
 });
 
 describe("phase 규칙", () => {
