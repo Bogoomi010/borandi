@@ -62,6 +62,7 @@ function appendSession(out, {
   maxGrade,
   checksum,
   startedAt,
+  notes,
 }) {
   const startMs = Date.parse(startedAt);
   const endedAt = new Date(startMs + minutes * 60_000).toISOString();
@@ -81,6 +82,7 @@ function appendSession(out, {
     "--inputCounts=summon:10,startWave:2",
     `--startedAt=${startedAt}`,
     `--endedAt=${endedAt}`,
+    ...(notes ? [`--notes=${notes}`] : []),
   ]);
 }
 
@@ -2108,10 +2110,13 @@ describe("manual-playlog plan", () => {
       ["expert", 12, "loss", 33, 5, "legend", "20000004"],
       ["expert", 12, "clear", 40, 6, "legend", "20000005"],
       ["master", 12, "loss", 3, 0, "hero", "20000006"],
-      ["novice", 48, "quit", 20, 0, "hero", "20000007"],
+      ["normal", 12, "loss", 38, 0, "hero", "20000007", "일반 무전설 경계 확인"],
+      ["intermediate", 12, "loss", 39, 2, "legend", "20000008", "중급자 2전설 경계 확인"],
+      ["expert", 12, "clear", 40, 7, "legend", "20000009", "고수 제한 없음 성장 확인"],
+      ["master", 12, "loss", 4, 1, "legend", "20000010", "초고수 추가 실패 확인"],
     ];
     let startMs = Date.parse("2026-06-20T00:00:00.000Z");
-    for (const [difficulty, minutes, result, round, legends, maxGrade, checksum] of sessions) {
+    for (const [difficulty, minutes, result, round, legends, maxGrade, checksum, notes] of sessions) {
       appendSession(out, {
         difficulty,
         minutes,
@@ -2121,6 +2126,7 @@ describe("manual-playlog plan", () => {
         maxGrade,
         checksum,
         startedAt: new Date(startMs).toISOString(),
+        notes,
       });
       startMs += (minutes + 1) * 60_000;
     }
@@ -2128,9 +2134,11 @@ describe("manual-playlog plan", () => {
     const log = readJson(out);
     const plan = JSON.parse(runManualPlaylog([`--out=${out}`, "--plan-json"]));
 
-    expect(log.sessions).toHaveLength(7);
+    expect(log.sessions).toHaveLength(10);
     expect(plan.passed).toBe(true);
     expect(plan.current.totalMinutes).toBe(120);
+    expect(plan.current.targetRowsPassed).toBe(6);
+    expect(plan.current.observationRowsPassed).toBe(4);
     expect(plan.steps).toEqual([]);
     expect(JSON.parse(runManualPlaylog([`--out=${out}`, "--next-json"])).next).toBeNull();
     expect(runManualPlaylog([`--out=${out}`, "--assert"])).toContain("PASS 수동 플레이 증거 충족");
@@ -2145,7 +2153,7 @@ describe("manual-playlog plan", () => {
       "--legends=0",
       "--maxGrade=hero",
       `--dataVersion=${CURRENT_DATA_VERSION}`,
-      "--stateChecksum=20000008",
+      "--stateChecksum=20000011",
       "--startedAt=2026-06-20T03:00:00.000Z",
       "--endedAt=2026-06-20T03:01:00.000Z",
     ]);

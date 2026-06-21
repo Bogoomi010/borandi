@@ -119,7 +119,7 @@ function completeDirect({ seeds = 6 } = {}) {
   };
 }
 
-function session(index, difficulty, result, legends, maxGrade, round = 40) {
+function session(index, difficulty, result, legends, maxGrade, round = 40, notes = undefined) {
   const start = new Date(Date.UTC(2026, 0, 1, index, 0, 0));
   const end = new Date(start.getTime() + 20 * 60 * 1000);
   return {
@@ -139,6 +139,7 @@ function session(index, difficulty, result, legends, maxGrade, round = 40) {
     inputCounts: { summon: 10, startWave: 2 },
     startedAt: start.toISOString(),
     endedAt: end.toISOString(),
+    ...(notes ? { notes } : {}),
   };
 }
 
@@ -151,6 +152,10 @@ function completeManual() {
       session(4, "expert", "loss", 5, "legend", 33),
       session(5, "expert", "clear", 6, "legend"),
       session(6, "master", "loss", 0, "hero", 3),
+      session(7, "normal", "loss", 0, "hero", 38, "일반 무전설 경계 확인"),
+      session(8, "intermediate", "loss", 2, "legend", 39, "중급자 2전설 경계 확인"),
+      session(9, "expert", "clear", 7, "legend", 40, "고수 제한 없음 성장 확인"),
+      session(10, "master", "loss", 1, "legend", 4, "초고수 추가 실패 확인"),
     ],
   };
 }
@@ -508,8 +513,8 @@ describe("balance-audit assert", () => {
     ]);
 
     expect(failed.status).toBe(1);
-    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | MISSING | human 0/6세션, codex-direct 6세션 120.0분");
-    expect(failed.stdout).toContain("Codex 직접 조작 보조 증거 분리 | PASS | codex-direct 6세션 120.0분, human 집계 0.0분에는 미포함");
+    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | MISSING | human 0/10세션, codex-direct 10세션 200.0분");
+    expect(failed.stdout).toContain("Codex 직접 조작 보조 증거 분리 | PASS | codex-direct 10세션 200.0분, human 집계 0.0분에는 미포함");
     expect(failed.stdout).toContain("수동: 입문자 무전설 클리어 | MISSING | 증거 없음");
     expect(failed.stdout).toContain("다음 수동 플레이 세션 | MISSING | 입문자 무전설 40R 클리어");
     expect(failed.stderr).toContain("사람이 직접 2시간 플레이");
@@ -531,7 +536,7 @@ describe("balance-audit assert", () => {
     expect(failed.status).toBe(1);
     expect(failed.stdout).toContain(`codex-direct-playlog: ${codex} (loaded)`);
     expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | MISSING | 아직 실제 수동 플레이 기록 없음");
-    expect(failed.stdout).toContain("Codex 직접 조작 보조 증거 분리 | PASS | codex-direct 6세션 120.0분, human 집계 0.0분에는 미포함");
+    expect(failed.stdout).toContain("Codex 직접 조작 보조 증거 분리 | PASS | codex-direct 10세션 200.0분, human 집계 0.0분에는 미포함");
     expect(failed.stdout).toContain("수동: 입문자 무전설 클리어 | MISSING | 증거 없음");
     expect(failed.stderr).toContain("사람이 직접 2시간 플레이");
   });
@@ -554,7 +559,7 @@ describe("balance-audit assert", () => {
     expect(failed.status).toBe(1);
     expect(failed.stdout).toContain(`codex-direct-playlog: ${codexA},${codexB} (loaded)`);
     expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | MISSING | 아직 실제 수동 플레이 기록 없음");
-    expect(failed.stdout).toContain("Codex 직접 조작 보조 증거 분리 | PASS | codex-direct 6세션 120.0분, human 집계 0.0분에는 미포함");
+    expect(failed.stdout).toContain("Codex 직접 조작 보조 증거 분리 | PASS | codex-direct 10세션 200.0분, human 집계 0.0분에는 미포함");
     expect(failed.stderr).toContain("사람이 직접 2시간 플레이");
   });
 
@@ -592,11 +597,11 @@ describe("balance-audit assert", () => {
     ]);
 
     expect(failed.status).toBe(1);
-    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | human 6/8세션, codex-direct 0세션 0.0분, 무효 2개, 120.0/120.0분, 남은 0.0분, 목표 6/6개 완료");
+    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | human 10/12세션, codex-direct 0세션 0.0분, 무효 2개, 200.0/120.0분, 남은 0.0분, 목표 6/6개 완료, 관찰 4/4개 완료");
     expect(failed.stdout).toContain("수동: 무효 세션 없음 | MISSING");
-    expect(failed.stdout).toContain("#7 normal clear 40R seed=BAD-TIME #bad00001");
+    expect(failed.stdout).toContain("#11 normal clear 40R seed=BAD-TIME #bad00001");
     expect(failed.stdout).toContain("startedAt/endedAt와 기록 시간이 맞지 않음");
-    expect(failed.stdout).toContain("#8 expert clear 40R seed=DUP-SEED #00000001");
+    expect(failed.stdout).toContain("#12 expert clear 40R seed=DUP-SEED #00000001");
     expect(failed.stdout).toContain("stateChecksum 중복");
     expect(failed.stderr).toContain("수동: 무효 세션 없음");
   });
@@ -629,8 +634,8 @@ describe("balance-audit assert", () => {
     ]);
 
     expect(failed.status).toBe(1);
-    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | human 6/7세션, codex-direct 0세션 0.0분, 무효 1개");
-    expect(failed.stdout).toContain("#7 novice clear 40R seed=STALE-VERSION #bad00002");
+    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | human 10/11세션, codex-direct 0세션 0.0분, 무효 1개");
+    expect(failed.stdout).toContain("#11 novice clear 40R seed=STALE-VERSION #bad00002");
     expect(failed.stdout).toContain(`dataVersion 0.0.0이 현재 ${CURRENT_DATA_VERSION}와 다름`);
     expect(failed.stderr).toContain("수동: 무효 세션 없음");
   });
@@ -663,8 +668,8 @@ describe("balance-audit assert", () => {
     ]);
 
     expect(failed.status).toBe(1);
-    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | human 6/7세션, codex-direct 0세션 0.0분, 무효 1개");
-    expect(failed.stdout).toContain("#7 novice clear 39R seed=EARLY-CLEAR #bad00003");
+    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | human 10/11세션, codex-direct 0세션 0.0분, 무효 1개");
+    expect(failed.stdout).toContain("#11 novice clear 39R seed=EARLY-CLEAR #bad00003");
     expect(failed.stdout).toContain("필수 결과 메타데이터 누락 또는 모순");
     expect(failed.stderr).toContain("수동: 무효 세션 없음");
   });
@@ -697,8 +702,8 @@ describe("balance-audit assert", () => {
     ]);
 
     expect(failed.status).toBe(1);
-    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | human 6/7세션, codex-direct 0세션 0.0분, 무효 1개");
-    expect(failed.stdout).toContain("#7 novice clear 40R seed=INVALID-STAGE #bad00004");
+    expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | PASS | human 10/11세션, codex-direct 0세션 0.0분, 무효 1개");
+    expect(failed.stdout).toContain("#11 novice clear 40R seed=INVALID-STAGE #bad00004");
     expect(failed.stdout).toContain("필수 결과 메타데이터 누락 또는 모순");
     expect(failed.stderr).toContain("수동: 무효 세션 없음");
   });

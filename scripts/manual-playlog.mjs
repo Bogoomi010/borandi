@@ -610,30 +610,38 @@ const flexibleBalanceObservationPlans = [
   {
     kind: "balance-observation",
     difficulty: "normal",
+    minutes: 12,
     label: "일반 무전설 경계 확인",
     goal: "전설 없이 일반 난이도를 실제로 플레이해 클리어 접근이 어려운지 확인",
     logHint: "result=clear|loss round=RESULT_ROUND legends=0 maxGrade=hero 이하",
+    predicate: (session) => isTargetLength(session) && String(session.notes ?? "") === "일반 무전설 경계 확인" && legendCount(session) === 0,
   },
   {
     kind: "balance-observation",
     difficulty: "intermediate",
+    minutes: 12,
     label: "중급자 2전설 경계 확인",
     goal: "전설 2개 이하 중급자 플레이가 5전설 조건보다 확실히 어렵게 느껴지는지 확인",
     logHint: "result=clear|loss round=RESULT_ROUND legends<=2 maxGrade=legend",
+    predicate: (session) => isTargetLength(session) && String(session.notes ?? "") === "중급자 2전설 경계 확인" && legendCount(session) <= 2,
   },
   {
     kind: "balance-observation",
     difficulty: "expert",
+    minutes: 12,
     label: "고수 제한 없음 성장 확인",
     goal: "고수 난이도에서 중급자 5전설보다 더 높은 성장량이 필요한지 확인",
     logHint: "result=clear|loss round=RESULT_ROUND legends=FINAL_LEGENDS maxGrade=MAX_GRADE",
+    predicate: (session) => isTargetLength(session) && String(session.notes ?? "") === "고수 제한 없음 성장 확인" && legendCount(session) >= 6,
   },
   {
     kind: "balance-observation",
     difficulty: "master",
+    minutes: 12,
     label: "초고수 추가 실패 확인",
     goal: "초고수 난이도가 제한 없이 플레이해도 매우 어렵게 유지되는지 추가 확인",
     logHint: "result=loss 권장, clear이면 밸런스 재검토 신호",
+    predicate: (session) => isTargetLength(session) && String(session.notes ?? "") === "초고수 추가 실패 확인" && isLoss(session),
   },
 ];
 
@@ -738,9 +746,17 @@ function buildSummary() {
       evidence: targetEvidence(validHumanSessions, "master", (session) => isTargetLength(session) && isLoss(session)),
       next: "master loss 세션 12분 이상",
     },
+    ...flexibleBalanceObservationPlans.map((target) => ({
+      label: target.label,
+      pass: hasTargetSession(validHumanSessions, target.difficulty, target.predicate),
+      evidence: targetEvidence(validHumanSessions, target.difficulty, target.predicate),
+      next: `${target.logHint} 세션 12분 이상`,
+    })),
   ];
   const targetRows = rows.filter((row) => targetPlans.some((target) => target.label === row.label));
   const targetRowsPassed = targetRows.filter((row) => row.pass).length;
+  const observationRows = rows.filter((row) => flexibleBalanceObservationPlans.some((target) => target.label === row.label));
+  const observationRowsPassed = observationRows.filter((row) => row.pass).length;
   const minutesByDifficultyObject = Object.fromEntries(difficulties.map((id) => [id, minutesByDifficulty.get(id) ?? 0]));
   const progress = {
     totalMinutes: progressValue(totalMinutes, MIN_MANUAL_TOTAL_MINUTES),
@@ -749,6 +765,7 @@ function buildSummary() {
       progressValue(minutesByDifficultyObject[id] ?? 0, MIN_MANUAL_MINUTES_PER_DIFFICULTY),
     ])),
     targetRows: progressValue(targetRowsPassed, targetRows.length),
+    observationRows: progressValue(observationRowsPassed, observationRows.length),
   };
 
   const summary = {
@@ -773,6 +790,9 @@ function buildSummary() {
     targetRowsPassed,
     targetRowsTotal: targetRows.length,
     targetRowsRemaining: targetRows.length - targetRowsPassed,
+    observationRowsPassed,
+    observationRowsTotal: observationRows.length,
+    observationRowsRemaining: observationRows.length - observationRowsPassed,
     progress,
     rows,
     passed: rows.every((row) => row.pass),
@@ -833,9 +853,13 @@ function buildPlanFromSummary(summary) {
     const row = summary.rows.find((item) => item.label === target.label);
     return !row?.pass;
   });
+  const missingObservations = flexibleBalanceObservationPlans.filter((target) => {
+    const row = summary.rows.find((item) => item.label === target.label);
+    return !row?.pass;
+  });
   const projectedMinutesByDifficulty = new Map(Object.entries(summary.minutesByDifficulty));
   let projectedTotalMinutes = summary.totalMinutes;
-  for (const target of missingTargets) {
+  for (const target of [...missingTargets, ...missingObservations]) {
     projectedMinutesByDifficulty.set(
       target.difficulty,
       Number(projectedMinutesByDifficulty.get(target.difficulty) ?? 0) + target.minutes,
@@ -869,10 +893,26 @@ function buildPlanFromSummary(summary) {
       targetRowsPassed: summary.targetRowsPassed,
       targetRowsTotal: summary.targetRowsTotal,
       targetRowsRemaining: summary.targetRowsRemaining,
+      observationRowsPassed: summary.observationRowsPassed,
+      observationRowsTotal: summary.observationRowsTotal,
+      observationRowsRemaining: summary.observationRowsRemaining,
     },
     steps: [
       ...missingTargets.map((target) => ({
         kind: "target-session",
+        difficulty: target.difficulty,
+        minutes: target.minutes,
+        label: target.label,
+        goal: target.goal,
+        logHint: target.logHint,
+        startCommandTemplate: startCommandTemplate(target),
+        startCommandDryRunTemplate: dryRunCommandTemplate(startCommandTemplate(target)),
+        startNextCommandTemplate: startNextCommandTemplate(target),
+        startNextDryRunCommandTemplate: dryRunCommandTemplate(startNextCommandTemplate(target)),
+        finishTemplate: finishTemplateForNext(target),
+      })),
+      ...missingObservations.map((target) => ({
+        kind: target.kind,
         difficulty: target.difficulty,
         minutes: target.minutes,
         label: target.label,
@@ -917,6 +957,7 @@ function printSummary() {
   console.log(`- 시작 마커 대기: ${summary.pendingCount}개`);
   console.log(`- 유효 플레이 시간: ${summary.totalMinutes.toFixed(1)}/${summary.requiredMinutes.toFixed(1)}분, 남은 ${summary.remainingMinutes.toFixed(1)}분`);
   console.log(`- 목표 세션: ${summary.targetRowsPassed}/${summary.targetRowsTotal}개 완료, 남은 ${summary.targetRowsRemaining}개`);
+  console.log(`- 경계 관찰: ${summary.observationRowsPassed}/${summary.observationRowsTotal}개 완료, 남은 ${summary.observationRowsRemaining}개`);
   console.log("");
   if (summary.invalidSessionCount > 0) {
     console.log("INVALID 증거로 인정되지 않은 세션:");
@@ -983,6 +1024,7 @@ function printPlan() {
   console.log(`- 현재: ${plan.current.validSessionCount}세션, ${plan.current.totalMinutes.toFixed(1)}/${plan.current.requiredMinutes.toFixed(1)}분`);
   console.log(`- 남은 유효 플레이 시간: ${plan.current.remainingMinutes.toFixed(1)}분`);
   console.log(`- 목표 세션: ${plan.current.targetRowsPassed}/${plan.current.targetRowsTotal}개 완료, 남은 ${plan.current.targetRowsRemaining}개`);
+  console.log(`- 경계 관찰: ${plan.current.observationRowsPassed}/${plan.current.observationRowsTotal}개 완료, 남은 ${plan.current.observationRowsRemaining}개`);
   console.log(`- 무효 세션: ${plan.current.invalidSessionCount}개`);
   console.log(`- 시작 마커 대기: ${plan.current.pendingCount}개`);
   console.log(`- 난이도별: ${difficulties.map((id) => `${id} ${Number(plan.current.minutesByDifficulty[id] ?? 0).toFixed(1)}분`).join(", ")}`);
@@ -1042,6 +1084,7 @@ function printManualSheet() {
     ["유효 사람 플레이 시간", `${summary.totalMinutes.toFixed(1)}/${summary.requiredMinutes.toFixed(1)}분`],
     ["남은 시간", `${summary.remainingMinutes.toFixed(1)}분`],
     ["목표 세션", `${summary.targetRowsPassed}/${summary.targetRowsTotal}개 완료`],
+    ["경계 관찰", `${summary.observationRowsPassed}/${summary.observationRowsTotal}개 완료`],
     ["무효 세션", `${summary.invalidSessionCount}개`],
     ["시작 마커 대기", `${summary.pendingCount}개`],
   ];
@@ -1436,6 +1479,9 @@ function buildPreflight() {
     targetRowsPassed: summary.targetRowsPassed,
     targetRowsTotal: summary.targetRowsTotal,
     targetRowsRemaining: summary.targetRowsRemaining,
+    observationRowsPassed: summary.observationRowsPassed,
+    observationRowsTotal: summary.observationRowsTotal,
+    observationRowsRemaining: summary.observationRowsRemaining,
     next: summary.next,
     nextStartCommandTemplate: summary.next?.startNextCommandTemplate ?? "",
     nextStartDryRunCommandTemplate: summary.next?.startNextDryRunCommandTemplate ?? "",
@@ -1466,11 +1512,11 @@ function pendingSessions(log) {
 
 function targetPlanForPendingSession(session) {
   const notes = String(session?.notes ?? "");
-  return targetPlans.find((target) => target.label === notes) ?? null;
+  return [...targetPlans, ...flexibleBalanceObservationPlans].find((target) => target.label === notes) ?? null;
 }
 
 function targetPlanForNotes(notes) {
-  return targetPlans.find((target) => target.label === String(notes ?? "")) ?? null;
+  return [...targetPlans, ...flexibleBalanceObservationPlans].find((target) => target.label === String(notes ?? "")) ?? null;
 }
 
 function pendingTiming(startedAt) {
@@ -2195,6 +2241,7 @@ if (linkedTargetPlan) {
 console.log(`- 누적 시간: ${total.toFixed(1)}분 / 120.0분`);
 console.log(`- 남은 유효 플레이 시간: ${summaryAfterSave.remainingMinutes.toFixed(1)}분`);
 console.log(`- 목표 세션: ${summaryAfterSave.targetRowsPassed}/${summaryAfterSave.targetRowsTotal}개 완료, 남은 ${summaryAfterSave.targetRowsRemaining}개`);
+console.log(`- 경계 관찰: ${summaryAfterSave.observationRowsPassed}/${summaryAfterSave.observationRowsTotal}개 완료, 남은 ${summaryAfterSave.observationRowsRemaining}개`);
 console.log(`- 난이도 커버: ${[...covered].join(", ") || "없음"}`);
 console.log(`- 남은 난이도: ${missing.join(", ") || "없음"}`);
 console.log(`- 감사 통과 조건: ${summaryAfterSave.passed ? "충족" : "미충족"}`);

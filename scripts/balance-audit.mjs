@@ -563,10 +563,50 @@ const MANUAL_TARGETS = [
   },
 ];
 
+const MANUAL_OBSERVATIONS = [
+  {
+    label: "일반 무전설 경계 확인",
+    difficulty: "normal",
+    minutes: MIN_MANUAL_TARGET_SESSION_MINUTES,
+    goal: "전설 없이 일반 난이도 클리어 접근이 어려운지 확인",
+    logHint: "result=clear|loss round=RESULT_ROUND legends=0 maxGrade=hero 이하",
+    predicate: (s) => isMeaningfulManualTargetSession(s) && String(s.notes ?? "") === "일반 무전설 경계 확인" && legendCount(s) === 0,
+  },
+  {
+    label: "중급자 2전설 경계 확인",
+    difficulty: "intermediate",
+    minutes: MIN_MANUAL_TARGET_SESSION_MINUTES,
+    goal: "중급자 2전설 이하가 5전설 조건보다 어려운지 확인",
+    logHint: "result=clear|loss round=RESULT_ROUND legends<=2 maxGrade=legend",
+    predicate: (s) => isMeaningfulManualTargetSession(s) && String(s.notes ?? "") === "중급자 2전설 경계 확인" && legendCount(s) <= 2,
+  },
+  {
+    label: "고수 제한 없음 성장 확인",
+    difficulty: "expert",
+    minutes: MIN_MANUAL_TARGET_SESSION_MINUTES,
+    goal: "고수에서 중급자 5전설보다 높은 성장량이 필요한지 확인",
+    logHint: "result=clear|loss round=RESULT_ROUND legends=FINAL_LEGENDS maxGrade=MAX_GRADE",
+    predicate: (s) => isMeaningfulManualTargetSession(s) && String(s.notes ?? "") === "고수 제한 없음 성장 확인" && legendCount(s) >= 6,
+  },
+  {
+    label: "초고수 추가 실패 확인",
+    difficulty: "master",
+    minutes: MIN_MANUAL_TARGET_SESSION_MINUTES,
+    goal: "초고수가 제한 없이도 매우 어렵게 유지되는지 추가 확인",
+    logHint: "result=loss 권장, clear이면 밸런스 재검토",
+    predicate: (s) => isMeaningfulManualTargetSession(s) && String(s.notes ?? "") === "초고수 추가 실패 확인" && isLoss(s),
+  },
+];
+
 function manualNextEvidence(manual) {
   const totalMinutes = manualMinutes(manual);
   const minutesByDifficulty = manualMinutesByDifficulty(manual);
   for (const target of MANUAL_TARGETS) {
+    if (!hasManual(manual, target.difficulty, target.predicate)) {
+      return `${target.label} (${target.minutes.toFixed(1)}분 이상) - ${target.goal}; 기록 힌트: ${target.logHint}; ${manualProofWorkflowEvidence(target)}`;
+    }
+  }
+  for (const target of MANUAL_OBSERVATIONS) {
     if (!hasManual(manual, target.difficulty, target.predicate)) {
       return `${target.label} (${target.minutes.toFixed(1)}분 이상) - ${target.goal}; 기록 힌트: ${target.logHint}; ${manualProofWorkflowEvidence(target)}`;
     }
@@ -889,8 +929,19 @@ function buildRows(balance, browser, direct, manual, codex) {
     masterManualPass,
   ].filter(Boolean).length;
   const manualTargetTotal = 6;
+  const normalNoLegendObservation = hasManual(manual, "normal", MANUAL_OBSERVATIONS[0].predicate);
+  const intermediateTwoLegendObservation = hasManual(manual, "intermediate", MANUAL_OBSERVATIONS[1].predicate);
+  const expertOpenGrowthObservation = hasManual(manual, "expert", MANUAL_OBSERVATIONS[2].predicate);
+  const masterExtraFailureObservation = hasManual(manual, "master", MANUAL_OBSERVATIONS[3].predicate);
+  const manualObservationPassCount = [
+    normalNoLegendObservation,
+    intermediateTwoLegendObservation,
+    expertOpenGrowthObservation,
+    masterExtraFailureObservation,
+  ].filter(Boolean).length;
+  const manualObservationTotal = MANUAL_OBSERVATIONS.length;
   const manualRemainingMinutes = Math.max(0, MIN_MANUAL_TOTAL_MINUTES - manualTotalMinutes);
-  const manualProgressText = `남은 ${manualRemainingMinutes.toFixed(1)}분, 목표 ${manualTargetPassCount}/${manualTargetTotal}개 완료`;
+  const manualProgressText = `남은 ${manualRemainingMinutes.toFixed(1)}분, 목표 ${manualTargetPassCount}/${manualTargetTotal}개 완료, 관찰 ${manualObservationPassCount}/${manualObservationTotal}개 완료`;
 
   rows.push({
     req: "사람이 직접 2시간 플레이",
@@ -954,6 +1005,30 @@ function buildRows(balance, browser, direct, manual, codex) {
     evidence: manualEvidence(masterManual),
     pass: masterManualPass,
     missing: !manual || !masterManualPass,
+  });
+  rows.push({
+    req: "수동 관찰: 일반 무전설 경계",
+    evidence: manualEvidence(normalManual.filter(MANUAL_OBSERVATIONS[0].predicate)),
+    pass: normalNoLegendObservation,
+    missing: !manual || !normalNoLegendObservation,
+  });
+  rows.push({
+    req: "수동 관찰: 중급자 2전설 경계",
+    evidence: manualEvidence(intermediateManual.filter(MANUAL_OBSERVATIONS[1].predicate)),
+    pass: intermediateTwoLegendObservation,
+    missing: !manual || !intermediateTwoLegendObservation,
+  });
+  rows.push({
+    req: "수동 관찰: 고수 제한 없음 성장",
+    evidence: manualEvidence(expertManual.filter(MANUAL_OBSERVATIONS[2].predicate)),
+    pass: expertOpenGrowthObservation,
+    missing: !manual || !expertOpenGrowthObservation,
+  });
+  rows.push({
+    req: "수동 관찰: 초고수 추가 실패",
+    evidence: manualEvidence(masterManual.filter(MANUAL_OBSERVATIONS[3].predicate)),
+    pass: masterExtraFailureObservation,
+    missing: !manual || !masterExtraFailureObservation,
   });
 
   return rows;
