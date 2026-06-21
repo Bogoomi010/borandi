@@ -258,6 +258,16 @@ export function manualPlaylogFinishLatestThenNextCommand(r: ResultSummary): stri
   return `${manualPlaylogFinishLatestCommand(r)} && yarn manual-playlog --next`;
 }
 
+export function manualPlaylogResultExportJson(r: ResultSummary): string {
+  return JSON.stringify({
+    schemaVersion: 1,
+    kind: "manual-playlog-result",
+    exportedAt: new Date().toISOString(),
+    notes: manualProofResultLogNote(r),
+    summary: r,
+  }, null, 2);
+}
+
 function mapPermissionMessage(r: ResultSummary): string {
   const finalBossCleared = r.cleared &&
     r.reachedRound >= FINAL_ROUND &&
@@ -460,8 +470,11 @@ export function maybeShowResult(ctx: AppCtx) {
     const manualFinishLatestDryRunCommand = manualPlaylogFinishLatestDryRunCommand(summary);
     const manualThenNextCommand = manualPlaylogThenNextCommand(summary);
     const manualFinishLatestThenNextCommand = manualPlaylogFinishLatestThenNextCommand(summary);
+    const manualResultJson = manualPlaylogResultExportJson(summary);
 
     body.appendChild(el("h3", "", "수동 플레이 로그"));
+    body.appendChild(el("h3", "", "결과 JSON 저장 후 검증"));
+    body.appendChild(el("pre", "report", "yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --dry-run"));
     body.appendChild(el("h3", "", "저장 전 검증"));
     body.appendChild(el("pre", "report", manualDryRunSaveCommand));
     body.appendChild(el("h3", "", "실제 저장"));
@@ -492,6 +505,20 @@ export function maybeShowResult(ctx: AppCtx) {
       }
     };
     row.appendChild(exportBtn);
+
+    const exportJsonBtn = el("button", "", "증거 JSON 내보내기");
+    exportJsonBtn.onclick = async () => {
+      try {
+        const path = await writeReport(
+          `randi-manual-result-${summary.seed}-${Date.now()}.json`,
+          manualResultJson,
+        );
+        toast(`증거 JSON 저장: ${path}`, "ok", 4000);
+      } catch {
+        toast("증거 JSON 저장 실패", "danger");
+      }
+    };
+    row.appendChild(exportJsonBtn);
 
     const copyDryRun = el("button", "", "검증 명령 복사");
     copyDryRun.onclick = async () => {

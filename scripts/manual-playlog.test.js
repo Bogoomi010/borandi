@@ -104,6 +104,7 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("--pending-json        # --pending --json과 동일");
     expect(output).toContain("--pending-id=RUN1");
     expect(output).toContain("--pending-id-json");
+    expect(output).toContain("--from-result=FILE.json");
     expect(output).toContain("--source=human-playtest|codex-direct-playtest");
   });
 
@@ -120,6 +121,8 @@ describe("manual-playlog plan", () => {
 
     expect(modalSource).toContain("현재 판의 실제 시드로 다음 필요 수동 세션 dry-run 검증을 먼저 실행하세요.");
     expect(modalSource).toContain("검증이 PASS일 때만 시작 마커를 저장합니다.");
+    expect(modalSource).toContain("증거 JSON 내보내기");
+    expect(modalSource).toContain("yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --dry-run");
     expect(modalSource).not.toContain("다음 필요 수동 세션 시작 검증과 시작 마커를 바로 실행할 수 있습니다.");
   });
 
@@ -1199,6 +1202,67 @@ describe("manual-playlog plan", () => {
     expect(output).toContain('"inputTypes": [');
     expect(output).toContain('"inputCounts": {');
     expect(existsSync(out)).toBe(false);
+  });
+
+  it("결과 화면 JSON으로 저장 전 검증과 실제 저장을 할 수 있다", () => {
+    const out = makeTempPath("from-result-log.json");
+    const resultPath = join(tempDir, "result-export.json");
+    writeFileSync(resultPath, JSON.stringify({
+      schemaVersion: 1,
+      kind: "manual-playlog-result",
+      notes: "입문자 무전설 40R 클리어 증거",
+      summary: {
+        seed: "RESULT-JSON",
+        difficultyId: "novice",
+        stageId: 1,
+        dataVersion: CURRENT_DATA_VERSION,
+        stateChecksum: "20000021",
+        cleared: true,
+        reachedRound: 40,
+        maxGrade: "hero",
+        legendCount: 0,
+        hiddenCount: 0,
+        legendOrBetterCount: 0,
+        inputCount: 12,
+        inputCounts: { summon: 10, startWave: 2 },
+        manualStartedAt: "2026-06-20T02:00:00.000Z",
+        playedAt: "2026-06-20T02:15:00.000Z",
+        wallSeconds: 900,
+      },
+    }, null, 2));
+
+    const dryRun = runManualPlaylog([
+      `--out=${out}`,
+      `--from-result=${resultPath}`,
+      "--dry-run",
+    ]);
+    const saved = runManualPlaylog([
+      `--out=${out}`,
+      `--from-result=${resultPath}`,
+    ]);
+    const log = readJson(out);
+
+    expect(dryRun).toContain("DRY RUN 수동 플레이 로그 검증 통과");
+    expect(dryRun).toContain("- 플레이 입력 종류: startWave, summon");
+    expect(dryRun).toContain("- 입력별 횟수: startWave:2, summon:10");
+    expect(saved).toContain("수동 플레이 로그 저장");
+    expect(log.sessions[0]).toMatchObject({
+      source: "human-playtest",
+      difficulty: "novice",
+      seconds: 900,
+      result: "clear",
+      stage: 1,
+      round: 40,
+      seed: "RESULT-JSON",
+      legends: 0,
+      maxGrade: "hero",
+      dataVersion: CURRENT_DATA_VERSION,
+      stateChecksum: "20000021",
+      inputCount: 12,
+      inputTypes: ["startWave", "summon"],
+      inputCounts: { summon: 10, startWave: 2 },
+      notes: "입문자 무전설 40R 클리어 증거",
+    });
   });
 
   it("human-playtest 결과 저장은 결과 화면의 플레이 입력 수를 요구한다", () => {

@@ -59,6 +59,7 @@ function usage() {
     "                          # 시작 마커의 startedAt/difficulty/stage/seed를 사용해 결과 세션 저장",
     "  --finish-latest --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --inputTypes=RESULT_INPUT_TYPES --inputCounts=RESULT_INPUT_COUNTS --endedAt=RESULT_ENDED_AT",
     "                          # 가장 최근 시작 마커를 자동 선택해 결과 세션 저장",
+    "  --from-result=FILE.json  # 결과 화면에서 내보낸 수동 증거 JSON을 읽어 결과 세션 저장",
     "  --finish                 # --finish-latest와 동일",
     "  --dry-run                # 시작/결과 세션을 검증하고 미리보기만 출력, 로그 파일은 쓰지 않음",
     "  --summary             # 현재 수동 로그 충족/미충족 항목만 출력",
@@ -301,6 +302,61 @@ function inputCountsForSession(session) {
 
 function inputCountTotal(inputCounts) {
   return Object.values(inputCounts).reduce((sum, count) => sum + Number(count), 0);
+}
+
+function inputCountsArgValue(inputCounts) {
+  return Object.entries(normalizeInputCounts(inputCounts))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([type, count]) => `${type}:${count}`)
+    .join(",");
+}
+
+function readManualResultExport(path) {
+  let data;
+  try {
+    data = JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    fail(`--from-result 파일을 읽을 수 없습니다: ${path}\n${error.message}`);
+  }
+  const summary = data?.summary ?? data?.resultSummary ?? data?.result ?? data;
+  if (!summary || typeof summary !== "object" || Array.isArray(summary)) {
+    fail("--from-result JSON은 결과 summary 객체를 포함해야 합니다.");
+  }
+  return { exportData: data, summary };
+}
+
+function applyManualResultExportArgs() {
+  const resultPath = args["from-result"] ?? args["from-result-json"];
+  if (resultPath === undefined) return;
+  const { exportData, summary } = readManualResultExport(String(resultPath));
+  const result = typeof summary.result === "string"
+    ? String(summary.result).toLowerCase()
+    : summary.cleared === true ? "clear" : summary.cleared === false ? "loss" : undefined;
+  const inputCounts = normalizeInputCounts(summary.inputCounts);
+  const inputTypes = normalizeInputTypes(summary.inputTypes ?? inputCounts);
+  const legends = summary.legends ?? summary.legendOrBetterCount ??
+    (Number(summary.legendCount ?? 0) + Number(summary.hiddenCount ?? 0));
+  const defaults = {
+    difficulty: summary.difficultyId ?? summary.difficulty,
+    seconds: summary.wallSeconds,
+    result,
+    stage: summary.stageId ?? summary.stage,
+    round: summary.reachedRound ?? summary.round,
+    seed: summary.seed,
+    legends,
+    maxGrade: summary.maxGrade,
+    dataVersion: summary.dataVersion,
+    stateChecksum: summary.stateChecksum,
+    inputCount: summary.inputCount,
+    inputTypes: inputTypes.join(","),
+    inputCounts: inputCountsArgValue(inputCounts),
+    startedAt: summary.manualStartedAt ?? summary.startedAt,
+    endedAt: summary.playedAt ?? summary.endedAt,
+    notes: exportData?.notes ?? summary.notes,
+  };
+  for (const [key, value] of Object.entries(defaults)) {
+    if (args[key] === undefined && value !== undefined && value !== "") args[key] = String(value);
+  }
 }
 
 function hasCompleteManualMetadata(session) {
@@ -1698,6 +1754,8 @@ if (args.assert === "true") {
   assertManualProof();
   process.exit(0);
 }
+
+applyManualResultExportArgs();
 
 if (args["summary-json"] === "true") {
   printSummaryJson();
