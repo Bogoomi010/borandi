@@ -518,6 +518,7 @@ describe("balance-audit assert", () => {
     expect(failed.status).toBe(1);
     expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | MISSING | human 0/10세션, codex-direct 10세션 200.0분");
     expect(failed.stdout).toContain("Codex 직접 조작 보조 증거 분리 | PASS | codex-direct 10세션 200.0분, human 집계 0.0분에는 미포함");
+    expect(failed.stdout).toContain("Codex 직접 플레이형 2시간 커버리지 | PASS | codex-direct 10세션 200.0분, 핵심 6조건 충족");
     expect(failed.stdout).toContain("수동: 입문자 무전설 클리어 | MISSING | 증거 없음");
     expect(failed.stdout).toContain("다음 수동 플레이 세션 | MISSING | 입문자 무전설 40R 클리어");
     expect(failed.stderr).toContain("사람이 직접 2시간 플레이");
@@ -540,6 +541,7 @@ describe("balance-audit assert", () => {
     expect(failed.stdout).toContain(`codex-direct-playlog: ${codex} (loaded)`);
     expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | MISSING | 아직 실제 수동 플레이 기록 없음");
     expect(failed.stdout).toContain("Codex 직접 조작 보조 증거 분리 | PASS | codex-direct 10세션 200.0분, human 집계 0.0분에는 미포함");
+    expect(failed.stdout).toContain("Codex 직접 플레이형 2시간 커버리지 | PASS | codex-direct 10세션 200.0분, 핵심 6조건 충족");
     expect(failed.stdout).toContain("수동: 입문자 무전설 클리어 | MISSING | 증거 없음");
     expect(failed.stderr).toContain("사람이 직접 2시간 플레이");
   });
@@ -563,6 +565,7 @@ describe("balance-audit assert", () => {
     expect(failed.stdout).toContain(`codex-direct-playlog: ${codexA},${codexB} (loaded)`);
     expect(failed.stdout).toContain("사람이 직접 2시간 플레이 | MISSING | 아직 실제 수동 플레이 기록 없음");
     expect(failed.stdout).toContain("Codex 직접 조작 보조 증거 분리 | PASS | codex-direct 10세션 200.0분, human 집계 0.0분에는 미포함");
+    expect(failed.stdout).toContain("Codex 직접 플레이형 2시간 커버리지 | PASS | codex-direct 10세션 200.0분, 핵심 6조건 충족");
     expect(failed.stderr).toContain("사람이 직접 2시간 플레이");
   });
 

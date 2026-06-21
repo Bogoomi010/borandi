@@ -330,6 +330,7 @@ Original prompt: 완성된 에셋으로 게임 스테이지를 최대 15스테�
 - Updated the in-game manual proof ready notification and HUD text to use the full finish-readiness check instead of time alone. Reaching 12 minutes with too few inputs now stays in an input-check state, and the "저장조건 충족" toast/status appears only once time and input evidence are both valid.
 - Tightened human-playtest input evidence so `setSpeed`/DEV-only `devSpawn` cannot be the only recorded input type. Manual proof readiness, `manual-playlog`, and `balance-audit` now require at least one meaningful gameplay input such as summon, startWave, merge, craft, sell, upgrade, selector pick, or unit command. This keeps speed-toggle spam from satisfying the requested direct-play evidence.
 - Reworded the latest map-progression clarification in player-facing text: the player chooses one map at new-game start, plays 1~40R on that fixed map, and a 40R boss clear only grants next-map selection permission for a later new game. Removed the misleading "stage ends then map changes" framing from the title/result/README wording.
+- Added an explicit `Codex 직접 플레이형 2시간 커버리지` audit row. It keeps `human-playtest` proof separate, but now reports whether Codex-controlled direct-play sessions cover 120+ minutes and the six core difficulty outcomes. The current default audit shows this Codex coverage as PASS with 60 sessions / 1726.5 minutes while human proof remains missing.
 
 ## TODO
 

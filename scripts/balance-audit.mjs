@@ -522,6 +522,40 @@ function manualEvidence(sessions) {
     .join("; ");
 }
 
+function codexDirectCoverage(sessions) {
+  const totalMinutes = sessions.reduce((sum, session) => sum + sessionMinutes(session), 0);
+  const noviceClear = sessions.some((s) => s.difficulty === "novice" && isClear(s) && reachedFinalRound(s) && legendCount(s) === 0);
+  const normalClear = sessions.some((s) => s.difficulty === "normal" && isClear(s) && reachedFinalRound(s) && legendCount(s) >= 1 && legendCount(s) <= 2);
+  const intermediateClear = sessions.some((s) => s.difficulty === "intermediate" && isClear(s) && reachedFinalRound(s) && legendCount(s) >= 5);
+  const expertWeakFail = sessions.some((s) => s.difficulty === "expert" && isLoss(s) && legendCount(s) <= 5);
+  const expertStrongClear = sessions.some((s) => s.difficulty === "expert" && isClear(s) && reachedFinalRound(s) && legendCount(s) >= 6);
+  const masterFail = sessions.some((s) => s.difficulty === "master" && isLoss(s));
+  const checks = {
+    totalMinutes: totalMinutes >= MIN_MANUAL_TOTAL_MINUTES,
+    noviceClear,
+    normalClear,
+    intermediateClear,
+    expertWeakFail,
+    expertStrongClear,
+    masterFail,
+  };
+  const missing = [
+    checks.totalMinutes ? "" : `2시간 직접 플레이형 세션 ${Math.max(0, MIN_MANUAL_TOTAL_MINUTES - totalMinutes).toFixed(1)}분 부족`,
+    noviceClear ? "" : "입문자 무전설 40R 클리어 없음",
+    normalClear ? "" : "일반 1~2전설 40R 클리어 없음",
+    intermediateClear ? "" : "중급자 5전설 이상 40R 클리어 없음",
+    expertWeakFail ? "" : "고수 5전설 이하 실패 없음",
+    expertStrongClear ? "" : "고수 6전설 이상 40R 클리어 없음",
+    masterFail ? "" : "초고수 실패 없음",
+  ].filter(Boolean);
+  return {
+    pass: missing.length === 0,
+    evidence: sessions.length > 0
+      ? `codex-direct ${sessions.length}세션 ${totalMinutes.toFixed(1)}분, ${missing.length === 0 ? "핵심 6조건 충족" : `부족: ${missing.join(", ")}`}`
+      : "codex-direct 세션 없음",
+  };
+}
+
 function hasManual(manual, difficulty, predicate) {
   return manualSessions(manual, difficulty).some(predicate);
 }
@@ -934,6 +968,7 @@ function buildRows(balance, browser, direct, manual, codex) {
   const allCodexDirectSessions = [...codexDirectSessions, ...separateCodexDirectSessions];
   const codexDirectMinutes = codexDirectSessions.reduce((sum, session) => sum + sessionMinutes(session), 0);
   const allCodexDirectMinutes = allCodexDirectSessions.reduce((sum, session) => sum + sessionMinutes(session), 0);
+  const codexCoverage = codexDirectCoverage(allCodexDirectSessions);
   const invalidManual = invalidManualSessions(manual);
   const pendingManual = pendingManualSessions(manual);
   const pendingManualText = `pending ${pendingManual.length}개`;
@@ -987,6 +1022,14 @@ function buildRows(balance, browser, direct, manual, codex) {
       : "codex-direct 보조 세션 없음",
     pass: true,
   });
+  if (allCodexDirectSessions.length > 0) {
+    rows.push({
+      req: "Codex 직접 플레이형 2시간 커버리지",
+      evidence: codexCoverage.evidence,
+      pass: codexCoverage.pass,
+      missing: !codexCoverage.pass,
+    });
+  }
   rows.push({
     req: "수동: 무효 세션 없음",
     evidence: manual ? invalidManualEvidence(invalidManual) : "수동 로그 없음",
