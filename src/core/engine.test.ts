@@ -232,6 +232,20 @@ describe("전투/리플레이 재현성", () => {
     expect(replayed.state.cleared).toBe(game.state.cleared);
   }, 30000);
 
+  it("라운드 중 맵 변경 시도가 있어도 이번 판 시작 맵으로 되돌린다", () => {
+    const stageId = 4;
+    const game = new Game("STAGE-LOCKED", "novice", stageId);
+
+    game.state.stageId = 9;
+    playOneRound(game);
+    expect(game.state.stageId).toBe(stageId);
+
+    game.state.stageId = 12;
+    const summary = game.resultSummary();
+    expect(summary.stageId).toBe(stageId);
+    expect(game.state.stageId).toBe(stageId);
+  }, 30000);
+
   it("자동 플레이 한 판의 입력 기록을 리플레이하면 같은 체크섬이 나온다", () => {
     const game = new Game("REPLAY-1", "novice");
     playFullRun(game);

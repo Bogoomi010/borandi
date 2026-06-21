@@ -62,6 +62,7 @@ const fail = (reason: string): ActionResult => ({ ok: false, reason });
 export class Game {
   state: GameState;
   private rng: Rng;
+  private readonly runStageId: number;
   private spawnTimer = 0;
   /** 외부(UI) 알림 콜백 */
   onEvent: ((kind: string, text: string) => void) | null = null;
@@ -69,6 +70,7 @@ export class Game {
   constructor(seed: string, difficulty: DifficultyId, stageId = 1) {
     const diff = DIFFICULTY_BY_ID[difficulty];
     const stage = stageById(stageId);
+    this.runStageId = stage.id;
     this.rng = new Rng(`${DATA_VERSION}:${seed}:${difficulty}:${stage.id}`);
     this.state = {
       dataVersion: DATA_VERSION,
@@ -97,6 +99,10 @@ export class Game {
   }
 
   get diff() { return DIFFICULTY_BY_ID[this.state.difficulty]; }
+
+  private enforceRunStage() {
+    this.state.stageId = this.runStageId;
+  }
 
   private log(kind: GameState["log"][number]["kind"], text: string) {
     this.state.log.push({ round: this.state.round, kind, text });
@@ -471,6 +477,7 @@ export class Game {
 
   /** 휴식 종료 → 현재 round의 적 스폰 시작. 이 시점에 패배/승리를 판정한다. */
   private beginRoundSpawning() {
+    this.enforceRunStage();
     const s = this.state;
     if (s.round > FINAL_ROUND) { this.endGame(true); return; } // 모든 라운드 생존 → 승리
     // 다음 라운드가 시작되는 순간 루프에 쌓인 적이 임계 이상이면 패배
@@ -501,6 +508,7 @@ export class Game {
 
   /** 현재 round의 적 스폰 완료 → 보상 후 다음 라운드 휴식으로 전환 */
   private completeRound() {
+    this.enforceRunStage();
     const s = this.state;
     const wave = waveForRound(s.round);
     const gold = Math.round(wave.goldReward * this.diff.goldMult);
@@ -518,6 +526,7 @@ export class Game {
   }
 
   private endGame(cleared: boolean) {
+    this.enforceRunStage();
     this.state.cleared = cleared;
     this.state.phase = "ended";
     this.log(
@@ -533,6 +542,7 @@ export class Game {
   /** 고정 timestep 1회 진행. 적 루프·유닛 AI는 라운드 사이 휴식 중에도 계속 돈다. */
   advanceTick() {
     if (this.state.phase !== "wave") return; // 게임 진행 중에는 항상 "wave"
+    this.enforceRunStage();
     const s = this.state;
     s.tick++;
     s.time += DT;
@@ -1008,6 +1018,7 @@ export class Game {
   }
 
   resultSummary(): ResultSummary {
+    this.enforceRunStage();
     const s = this.state;
     const legendCount = s.units.filter((u) => UNIT_BY_ID[u.defId].grade === "legend").length;
     const hiddenCount = s.units.filter((u) => UNIT_BY_ID[u.defId].grade === "hidden").length;
