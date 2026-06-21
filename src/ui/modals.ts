@@ -606,7 +606,7 @@ function appendManualResultFieldChecklist(body: HTMLElement, target?: ManualProo
     ["endedAt", "결과 화면 RESULT_ENDED_AT", "실제 종료 시각"],
     ["dataVersion", "결과 화면 RESULT_DATA_VERSION", DATA_VERSION],
     ["stateChecksum", "결과 화면 RESULT_CHECKSUM", "8자리 checksum"],
-    ["inputCount", "결과 화면 플레이 입력 수", "1 이상"],
+    ["inputCount", "결과 화면 플레이 입력 수", "12 이상"],
     ["result", "결과 화면 클리어/실패 상태", expected.result],
     ["round", "결과 화면 도달 라운드", expected.round],
     ["legends", "결과 화면 전설 이상 수", expected.legends],

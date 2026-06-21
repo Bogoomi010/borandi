@@ -29,7 +29,7 @@ function session(index, difficulty, result, legends, maxGrade, round = 40, minut
     seed: `PROOF-${index}`,
     legends,
     maxGrade,
-    inputCount: 10,
+    inputCount: 12,
     dataVersion: "0.8.4",
     stateChecksum: `${(0x30000000 + index).toString(16)}`,
   };

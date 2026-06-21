@@ -22,6 +22,7 @@ const CURRENT_DATA_VERSION = readCurrentDataVersion();
 const VALID_STAGE_IDS = readValidStageIds();
 const MIN_MANUAL_TOTAL_MINUTES = 120;
 const MIN_MANUAL_MINUTES_PER_DIFFICULTY = 12;
+const MIN_HUMAN_PLAYTEST_INPUT_COUNT = 12;
 
 function usage() {
   return [
@@ -37,7 +38,7 @@ function usage() {
     "  --maxGrade=legend",
     "  --dataVersion=...  # 결과 리포트의 데이터 버전",
     "  --stateChecksum=... # 결과 리포트의 상태 체크섬",
-    "  --inputCount=...    # 결과 리포트의 성공한 플레이 입력 수",
+    `  --inputCount=...    # 결과 리포트의 성공한 플레이 입력 수, human-playtest는 ${MIN_HUMAN_PLAYTEST_INPUT_COUNT}회 이상`,
     "",
     "선택:",
     "  --out=output/manual-balance-playlog.json",
@@ -274,7 +275,7 @@ function hasCompleteManualMetadata(session) {
     seedValue.length > 0 &&
     dataVersionValue.length > 0 &&
     /^[0-9a-f]{8}$/i.test(checksumValue) &&
-    (source !== "human-playtest" || (Number.isFinite(inputCountValue) && inputCountValue >= 1));
+    (source !== "human-playtest" || (Number.isFinite(inputCountValue) && inputCountValue >= MIN_HUMAN_PLAYTEST_INPUT_COUNT));
 }
 
 function sessionValidationEntries(log) {
@@ -590,7 +591,7 @@ function manualResultFieldChecklist(next) {
     { field: "endedAt", source: "결과 화면 RESULT_ENDED_AT", required: true, expected: "실제 종료 시각" },
     { field: "dataVersion", source: "결과 화면 RESULT_DATA_VERSION", required: true, expected: CURRENT_DATA_VERSION },
     { field: "stateChecksum", source: "결과 화면 RESULT_CHECKSUM", required: true, expected: "8자리 checksum" },
-    { field: "inputCount", source: "결과 화면 플레이 입력 수", required: true, expected: "1 이상" },
+    { field: "inputCount", source: "결과 화면 플레이 입력 수", required: true, expected: `${MIN_HUMAN_PLAYTEST_INPUT_COUNT} 이상` },
     { field: "result", source: "결과 화면 클리어/실패 상태", required: true, expected: finish?.result ?? "clear 또는 loss" },
     { field: "round", source: "결과 화면 도달 라운드", required: true, expected: finish?.round ?? "ROUND_REACHED" },
     { field: "legends", source: "결과 화면 전설 이상 수", required: true, expected: finish?.legends ?? "FINAL_LEGENDS" },
@@ -1786,8 +1787,8 @@ const linkedTargetPlan = targetPlanForPendingSession(linkedPendingSession);
 const sessionSource = args.source === undefined
   ? sessionSourceForPending(linkedPendingSession)
   : normalizeSessionSource(args.source);
-if (sessionSource === "human-playtest" && (inputCount === undefined || inputCount < 1)) {
-  fail("--inputCount 값은 결과 리포트의 성공한 플레이 입력 수이며, human-playtest 세션에서는 1 이상이어야 합니다.");
+if (sessionSource === "human-playtest" && (inputCount === undefined || inputCount < MIN_HUMAN_PLAYTEST_INPUT_COUNT)) {
+  fail(`--inputCount 값은 결과 리포트의 성공한 플레이 입력 수이며, human-playtest 세션에서는 ${MIN_HUMAN_PLAYTEST_INPUT_COUNT} 이상이어야 합니다.`);
 }
 if (inputCount !== undefined && (!Number.isInteger(inputCount) || inputCount < 0)) {
   fail("--inputCount 값은 0 이상의 정수여야 합니다.");

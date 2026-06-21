@@ -25,6 +25,7 @@ const MIN_BROWSER_DIRECT_SEEDS = 6;
 const REQUIRED_DIFFICULTIES = ["novice", "normal", "intermediate", "expert", "master"];
 const FINAL_ROUND = 40;
 const CURRENT_DATA_VERSION = readCurrentDataVersion();
+const MIN_HUMAN_PLAYTEST_INPUT_COUNT = 12;
 const VALID_STAGE_IDS = readValidStageIds();
 
 function readJson(path) {
@@ -382,7 +383,7 @@ function hasCompleteManualMetadata(session) {
     seed.length > 0 &&
     dataVersion.length > 0 &&
     /^[0-9a-f]{8}$/i.test(stateChecksum) &&
-    (source !== "human-playtest" || (Number.isFinite(inputCount) && inputCount >= 1));
+    (source !== "human-playtest" || (Number.isFinite(inputCount) && inputCount >= MIN_HUMAN_PLAYTEST_INPUT_COUNT));
 }
 
 function isLegendMetadataConsistent(maxGrade, legends) {

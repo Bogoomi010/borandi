@@ -134,7 +134,7 @@ function session(index, difficulty, result, legends, maxGrade, round = 40) {
     maxGrade,
     dataVersion: CURRENT_DATA_VERSION,
     stateChecksum: `${index.toString(16).padStart(8, "0")}`,
-    inputCount: 10,
+    inputCount: 12,
     startedAt: start.toISOString(),
     endedAt: end.toISOString(),
   };
@@ -192,7 +192,7 @@ function manualWithInvalidSessions() {
     maxGrade: "legend",
     dataVersion: CURRENT_DATA_VERSION,
     stateChecksum: "bad00001",
-    inputCount: 10,
+    inputCount: 12,
     startedAt: "2026-01-01T07:00:00.000Z",
     endedAt: "2026-01-01T07:01:00.000Z",
   });
@@ -208,7 +208,7 @@ function manualWithInvalidSessions() {
     maxGrade: "legend",
     dataVersion: CURRENT_DATA_VERSION,
     stateChecksum: "00000001",
-    inputCount: 10,
+    inputCount: 12,
     startedAt: "2026-01-01T08:00:00.000Z",
     endedAt: "2026-01-01T08:20:00.000Z",
   });

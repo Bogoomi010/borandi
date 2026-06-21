@@ -15,7 +15,7 @@ function makeTempPath(name) {
 function runManualPlaylog(args) {
   const needsInputCount = args.some((arg) => arg === "--finish" || arg === "--finish-latest" || arg.startsWith("--finish=") || arg.startsWith("--result="));
   const hasInputCount = args.some((arg) => arg.startsWith("--inputCount="));
-  const normalizedArgs = needsInputCount && !hasInputCount ? [...args, "--inputCount=1"] : args;
+  const normalizedArgs = needsInputCount && !hasInputCount ? [...args, "--inputCount=12"] : args;
   return execFileSync(process.execPath, ["scripts/manual-playlog.mjs", ...normalizedArgs], {
     cwd: process.cwd(),
     encoding: "utf8",
@@ -555,7 +555,7 @@ describe("manual-playlog plan", () => {
           maxGrade: "hero",
           dataVersion: CURRENT_DATA_VERSION,
           stateChecksum: "bad00001",
-          inputCount: 4,
+          inputCount: 12,
         },
         {
           source: "human-playtest",
@@ -571,7 +571,7 @@ describe("manual-playlog plan", () => {
           maxGrade: "hero",
           dataVersion: CURRENT_DATA_VERSION,
           stateChecksum: "bad00002",
-          inputCount: 4,
+          inputCount: 12,
         },
         {
           source: "human-playtest",
@@ -587,7 +587,7 @@ describe("manual-playlog plan", () => {
           maxGrade: "legend",
           dataVersion: CURRENT_DATA_VERSION,
           stateChecksum: "bad00002",
-          inputCount: 4,
+          inputCount: 12,
         },
       ],
     }, null, 2), "utf8");
@@ -650,7 +650,7 @@ describe("manual-playlog plan", () => {
           maxGrade: "hero",
           dataVersion: "0.0.0",
           stateChecksum: "bad00003",
-          inputCount: 4,
+          inputCount: 12,
         },
       ],
     }, null, 2), "utf8");
@@ -1165,9 +1165,9 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("- 저장하지 않음: --dry-run");
     expect(output).toContain("- 추가 예정 세션: novice, 15.0분");
     expect(output).toContain("- 상태 체크섬: 20000020");
-    expect(output).toContain("- 플레이 입력 수: 1");
+    expect(output).toContain("- 플레이 입력 수: 12");
     expect(output).toContain('"seed": "DRY-RUN"');
-    expect(output).toContain('"inputCount": 1');
+    expect(output).toContain('"inputCount": 12');
     expect(existsSync(out)).toBe(false);
   });
 
@@ -1193,6 +1193,31 @@ describe("manual-playlog plan", () => {
 
     expect(failed.status).toBe(1);
     expect(failed.stderr).toContain("--inputCount 값은 결과 리포트의 성공한 플레이 입력 수");
+  });
+
+  it("human-playtest 결과 저장은 최소 12회 이상의 플레이 입력 수를 요구한다", () => {
+    const out = makeTempPath("too-few-input-count.json");
+
+    const failed = runManualPlaylogFailure([
+      `--out=${out}`,
+      "--dry-run",
+      "--difficulty=novice",
+      "--seconds=900",
+      "--result=clear",
+      "--stage=1",
+      "--round=40",
+      "--seed=LOW-INPUT-COUNT",
+      "--legends=0",
+      "--maxGrade=hero",
+      `--dataVersion=${CURRENT_DATA_VERSION}`,
+      "--stateChecksum=20000023",
+      "--inputCount=1",
+      "--startedAt=2026-06-20T02:00:00.000Z",
+      "--endedAt=2026-06-20T02:15:00.000Z",
+    ]);
+
+    expect(failed.status).toBe(1);
+    expect(failed.stderr).toContain("human-playtest 세션에서는 12 이상이어야 합니다");
   });
 
   it("결과 저장은 RESULT_* 및 GAME_SEED_HERE placeholder 값을 저장하지 않는다", () => {
