@@ -1068,7 +1068,7 @@ function printManualSheet() {
   console.log("");
   console.log("## 결과 JSON 저장");
   console.log("");
-  console.log("결과 화면의 `증거 JSON 내보내기` 파일 경로로 먼저 검증한 뒤 저장합니다.");
+  console.log("결과 화면의 `증거 JSON 내보내기` 파일 경로 또는 `증거 JSON 복사` 표준입력으로 먼저 검증한 뒤 저장합니다.");
   console.log("");
   console.log("### 저장 전 검증");
   console.log(codeBlock(manualFromResultDryRunCommandTemplate()));
@@ -1078,6 +1078,9 @@ function printManualSheet() {
   console.log("");
   console.log("### 표준입력 검증");
   console.log(codeBlock(manualFromResultStdinDryRunCommandTemplate()));
+  console.log("");
+  console.log("### 표준입력 저장");
+  console.log(codeBlock(manualFromResultStdinCommandTemplate()));
 
   console.log("");
   console.log("## 실행 순서");
@@ -1112,6 +1115,10 @@ function buildNextFromSummary(summary) {
       }
       : null,
     resultFieldChecklist: manualResultFieldChecklist(blockedByPendingStartMarkers ? null : nextStep),
+    fromResultDryRunCommandTemplate: manualFromResultDryRunCommandTemplate(),
+    fromResultCommandTemplate: manualFromResultCommandTemplate(),
+    fromResultStdinDryRunCommandTemplate: manualFromResultStdinDryRunCommandTemplate(),
+    fromResultStdinCommandTemplate: manualFromResultStdinCommandTemplate(),
     startWorkflow: manualStartWorkflow(),
   };
 }
@@ -1172,6 +1179,7 @@ function printNext() {
     console.log(`- 저장 전 검증: ${manualFromResultDryRunCommandTemplate()}`);
     console.log(`- 표준입력 검증: ${manualFromResultStdinDryRunCommandTemplate()}`);
     console.log(`- 실제 저장: ${manualFromResultCommandTemplate()}`);
+    console.log(`- 표준입력 저장: ${manualFromResultStdinCommandTemplate()}`);
     console.log("");
     console.log("결과 기록 필드:");
     for (const item of next.resultFieldChecklist) {
@@ -1192,8 +1200,8 @@ function manualStartWorkflow() {
     "추천 시작 검증 명령의 GAME_SEED_HERE를 실제 시드로 바꿔 --dry-run 실행",
     "검증이 통과하면 같은 명령에서 --dry-run을 빼고 시작 마커 저장",
     "12분 이상 실제로 플레이하고 목표 결과 조건 확인",
-    "결과 화면에서 증거 JSON을 내보내고 --from-result=PATH_TO_EXPORTED_JSON --dry-run으로 검증",
-    "검증이 통과하면 --dry-run을 빼서 JSON 결과 저장. 필요하면 결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 후 실제 finish 저장",
+    "결과 화면에서 증거 JSON을 내보내거나 복사한 뒤 --from-result=PATH_TO_EXPORTED_JSON --dry-run 또는 --from-result=- --dry-run으로 검증",
+    "검증이 통과하면 같은 결과 JSON 명령에서 --dry-run을 빼서 저장. 필요하면 결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 후 실제 finish 저장",
   ];
 }
 
@@ -1292,6 +1300,7 @@ function printPreflight() {
     console.log(`- 저장 전 검증: ${manualFromResultDryRunCommandTemplate()}`);
     console.log(`- 표준입력 검증: ${manualFromResultStdinDryRunCommandTemplate()}`);
     console.log(`- 실제 저장: ${manualFromResultCommandTemplate()}`);
+    console.log(`- 표준입력 저장: ${manualFromResultStdinCommandTemplate()}`);
     console.log("");
     console.log("전체 수집 계획:");
     console.log(preflight.planCommandTemplate);
@@ -1343,6 +1352,8 @@ function buildPreflight() {
     nextStartDryRunCommandTemplate: summary.next?.startNextDryRunCommandTemplate ?? "",
     fromResultDryRunCommandTemplate: manualFromResultDryRunCommandTemplate(),
     fromResultCommandTemplate: manualFromResultCommandTemplate(),
+    fromResultStdinDryRunCommandTemplate: manualFromResultStdinDryRunCommandTemplate(),
+    fromResultStdinCommandTemplate: manualFromResultStdinCommandTemplate(),
     planCommandTemplate: manualPlanCommandTemplate(),
     remainingPlanStepCount: plan.steps.length,
     remainingPlanPreview: plan.steps.slice(0, 3),

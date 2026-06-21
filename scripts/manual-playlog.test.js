@@ -143,10 +143,12 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("실행 순서:");
     expect(output).toContain("1. 게임에서 다음 목표 난이도로 새 게임을 시작하고 상단의 실제 시드를 확인");
     expect(output).toContain("3. 검증이 통과하면 같은 명령에서 --dry-run을 빼고 시작 마커 저장");
-    expect(output).toContain("5. 결과 화면에서 증거 JSON을 내보내고 --from-result=PATH_TO_EXPORTED_JSON --dry-run으로 검증");
-    expect(output).toContain("6. 검증이 통과하면 --dry-run을 빼서 JSON 결과 저장.");
+    expect(output).toContain("5. 결과 화면에서 증거 JSON을 내보내거나 복사한 뒤 --from-result=PATH_TO_EXPORTED_JSON --dry-run 또는 --from-result=- --dry-run으로 검증");
+    expect(output).toContain("6. 검증이 통과하면 같은 결과 JSON 명령에서 --dry-run을 빼서 저장.");
     expect(output).toContain("결과 JSON 저장:");
     expect(output).toContain(`저장 전 검증: yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --out=${shellArg(out)} --dry-run`);
+    expect(output).toContain(`표준입력 검증: yarn manual-playlog --from-result=- --out=${shellArg(out)} --dry-run`);
+    expect(output).toContain(`표준입력 저장: yarn manual-playlog --from-result=- --out=${shellArg(out)}`);
     expect(output).toContain("전체 수집 계획:");
     expect(output).toContain(`yarn manual-playlog --plan --out=${shellArg(out)}`);
     expect(output).toContain("결과 기록 필드:");
@@ -193,11 +195,13 @@ describe("manual-playlog plan", () => {
       "추천 시작 검증 명령의 GAME_SEED_HERE를 실제 시드로 바꿔 --dry-run 실행",
       "검증이 통과하면 같은 명령에서 --dry-run을 빼고 시작 마커 저장",
       "12분 이상 실제로 플레이하고 목표 결과 조건 확인",
-      "결과 화면에서 증거 JSON을 내보내고 --from-result=PATH_TO_EXPORTED_JSON --dry-run으로 검증",
-      "검증이 통과하면 --dry-run을 빼서 JSON 결과 저장. 필요하면 결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 후 실제 finish 저장",
+      "결과 화면에서 증거 JSON을 내보내거나 복사한 뒤 --from-result=PATH_TO_EXPORTED_JSON --dry-run 또는 --from-result=- --dry-run으로 검증",
+      "검증이 통과하면 같은 결과 JSON 명령에서 --dry-run을 빼서 저장. 필요하면 결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 후 실제 finish 저장",
     ]);
     expect(preflight.fromResultDryRunCommandTemplate).toBe(`yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --out=${shellArg(out)} --dry-run`);
     expect(preflight.fromResultCommandTemplate).toBe(`yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --out=${shellArg(out)}`);
+    expect(preflight.fromResultStdinDryRunCommandTemplate).toBe(`yarn manual-playlog --from-result=- --out=${shellArg(out)} --dry-run`);
+    expect(preflight.fromResultStdinCommandTemplate).toBe(`yarn manual-playlog --from-result=- --out=${shellArg(out)}`);
   });
 
   it("codex 직접 플레이 출처는 start-next 마커와 finish 결과에 보존된다", () => {
@@ -416,6 +420,9 @@ describe("manual-playlog plan", () => {
     expect(sheet).toContain("```bash");
     expect(sheet).toContain(`yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)} --dry-run`);
     expect(sheet).toContain(`yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE --out=${shellArg(out)}`);
+    expect(sheet).toContain("결과 화면의 `증거 JSON 내보내기` 파일 경로 또는 `증거 JSON 복사` 표준입력으로 먼저 검증한 뒤 저장합니다.");
+    expect(sheet).toContain("### 표준입력 저장");
+    expect(sheet).toContain(`yarn manual-playlog --from-result=- --out=${shellArg(out)}`);
     expect(sheet).toContain("| 7 | total-minutes | any | 총 120분 보충 | 48.0분 | result=loss, round=ROUND_REACHED, legends=FINAL_LEGENDS, maxGrade=MAX_GRADE |");
     expect(sheet).toContain("| dataVersion | 결과 화면 RESULT_DATA_VERSION | 0.8.4 |");
     expect(sheet).toContain("| stateChecksum | 결과 화면 RESULT_CHECKSUM | 8자리 checksum |");
@@ -476,8 +483,8 @@ describe("manual-playlog plan", () => {
       "추천 시작 검증 명령의 GAME_SEED_HERE를 실제 시드로 바꿔 --dry-run 실행",
       "검증이 통과하면 같은 명령에서 --dry-run을 빼고 시작 마커 저장",
       "12분 이상 실제로 플레이하고 목표 결과 조건 확인",
-      "결과 화면에서 증거 JSON을 내보내고 --from-result=PATH_TO_EXPORTED_JSON --dry-run으로 검증",
-      "검증이 통과하면 --dry-run을 빼서 JSON 결과 저장. 필요하면 결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 후 실제 finish 저장",
+      "결과 화면에서 증거 JSON을 내보내거나 복사한 뒤 --from-result=PATH_TO_EXPORTED_JSON --dry-run 또는 --from-result=- --dry-run으로 검증",
+      "검증이 통과하면 같은 결과 JSON 명령에서 --dry-run을 빼서 저장. 필요하면 결과 화면의 dataVersion/stateChecksum/endedAt 값으로 finish --dry-run 후 실제 finish 저장",
     ]);
     const text = runManualPlaylog([`--out=${out}`, "--next"]);
     expect(text).toContain("추천 시작 검증:");
@@ -486,6 +493,7 @@ describe("manual-playlog plan", () => {
     expect(text).toContain("추천 시작 마커:");
     expect(text).toContain("결과 JSON 저장:");
     expect(text).toContain(`저장 전 검증: yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --out=${shellArg(out)} --dry-run`);
+    expect(text).toContain(`표준입력 저장: yarn manual-playlog --from-result=- --out=${shellArg(out)}`);
     expect(text).toContain("yarn manual-playlog --start-next --difficulty=novice --seed=GAME_SEED_HERE");
     expect(text).toContain("직접 시작 검증:");
     expect(text).toContain("직접 시작 마커:");
@@ -1282,7 +1290,7 @@ describe("manual-playlog plan", () => {
     });
   });
 
-  it("결과 화면 JSON은 표준입력으로도 저장 전 검증할 수 있다", () => {
+  it("결과 화면 JSON은 표준입력으로도 저장 전 검증하고 실제 저장할 수 있다", () => {
     const out = makeTempPath("from-result-stdin-log.json");
     const resultJson = JSON.stringify({
       schemaVersion: 1,
@@ -1313,11 +1321,33 @@ describe("manual-playlog plan", () => {
       "--from-result=-",
       "--dry-run",
     ], { input: resultJson });
+    const saved = runManualPlaylog([
+      `--out=${out}`,
+      "--from-result-stdin",
+    ], { input: resultJson });
+    const log = readJson(out);
 
     expect(output).toContain("DRY RUN 수동 플레이 로그 검증 통과");
     expect(output).toContain('"seed": "RESULT-STDIN"');
     expect(output).toContain('"stateChecksum": "20000031"');
-    expect(existsSync(out)).toBe(false);
+    expect(saved).toContain("수동 플레이 로그 저장");
+    expect(log.sessions[0]).toMatchObject({
+      source: "human-playtest",
+      difficulty: "novice",
+      seconds: 900,
+      result: "clear",
+      stage: 1,
+      round: 40,
+      seed: "RESULT-STDIN",
+      legends: 0,
+      maxGrade: "hero",
+      dataVersion: CURRENT_DATA_VERSION,
+      stateChecksum: "20000031",
+      inputCount: 12,
+      inputTypes: ["startWave", "summon"],
+      inputCounts: { summon: 10, startWave: 2 },
+      notes: "입문자 무전설 40R 클리어 증거",
+    });
   });
 
   it("human-playtest 결과 저장은 결과 화면의 플레이 입력 수를 요구한다", () => {
