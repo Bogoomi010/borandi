@@ -60,6 +60,8 @@ function usage() {
     "  --finish-latest --result=loss --round=40 --legends=1 --maxGrade=legend --dataVersion=RESULT_DATA_VERSION --stateChecksum=RESULT_CHECKSUM --inputCount=RESULT_INPUT_COUNT --inputTypes=RESULT_INPUT_TYPES --inputCounts=RESULT_INPUT_COUNTS --endedAt=RESULT_ENDED_AT",
     "                          # 가장 최근 시작 마커를 자동 선택해 결과 세션 저장",
     "  --from-result=FILE.json  # 결과 화면에서 내보낸 수동 증거 JSON을 읽어 결과 세션 저장",
+    "  --from-result=-          # 표준입력(stdin)에서 수동 증거 JSON을 읽어 결과 세션 저장",
+    "  --from-result-stdin      # --from-result=-와 동일",
     "  --finish                 # --finish-latest와 동일",
     "  --dry-run                # 시작/결과 세션을 검증하고 미리보기만 출력, 로그 파일은 쓰지 않음",
     "  --summary             # 현재 수동 로그 충족/미충족 항목만 출력",
@@ -311,12 +313,27 @@ function inputCountsArgValue(inputCounts) {
     .join(",");
 }
 
+function readManualResultExportText(path) {
+  if (path === "-" || args["from-result-stdin"] === "true") {
+    try {
+      return readFileSync(0, "utf8");
+    } catch (error) {
+      fail(`--from-result 표준입력을 읽을 수 없습니다.\n${error.message}`);
+    }
+  }
+  try {
+    return readFileSync(path, "utf8");
+  } catch (error) {
+    fail(`--from-result 파일을 읽을 수 없습니다: ${path}\n${error.message}`);
+  }
+}
+
 function readManualResultExport(path) {
   let data;
   try {
-    data = JSON.parse(readFileSync(path, "utf8"));
+    data = JSON.parse(readManualResultExportText(path));
   } catch (error) {
-    fail(`--from-result 파일을 읽을 수 없습니다: ${path}\n${error.message}`);
+    fail(`--from-result JSON을 해석할 수 없습니다: ${path}\n${error.message}`);
   }
   const summary = data?.summary ?? data?.resultSummary ?? data?.result ?? data;
   if (!summary || typeof summary !== "object" || Array.isArray(summary)) {
@@ -326,7 +343,9 @@ function readManualResultExport(path) {
 }
 
 function applyManualResultExportArgs() {
-  const resultPath = args["from-result"] ?? args["from-result-json"];
+  const resultPath = args["from-result-stdin"] === "true"
+    ? "-"
+    : args["from-result"] ?? args["from-result-json"];
   if (resultPath === undefined) return;
   const { exportData, summary } = readManualResultExport(String(resultPath));
   const result = typeof summary.result === "string"
@@ -689,6 +708,8 @@ function manualProofCommandTemplates(next) {
     preflightJson: `yarn --silent manual-playlog --preflight-json${outPathArg()}`,
     fromResultDryRun: manualFromResultDryRunCommandTemplate(),
     fromResult: manualFromResultCommandTemplate(),
+    fromResultStdinDryRun: manualFromResultStdinDryRunCommandTemplate(),
+    fromResultStdin: manualFromResultStdinCommandTemplate(),
     plan: manualPlanCommandTemplate(),
     planJson: `yarn --silent manual-playlog --plan-json${outPathArg()}`,
     sheet: manualSheetCommandTemplate(),
@@ -1054,6 +1075,9 @@ function printManualSheet() {
   console.log("");
   console.log("### 실제 저장");
   console.log(codeBlock(manualFromResultCommandTemplate()));
+  console.log("");
+  console.log("### 표준입력 검증");
+  console.log(codeBlock(manualFromResultStdinDryRunCommandTemplate()));
 
   console.log("");
   console.log("## 실행 순서");
@@ -1146,6 +1170,7 @@ function printNext() {
     console.log("");
     console.log("결과 JSON 저장:");
     console.log(`- 저장 전 검증: ${manualFromResultDryRunCommandTemplate()}`);
+    console.log(`- 표준입력 검증: ${manualFromResultStdinDryRunCommandTemplate()}`);
     console.log(`- 실제 저장: ${manualFromResultCommandTemplate()}`);
     console.log("");
     console.log("결과 기록 필드:");
@@ -1190,6 +1215,14 @@ function manualFromResultDryRunCommandTemplate() {
 
 function manualFromResultCommandTemplate() {
   return `yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON${outPathArg()}`;
+}
+
+function manualFromResultStdinDryRunCommandTemplate() {
+  return `yarn manual-playlog --from-result=-${outPathArg()} --dry-run`;
+}
+
+function manualFromResultStdinCommandTemplate() {
+  return `yarn manual-playlog --from-result=-${outPathArg()}`;
 }
 
 function printPreflight() {
@@ -1257,6 +1290,7 @@ function printPreflight() {
     console.log("");
     console.log("결과 JSON 저장:");
     console.log(`- 저장 전 검증: ${manualFromResultDryRunCommandTemplate()}`);
+    console.log(`- 표준입력 검증: ${manualFromResultStdinDryRunCommandTemplate()}`);
     console.log(`- 실제 저장: ${manualFromResultCommandTemplate()}`);
     console.log("");
     console.log("전체 수집 계획:");

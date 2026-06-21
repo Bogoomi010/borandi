@@ -12,7 +12,7 @@ function makeTempPath(name) {
   return join(tempDir, name);
 }
 
-function runManualPlaylog(args) {
+function runManualPlaylog(args, options = {}) {
   const needsInputCount = args.some((arg) => arg === "--finish" || arg === "--finish-latest" || arg.startsWith("--finish=") || arg.startsWith("--result="));
   const hasInputCount = args.some((arg) => arg.startsWith("--inputCount="));
   const hasInputTypes = args.some((arg) => arg.startsWith("--inputTypes="));
@@ -26,6 +26,7 @@ function runManualPlaylog(args) {
   return execFileSync(process.execPath, ["scripts/manual-playlog.mjs", ...normalizedArgs], {
     cwd: process.cwd(),
     encoding: "utf8",
+    input: options.input,
   });
 }
 
@@ -105,6 +106,8 @@ describe("manual-playlog plan", () => {
     expect(output).toContain("--pending-id=RUN1");
     expect(output).toContain("--pending-id-json");
     expect(output).toContain("--from-result=FILE.json");
+    expect(output).toContain("--from-result=-");
+    expect(output).toContain("--from-result-stdin");
     expect(output).toContain("--source=human-playtest|codex-direct-playtest");
   });
 
@@ -122,6 +125,7 @@ describe("manual-playlog plan", () => {
     expect(modalSource).toContain("현재 판의 실제 시드로 다음 필요 수동 세션 dry-run 검증을 먼저 실행하세요.");
     expect(modalSource).toContain("검증이 PASS일 때만 시작 마커를 저장합니다.");
     expect(modalSource).toContain("증거 JSON 내보내기");
+    expect(modalSource).toContain("증거 JSON 복사");
     expect(modalSource).toContain("yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --dry-run");
     expect(modalSource).not.toContain("다음 필요 수동 세션 시작 검증과 시작 마커를 바로 실행할 수 있습니다.");
   });
@@ -521,6 +525,8 @@ describe("manual-playlog plan", () => {
       preflightJson: `yarn --silent manual-playlog --preflight-json --out=${shellArg(out)}`,
       fromResultDryRun: `yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --out=${shellArg(out)} --dry-run`,
       fromResult: `yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --out=${shellArg(out)}`,
+      fromResultStdinDryRun: `yarn manual-playlog --from-result=- --out=${shellArg(out)} --dry-run`,
+      fromResultStdin: `yarn manual-playlog --from-result=- --out=${shellArg(out)}`,
       plan: `yarn manual-playlog --plan --out=${shellArg(out)}`,
       planJson: `yarn --silent manual-playlog --plan-json --out=${shellArg(out)}`,
       sheet: `yarn manual-playlog --sheet --out=${shellArg(out)}`,
@@ -1274,6 +1280,44 @@ describe("manual-playlog plan", () => {
       inputCounts: { summon: 10, startWave: 2 },
       notes: "입문자 무전설 40R 클리어 증거",
     });
+  });
+
+  it("결과 화면 JSON은 표준입력으로도 저장 전 검증할 수 있다", () => {
+    const out = makeTempPath("from-result-stdin-log.json");
+    const resultJson = JSON.stringify({
+      schemaVersion: 1,
+      kind: "manual-playlog-result",
+      notes: "입문자 무전설 40R 클리어 증거",
+      summary: {
+        seed: "RESULT-STDIN",
+        difficultyId: "novice",
+        stageId: 1,
+        dataVersion: CURRENT_DATA_VERSION,
+        stateChecksum: "20000031",
+        cleared: true,
+        reachedRound: 40,
+        maxGrade: "hero",
+        legendCount: 0,
+        hiddenCount: 0,
+        legendOrBetterCount: 0,
+        inputCount: 12,
+        inputCounts: { summon: 10, startWave: 2 },
+        manualStartedAt: "2026-06-20T02:00:00.000Z",
+        playedAt: "2026-06-20T02:15:00.000Z",
+        wallSeconds: 900,
+      },
+    });
+
+    const output = runManualPlaylog([
+      `--out=${out}`,
+      "--from-result=-",
+      "--dry-run",
+    ], { input: resultJson });
+
+    expect(output).toContain("DRY RUN 수동 플레이 로그 검증 통과");
+    expect(output).toContain('"seed": "RESULT-STDIN"');
+    expect(output).toContain('"stateChecksum": "20000031"');
+    expect(existsSync(out)).toBe(false);
   });
 
   it("human-playtest 결과 저장은 결과 화면의 플레이 입력 수를 요구한다", () => {

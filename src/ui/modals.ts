@@ -520,6 +520,17 @@ export function maybeShowResult(ctx: AppCtx) {
     };
     row.appendChild(exportJsonBtn);
 
+    const copyJsonBtn = el("button", "", "증거 JSON 복사");
+    copyJsonBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manualResultJson);
+        toast("증거 JSON을 복사했습니다", "ok");
+      } catch {
+        toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn");
+      }
+    };
+    row.appendChild(copyJsonBtn);
+
     const copyDryRun = el("button", "", "검증 명령 복사");
     copyDryRun.onclick = async () => {
       try {
