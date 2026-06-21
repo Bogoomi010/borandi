@@ -129,6 +129,9 @@ describe("manual-playlog plan", () => {
     expect(modalSource).toContain("증거 JSON 내보내기");
     expect(modalSource).toContain("증거 JSON 복사");
     expect(modalSource).toContain("yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --dry-run");
+    expect(modalSource).toContain("yarn manual-playlog --from-clipboard --dry-run");
+    expect(modalSource).toContain("클립보드 JSON 실제 저장");
+    expect(modalSource).toContain("터미널에서 --from-clipboard --dry-run을 실행하세요");
     expect(modalSource).not.toContain("다음 필요 수동 세션 시작 검증과 시작 마커를 바로 실행할 수 있습니다.");
   });
 

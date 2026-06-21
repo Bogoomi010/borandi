@@ -471,10 +471,16 @@ export function maybeShowResult(ctx: AppCtx) {
     const manualThenNextCommand = manualPlaylogThenNextCommand(summary);
     const manualFinishLatestThenNextCommand = manualPlaylogFinishLatestThenNextCommand(summary);
     const manualResultJson = manualPlaylogResultExportJson(summary);
+    const manualClipboardDryRunCommand = "yarn manual-playlog --from-clipboard --dry-run";
+    const manualClipboardCommand = "yarn manual-playlog --from-clipboard";
 
     body.appendChild(el("h3", "", "수동 플레이 로그"));
     body.appendChild(el("h3", "", "결과 JSON 저장 후 검증"));
     body.appendChild(el("pre", "report", "yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --dry-run"));
+    body.appendChild(el("h3", "", "클립보드 JSON 저장 전 검증"));
+    body.appendChild(el("pre", "report", manualClipboardDryRunCommand));
+    body.appendChild(el("h3", "", "클립보드 JSON 실제 저장"));
+    body.appendChild(el("pre", "report", manualClipboardCommand));
     body.appendChild(el("h3", "", "저장 전 검증"));
     body.appendChild(el("pre", "report", manualDryRunSaveCommand));
     body.appendChild(el("h3", "", "실제 저장"));
@@ -524,7 +530,7 @@ export function maybeShowResult(ctx: AppCtx) {
     copyJsonBtn.onclick = async () => {
       try {
         await navigator.clipboard.writeText(manualResultJson);
-        toast("증거 JSON을 복사했습니다", "ok");
+        toast("증거 JSON을 복사했습니다. 터미널에서 --from-clipboard --dry-run을 실행하세요", "ok", 4000);
       } catch {
         toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn");
       }
