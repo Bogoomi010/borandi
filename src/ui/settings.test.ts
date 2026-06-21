@@ -50,6 +50,9 @@ describe("프로필 맵 해금", () => {
 
   it("해금 조건은 현재 열린 맵의 40라운드 최종 보스 클리어로만 참이다", () => {
     expect(canUnlockNextStage(true, FINAL_ROUND, 1, 1, true)).toBe(true);
+    expect(canUnlockNextStage(true, 10, 1, 1, true)).toBe(false);
+    expect(canUnlockNextStage(true, 20, 1, 1, true)).toBe(false);
+    expect(canUnlockNextStage(true, 30, 1, 1, true)).toBe(false);
     expect(canUnlockNextStage(true, FINAL_ROUND - 1, 1, 1, true)).toBe(false);
     expect(canUnlockNextStage(true, FINAL_ROUND + 1, 1, 1, true)).toBe(false);
     expect(canUnlockNextStage(false, FINAL_ROUND, 1, 1, true)).toBe(false);

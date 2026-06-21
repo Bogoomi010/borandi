@@ -2110,10 +2110,10 @@ describe("manual-playlog plan", () => {
       ["expert", 12, "loss", 33, 5, "legend", "20000004"],
       ["expert", 12, "clear", 40, 6, "legend", "20000005"],
       ["master", 12, "loss", 3, 0, "hero", "20000006"],
-      ["normal", 12, "loss", 38, 0, "hero", "20000007", "일반 무전설 경계 확인"],
-      ["intermediate", 12, "loss", 39, 2, "legend", "20000008", "중급자 2전설 경계 확인"],
-      ["expert", 12, "clear", 40, 7, "legend", "20000009", "고수 제한 없음 성장 확인"],
-      ["master", 12, "loss", 4, 1, "legend", "20000010", "초고수 추가 실패 확인"],
+      ["normal", 12, "loss", 38, 0, "hero", "20000007", "일반 무전설 경계 확인 · normal loss, 0전설 이상"],
+      ["intermediate", 12, "loss", 39, 2, "legend", "20000008", "중급자 2전설 경계 확인 · intermediate loss, 2전설 이상"],
+      ["expert", 12, "clear", 40, 7, "legend", "20000009", "고수 6전설 이상 40R 클리어 증거 / 고수 제한 없음 성장 확인 · expert clear, 7전설 이상"],
+      ["master", 12, "loss", 4, 1, "legend", "20000010", "초고수 실패 기록 증거 / 초고수 추가 실패 확인 · master loss, 1전설 이상"],
     ];
     let startMs = Date.parse("2026-06-20T00:00:00.000Z");
     for (const [difficulty, minutes, result, round, legends, maxGrade, checksum, notes] of sessions) {

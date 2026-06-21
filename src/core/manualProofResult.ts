@@ -14,8 +14,14 @@ export function manualProofResultTarget(r: ResultSummary): string {
   if (r.difficultyId === "novice" && r.cleared && finalRound && r.legendOrBetterCount === 0) {
     return "입문자 무전설 40R 클리어 증거";
   }
+  if (r.difficultyId === "normal" && r.legendOrBetterCount === 0) {
+    return "일반 무전설 경계 확인";
+  }
   if (r.difficultyId === "normal" && r.cleared && finalRound && r.legendOrBetterCount >= 1 && r.legendOrBetterCount <= 2) {
     return "일반 1~2전설 40R 클리어 증거";
+  }
+  if (r.difficultyId === "intermediate" && r.legendOrBetterCount <= 2) {
+    return "중급자 2전설 경계 확인";
   }
   if (r.difficultyId === "intermediate" && r.cleared && finalRound && r.legendOrBetterCount >= 5) {
     return "중급자 5전설 이상 40R 클리어 증거";
@@ -24,10 +30,10 @@ export function manualProofResultTarget(r: ResultSummary): string {
     return "고수 5전설 이하 실패 증거";
   }
   if (r.difficultyId === "expert" && r.cleared && finalRound && r.legendOrBetterCount >= 6) {
-    return "고수 6전설 이상 40R 클리어 증거";
+    return "고수 6전설 이상 40R 클리어 증거 / 고수 제한 없음 성장 확인";
   }
   if (r.difficultyId === "master" && !r.cleared) {
-    return "초고수 실패 기록 증거";
+    return "초고수 실패 기록 증거 / 초고수 추가 실패 확인";
   }
   return "수동 플레이 시간에는 포함되지만 목표 결과 증거 조건과는 다릅니다.";
 }

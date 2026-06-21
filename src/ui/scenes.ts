@@ -49,7 +49,7 @@ function buildTitle(ctx: AppCtx) {
   const h1 = el("h1");
   h1.innerHTML = "차원 균열<br>랜덤 디펜스";
   logo.appendChild(h1);
-  logo.appendChild(el("div", "title-sub", "새 게임 시작 때 맵 선택 · 40R 보스까지 같은 맵 진행 · 클리어 후 다음 맵 선택권 해금"));
+  logo.appendChild(el("div", "title-sub", "새 게임 시작 때 맵 선택 · 스테이지 중 맵 전환 없음 · 40R 보스 클리어 후 다음 맵 선택권 해금"));
   inner.appendChild(logo);
 
   const menu = el("div", "title-menu");

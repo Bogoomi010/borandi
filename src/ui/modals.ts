@@ -299,7 +299,7 @@ function mapPermissionMessage(r: ResultSummary): string {
     r.bossKills.some((boss) => boss.round === FINAL_ROUND);
   if (r.unlockedNextStage && r.stageId < STAGES.length) {
     const next = stageById(r.stageId + 1);
-    return `이번 판은 선택한 맵에서 종료됩니다. 맵은 자동으로 바뀌지 않고, 다음 새 게임에서 ${next.id}. ${next.name} 맵을 고를 수 있는 권한만 추가됩니다.`;
+    return `이번 판은 선택한 맵에서 종료됩니다. 스테이지 종료나 보스 처치 시 맵이 바뀌지 않으며, 다음 새 게임에서 ${next.id}. ${next.name} 맵을 고를 수 있는 권한만 추가됩니다.`;
   }
   if (finalBossCleared && r.stageId >= STAGES.length) {
     return "최종 맵 40R 보스를 클리어했습니다. 더 추가될 맵 선택 권한은 없습니다.";
@@ -710,6 +710,18 @@ const MANUAL_BALANCE_TARGETS: Array<{
   { difficultyId: "master", difficulty: "초고수", target: "실패 기록", length: "12분 이상" },
 ];
 
+const MANUAL_BALANCE_OBSERVATIONS: Array<{
+  difficultyId: DifficultyId;
+  difficulty: string;
+  target: string;
+  length: string;
+}> = [
+  { difficultyId: "normal", difficulty: "일반", target: "무전설 경계 확인", length: "12분 이상" },
+  { difficultyId: "intermediate", difficulty: "중급자", target: "2전설 경계 확인", length: "12분 이상" },
+  { difficultyId: "expert", difficulty: "고수", target: "제한 없음 성장 확인", length: "12분 이상" },
+  { difficultyId: "master", difficulty: "초고수", target: "추가 실패 확인", length: "12분 이상" },
+];
+
 const MANUAL_START_WORKFLOW = [
   "다음 목표 난이도로 새 게임을 시작하고 상단의 실제 시드를 확인",
   "시작 검증 명령의 GAME_SEED_HERE를 실제 시드로 바꿔 --dry-run 실행",
@@ -767,10 +779,13 @@ function appendManualResultFieldChecklist(body: HTMLElement, target?: ManualProo
 }
 
 function manualTargetHint(difficultyId: DifficultyId): string {
-  return MANUAL_BALANCE_TARGETS
+  const targets = MANUAL_BALANCE_TARGETS
     .filter((target) => target.difficultyId === difficultyId)
-    .map((target) => target.target)
-    .join(" / ");
+    .map((target) => target.target);
+  const observations = MANUAL_BALANCE_OBSERVATIONS
+    .filter((target) => target.difficultyId === difficultyId)
+    .map((target) => `관찰: ${target.target}`);
+  return [...targets, ...observations].join(" / ");
 }
 
 export function openNewRunModal(ctx: AppCtx, dismissable = true) {
@@ -820,6 +835,7 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
       stageRow.appendChild(b);
     }
     body.appendChild(stageRow);
+    body.appendChild(el("div", "result-hint", "스테이지 진행 중 맵 전환은 없습니다. 새 게임 시작 때 선택한 맵 하나가 이번 판의 전체 40라운드 맵입니다."));
 
     const row = el("div", "row-btns");
     if (dismissable) {
@@ -966,12 +982,22 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       table.appendChild(tr);
     }
     body.appendChild(table);
-    body.appendChild(el("div", "result-hint", "총 120분 이상, 각 난이도 최소 12분 이상이 함께 필요합니다."));
+    body.appendChild(el("h3", "", "필수 경계 관찰"));
+    const observationTable = el("table", "kv-table");
+    for (const { difficulty, target, length } of MANUAL_BALANCE_OBSERVATIONS) {
+      const tr = el("tr");
+      tr.appendChild(el("td", "", difficulty));
+      tr.appendChild(el("td", "", target));
+      tr.appendChild(el("td", "", length));
+      observationTable.appendChild(tr);
+    }
+    body.appendChild(observationTable);
+    body.appendChild(el("div", "result-hint", "총 120분 이상, 각 난이도 최소 12분 이상, 목표 6개와 경계 관찰 4개가 함께 필요합니다."));
     body.appendChild(el("h3", "", "권장 플레이 순서"));
     body.appendChild(el(
       "div",
       "modal-note",
-      "위 6개 목표 세션을 먼저 12분 이상씩 채우면 72분입니다. 이후 부족한 48분은 요약 명령의 다음 필요 항목을 보며 난이도별 최소 12분 조건과 총 120분 조건을 채웁니다.",
+      "위 6개 목표 세션과 4개 경계 관찰을 12분 이상씩 채우면 120분입니다. `yarn manual-playlog --next`와 `--plan`의 다음 필요 항목 순서대로 진행하세요.",
     ));
 
     const row = el("div", "row-btns");

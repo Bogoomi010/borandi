@@ -513,6 +513,10 @@ function targetEvidence(sessions, difficulty, predicate) {
   }).join("; ");
 }
 
+function noteHasLabel(session, label) {
+  return String(session.notes ?? "").includes(label);
+}
+
 function shellArg(value) {
   return `'${String(value).replace(/'/g, "'\\''")}'`;
 }
@@ -614,7 +618,7 @@ const flexibleBalanceObservationPlans = [
     label: "일반 무전설 경계 확인",
     goal: "전설 없이 일반 난이도를 실제로 플레이해 클리어 접근이 어려운지 확인",
     logHint: "result=clear|loss round=RESULT_ROUND legends=0 maxGrade=hero 이하",
-    predicate: (session) => isTargetLength(session) && String(session.notes ?? "") === "일반 무전설 경계 확인" && legendCount(session) === 0,
+    predicate: (session) => isTargetLength(session) && noteHasLabel(session, "일반 무전설 경계 확인") && legendCount(session) === 0,
   },
   {
     kind: "balance-observation",
@@ -623,7 +627,7 @@ const flexibleBalanceObservationPlans = [
     label: "중급자 2전설 경계 확인",
     goal: "전설 2개 이하 중급자 플레이가 5전설 조건보다 확실히 어렵게 느껴지는지 확인",
     logHint: "result=clear|loss round=RESULT_ROUND legends<=2 maxGrade=legend",
-    predicate: (session) => isTargetLength(session) && String(session.notes ?? "") === "중급자 2전설 경계 확인" && legendCount(session) <= 2,
+    predicate: (session) => isTargetLength(session) && noteHasLabel(session, "중급자 2전설 경계 확인") && legendCount(session) <= 2,
   },
   {
     kind: "balance-observation",
@@ -632,7 +636,7 @@ const flexibleBalanceObservationPlans = [
     label: "고수 제한 없음 성장 확인",
     goal: "고수 난이도에서 중급자 5전설보다 더 높은 성장량이 필요한지 확인",
     logHint: "result=clear|loss round=RESULT_ROUND legends=FINAL_LEGENDS maxGrade=MAX_GRADE",
-    predicate: (session) => isTargetLength(session) && String(session.notes ?? "") === "고수 제한 없음 성장 확인" && legendCount(session) >= 6,
+    predicate: (session) => isTargetLength(session) && noteHasLabel(session, "고수 제한 없음 성장 확인") && legendCount(session) >= 6,
   },
   {
     kind: "balance-observation",
@@ -641,7 +645,7 @@ const flexibleBalanceObservationPlans = [
     label: "초고수 추가 실패 확인",
     goal: "초고수 난이도가 제한 없이 플레이해도 매우 어렵게 유지되는지 추가 확인",
     logHint: "result=loss 권장, clear이면 밸런스 재검토 신호",
-    predicate: (session) => isTargetLength(session) && String(session.notes ?? "") === "초고수 추가 실패 확인" && isLoss(session),
+    predicate: (session) => isTargetLength(session) && noteHasLabel(session, "초고수 추가 실패 확인") && isLoss(session),
   },
 ];
 

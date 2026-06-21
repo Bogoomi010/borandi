@@ -493,6 +493,10 @@ function isMeaningfulManualTargetSession(session) {
   return sessionMinutes(session) >= MIN_MANUAL_TARGET_SESSION_MINUTES;
 }
 
+function noteHasLabel(session, label) {
+  return String(session.notes ?? "").includes(label);
+}
+
 function manualEvidence(sessions) {
   if (sessions.length === 0) return "증거 없음";
   return sessions
@@ -570,7 +574,7 @@ const MANUAL_OBSERVATIONS = [
     minutes: MIN_MANUAL_TARGET_SESSION_MINUTES,
     goal: "전설 없이 일반 난이도 클리어 접근이 어려운지 확인",
     logHint: "result=clear|loss round=RESULT_ROUND legends=0 maxGrade=hero 이하",
-    predicate: (s) => isMeaningfulManualTargetSession(s) && String(s.notes ?? "") === "일반 무전설 경계 확인" && legendCount(s) === 0,
+    predicate: (s) => isMeaningfulManualTargetSession(s) && noteHasLabel(s, "일반 무전설 경계 확인") && legendCount(s) === 0,
   },
   {
     label: "중급자 2전설 경계 확인",
@@ -578,7 +582,7 @@ const MANUAL_OBSERVATIONS = [
     minutes: MIN_MANUAL_TARGET_SESSION_MINUTES,
     goal: "중급자 2전설 이하가 5전설 조건보다 어려운지 확인",
     logHint: "result=clear|loss round=RESULT_ROUND legends<=2 maxGrade=legend",
-    predicate: (s) => isMeaningfulManualTargetSession(s) && String(s.notes ?? "") === "중급자 2전설 경계 확인" && legendCount(s) <= 2,
+    predicate: (s) => isMeaningfulManualTargetSession(s) && noteHasLabel(s, "중급자 2전설 경계 확인") && legendCount(s) <= 2,
   },
   {
     label: "고수 제한 없음 성장 확인",
@@ -586,7 +590,7 @@ const MANUAL_OBSERVATIONS = [
     minutes: MIN_MANUAL_TARGET_SESSION_MINUTES,
     goal: "고수에서 중급자 5전설보다 높은 성장량이 필요한지 확인",
     logHint: "result=clear|loss round=RESULT_ROUND legends=FINAL_LEGENDS maxGrade=MAX_GRADE",
-    predicate: (s) => isMeaningfulManualTargetSession(s) && String(s.notes ?? "") === "고수 제한 없음 성장 확인" && legendCount(s) >= 6,
+    predicate: (s) => isMeaningfulManualTargetSession(s) && noteHasLabel(s, "고수 제한 없음 성장 확인") && legendCount(s) >= 6,
   },
   {
     label: "초고수 추가 실패 확인",
@@ -594,7 +598,7 @@ const MANUAL_OBSERVATIONS = [
     minutes: MIN_MANUAL_TARGET_SESSION_MINUTES,
     goal: "초고수가 제한 없이도 매우 어렵게 유지되는지 추가 확인",
     logHint: "result=loss 권장, clear이면 밸런스 재검토",
-    predicate: (s) => isMeaningfulManualTargetSession(s) && String(s.notes ?? "") === "초고수 추가 실패 확인" && isLoss(s),
+    predicate: (s) => isMeaningfulManualTargetSession(s) && noteHasLabel(s, "초고수 추가 실패 확인") && isLoss(s),
   },
 ];
 
