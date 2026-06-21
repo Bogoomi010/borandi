@@ -838,19 +838,26 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
     body.appendChild(stageRow);
     body.appendChild(el("div", "result-hint", "스테이지 진행 중 맵 전환은 없습니다. 새 게임 시작 때 선택한 맵 하나가 이번 판의 전체 40라운드 맵입니다."));
 
+    const startRun = (openProofGuide: boolean) => {
+      const seed = randomSeed(); // 시드는 내부 RNG/재현성용으로 항상 무작위 생성
+      close();
+      resetResultShown();
+      ctx.newRun(seed, chosen, chosenStage);
+      if (openProofGuide) {
+        window.setTimeout(() => openManualProofGuideModal(ctx), 0);
+      }
+    };
     const row = el("div", "row-btns");
     if (dismissable) {
       const cancel = el("button", "", "취소");
       cancel.onclick = close;
       row.appendChild(cancel);
     }
+    const proofStart = el("button", "", "증거 시작");
+    proofStart.onclick = () => startRun(true);
+    row.appendChild(proofStart);
     const start = el("button", "primary", "시작");
-    start.onclick = () => {
-      const seed = randomSeed(); // 시드는 내부 RNG/재현성용으로 항상 무작위 생성
-      close();
-      resetResultShown();
-      ctx.newRun(seed, chosen, chosenStage);
-    };
+    start.onclick = () => startRun(false);
     row.appendChild(start);
     body.appendChild(row);
   }, dismissable);
