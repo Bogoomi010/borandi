@@ -24,7 +24,7 @@ import {
   resetResultShown,
 } from "./ui/modals";
 import { loadSlot, makeSaveRecord, saveSlot } from "./save/saveApi";
-import { loadProfile, loadSettings, maxSelectableStageId, playableStageId, profileMarkSeen, profileRecordRun } from "./ui/settings";
+import { loadSettings, playableStageId, profileMarkSeen, profileRecordRun } from "./ui/settings";
 import { GameAudio } from "./ui/audio";
 import { showGame, showTitle, openPauseMenu } from "./ui/scenes";
 import { openDevSpawnModal } from "./ui/devTools"; // ⚠ DEV전용 (출시 전 제거)
@@ -171,7 +171,7 @@ const ctx: AppCtx = {
   refresh: () => { panelsDirty = true; },
   newRun: (seed, difficulty, stageId = 1) => {
     const requestedStage = stageId;
-    const allowedStage = playableStageId(requestedStage, loadProfile().unlockedStage);
+    const allowedStage = playableStageId(requestedStage, 1);
     const resolvedSeed = typeof seed === "string" ? seed : String(seed ?? "");
     game = new Game(resolvedSeed || randomSeed(), difficulty, allowedStage);
     ctx.game = game;
@@ -192,7 +192,7 @@ const ctx: AppCtx = {
     showGame(ctx);
     audio.sfx("waveStart");
     const stage = stageById(game.state.stageId);
-    const lockNote = allowedStage !== requestedStage ? " · 잠긴 맵 요청은 현재 선택 가능 맵으로 조정됨" : "";
+    const lockNote = allowedStage !== requestedStage ? " · 범위 밖 맵 요청은 실제 맵 범위로 조정됨" : "";
     toast(`새 게임: ${stage.id}. ${stage.name} · 이번 판 1~40R 맵 고정 · 시드 ${game.state.seed}${lockNote}`, "ok");
   },
   adoptGame: (g) => {
@@ -368,10 +368,6 @@ function loop(now: number) {
         finalBossCleared,
       );
       ctx.lastRunUnlockedNext = unlockedNext;
-      if (unlockedNext) {
-        const nextStage = stageById(maxSelectableStageId(game.state.stageId + 1));
-        toast(`맵 선택권 해금: 다음 새 게임부터 ${nextStage.id}. ${nextStage.name} 선택 가능`, "ok", 3200);
-      }
     }
 
     // 라운드 사이 휴식 카운트다운 표시 (엔진 breakTicks 기반)

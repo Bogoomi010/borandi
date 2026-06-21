@@ -25,7 +25,7 @@ import {
   type BalanceScenarioResult,
 } from "../sim/balanceGate";
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
-import { initialNewRunStageId, loadProfile, maxSelectableStageId } from "./settings";
+import { initialNewRunStageId } from "./settings";
 import { FINAL_ROUND } from "../data/waves";
 import { manualProofFinishReadiness, manualProofTargetFor, type ManualProofTargetStatus } from "../core/manualProof";
 import { manualProofResultChecklist, manualProofResultLogNote, manualProofResultTarget } from "../core/manualProofResult";
@@ -298,17 +298,10 @@ function mapPermissionMessage(r: ResultSummary): string {
   const finalBossCleared = r.cleared &&
     r.reachedRound >= FINAL_ROUND &&
     r.bossKills.some((boss) => boss.round === FINAL_ROUND);
-  if (r.unlockedNextStage && r.stageId < STAGES.length) {
-    const next = stageById(r.stageId + 1);
-    return `이번 판은 시작할 때 고른 맵에서 종료됩니다. 라운드나 보스 처치 후 맵이 바뀌지 않으며, 다음 새 게임에서 ${next.id}. ${next.name} 맵을 고를 수 있는 권한만 추가됩니다.`;
-  }
-  if (finalBossCleared && r.stageId >= STAGES.length) {
-    return "최종 맵 40R 보스를 클리어했습니다. 더 추가될 맵 선택 권한은 없습니다.";
-  }
   if (finalBossCleared) {
-    return "이미 선택 권한이 있던 맵입니다. 다음 맵 권한은 현재 최전선 맵을 새 게임에서 골라 40R 보스를 클리어해야 열립니다.";
+    return "40R 최종 보스를 클리어했습니다. 다음 새 게임에서도 전체 맵을 자유롭게 선택할 수 있습니다.";
   }
-  return `이 판에서는 맵이 바뀌지 않습니다. 다음 맵 선택 권한은 ${FINAL_ROUND}R 최종 보스 클리어 후 다음 새 게임에만 적용됩니다.`;
+  return "이 판에서는 맵이 바뀌지 않습니다. 다음 새 게임에서는 전체 맵 중 원하는 맵을 바로 선택할 수 있습니다.";
 }
 
 export function buildReportMarkdown(r: ResultSummary): string {
@@ -449,7 +442,7 @@ export function maybeShowResult(ctx: AppCtx) {
     kv("시드", summary.seed);
     kv("맵", `${summary.stageId}. ${summary.stageName}`);
     kv("맵 진행", "새 게임에서 고른 맵으로 1~40R 보스까지 고정");
-    kv("맵 권한", mapPermissionMessage(summary));
+    kv("맵 선택", mapPermissionMessage(summary));
     kv("난이도", summary.difficulty);
     kv("최고 등급", GRADE_LABEL[summary.maxGrade]);
     kv("전설/히든", `${summary.legendCount} / ${summary.hiddenCount}`);
@@ -789,15 +782,17 @@ function manualTargetHint(difficultyId: DifficultyId): string {
   return [...targets, ...observations].join(" / ");
 }
 
+function stageMinimapUrl(stageId: number): string {
+  return `/stage-minimaps/stage-${String(stageId).padStart(2, "0")}.svg`;
+}
+
 export function openNewRunModal(ctx: AppCtx, dismissable = true) {
   openModal((body, close) => {
     body.appendChild(el("h2", "", "새 게임"));
 
-    const profile = loadProfile();
-    const unlockedStage = maxSelectableStageId(profile.unlockedStage);
     body.appendChild(el("h3", "", "난이도"));
     let chosen: DifficultyId = "novice";
-    let chosenStage = initialNewRunStageId(ctx.game.state.stageId, unlockedStage);
+    let chosenStage = initialNewRunStageId(ctx.game.state.stageId, STAGES.length);
     const diffRow = el("div", "choice-grid difficulty-choice-grid");
     const diffBtns: HTMLButtonElement[] = [];
     for (const d of DIFFICULTIES) {
@@ -820,15 +815,20 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
     body.appendChild(diffRow);
 
     body.appendChild(el("h3", "", "이번 판 고정 맵 선택"));
-    body.appendChild(el("div", "modal-note map-rule-note", `맵 선택권: 1~${unlockedStage}번 맵. 새 게임을 시작할 때 이번 판의 맵을 직접 고르고, 선택한 맵 하나로 1R부터 40R 최종 보스까지 진행합니다. 40R 보스 클리어는 다음 맵을 자동 시작하거나 현재 판 맵을 바꾸지 않고, 다음 새 게임에서 고를 수 있는 권한만 하나 추가합니다.`));
+    body.appendChild(el("div", "modal-note map-rule-note", `전체 ${STAGES.length}개 맵을 자유롭게 선택할 수 있습니다. 선택한 맵 하나로 1R부터 40R 최종 보스까지 진행합니다.`));
     const stageRow = el("div", "choice-grid stage-choice-grid");
     const stageBtns: HTMLButtonElement[] = [];
     for (const stage of STAGES) {
       const b = el("button", "choice-btn stage-choice") as HTMLButtonElement;
       b.appendChild(el("span", "cname", `${stage.id}. ${stage.name}`));
-      b.appendChild(el("span", "cdesc", `${stage.subtitle} · 선택하면 이번 판 1~40R 보스까지 이 맵 고정`));
-      b.disabled = stage.id > unlockedStage;
-      if (b.disabled) b.appendChild(el("span", "cdesc", `권한 없음: ${stage.id - 1}번 맵을 새 게임에서 직접 골라 40R 보스 클리어 후 선택 가능`));
+      const tooltip = el("span", "stage-tooltip");
+      const img = el("img") as HTMLImageElement;
+      img.src = stageMinimapUrl(stage.id);
+      img.alt = `${stage.name} 미니맵`;
+      tooltip.appendChild(img);
+      tooltip.appendChild(el("span", "tooltip-title", `${stage.id}. ${stage.name}`));
+      tooltip.appendChild(el("span", "", stage.subtitle));
+      b.appendChild(tooltip);
       if (stage.id === chosenStage) b.style.borderColor = "var(--accent)";
       b.onclick = () => {
         chosenStage = stage.id;

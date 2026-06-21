@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200" role="img" aria-label="뿌리내린 작은마을 미니맵">
+  <rect width="320" height="200" rx="16" fill="#211b2b"/>
+  <rect x="7" y="7" width="306" height="186" rx="12" fill="#8b5cc0" fill-opacity=".08" stroke="#8b5cc0" stroke-opacity=".28"/>
+  <path d="M 40 0 V 200 M 0 25 H 320" stroke="#523d70" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 80 0 V 200 M 0 50 H 320" stroke="#523d70" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 120 0 V 200 M 0 75 H 320" stroke="#523d70" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 160 0 V 200 M 0 100 H 320" stroke="#523d70" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 200 0 V 200 M 0 125 H 320" stroke="#523d70" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 240 0 V 200 M 0 150 H 320" stroke="#523d70" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 280 0 V 200 M 0 175 H 320" stroke="#523d70" stroke-opacity=".18" stroke-width="1"/>
+  <circle cx="65.1" cy="71.1" r="6.4" fill="#8b6a42" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="218.4" cy="101.8" r="4.5" fill="#6d5a45" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="132" cy="136.2" r="5.8" fill="#6e9445" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="214.8" cy="50.2" r="4.8" fill="#6c9f45" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <path d="M 45.6 47.2 L 163 47.2 L 163 79.7 L 272.5 79.7 L 272.5 154.7 L 186.2 154.7 L 186.2 120.3 L 45.6 120.3" fill="none" stroke="#05070b" stroke-opacity=".65" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 45.6 47.2 L 163 47.2 L 163 79.7 L 272.5 79.7 L 272.5 154.7 L 186.2 154.7 L 186.2 120.3 L 45.6 120.3" fill="none" stroke="#d7c08a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 45.6 47.2 L 163 47.2 L 163 79.7 L 272.5 79.7 L 272.5 154.7 L 186.2 154.7 L 186.2 120.3 L 45.6 120.3" fill="none" stroke="#fff1b8" stroke-opacity=".52" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="45.6" cy="47.2" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="163" cy="47.2" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="163" cy="79.7" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="272.5" cy="79.7" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="272.5" cy="154.7" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="186.2" cy="154.7" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="186.2" cy="120.3" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="45.6" cy="120.3" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="45.6" cy="47.2" r="6.2" fill="#6ee0a0" stroke="#0b0e16" stroke-width="1.5"/>
+  <circle cx="45.6" cy="120.3" r="6.2" fill="#e85c66" stroke="#0b0e16" stroke-width="1.5"/>
+  <text x="14" y="184" fill="#f3f6ff" font-family="Arial, sans-serif" font-size="13" font-weight="700">6. 뿌리내린 작은마을</text>
+</svg>

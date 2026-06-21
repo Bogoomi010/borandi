@@ -61,13 +61,13 @@ describe("프로필 맵 해금", () => {
     expect(canUnlockNextStage(true, FINAL_ROUND, FINAL_STAGE, FINAL_STAGE, true)).toBe(false);
   });
 
-  it("게임 시작 맵은 현재 선택 권한 안에서만 확정된다", () => {
+  it("게임 시작 맵은 전체 맵 범위 안에서 자유롭게 확정된다", () => {
     expect(maxSelectableStageId(0)).toBe(1);
     expect(maxSelectableStageId(3.9)).toBe(3);
     expect(maxSelectableStageId(999)).toBe(FINAL_STAGE);
     expect(playableStageId(1, 3)).toBe(1);
     expect(playableStageId(3, 3)).toBe(3);
-    expect(playableStageId(4, 3)).toBe(3);
+    expect(playableStageId(4, 3)).toBe(4);
     expect(playableStageId(999, FINAL_STAGE)).toBe(FINAL_STAGE);
     expect(playableStageId(0, 1)).toBe(1);
   });
@@ -100,20 +100,20 @@ describe("프로필 맵 해금", () => {
     expect(profile.unlockedStage).toBe(2);
     expect(maxSelectableStageId(profile.unlockedStage)).toBe(2);
     expect(playableStageId(1, profile.unlockedStage)).toBe(1);
-    expect(playableStageId(2, profile.unlockedStage)).toBe(2);
+    expect(playableStageId(FINAL_STAGE, profile.unlockedStage)).toBe(FINAL_STAGE);
   });
 
-  it("맵 선택권이 늘어도 새 게임에서 맵을 고르기 전까지 특정 다음 맵으로 강제되지 않는다", () => {
+  it("진행 기록이 늘어도 새 게임에서 맵을 고르기 전까지 특정 다음 맵으로 강제되지 않는다", () => {
     expect(profileRecordRun(true, "novice", FINAL_ROUND, 1, true)).toBe(true);
     const profile = loadProfile();
 
     expect(maxSelectableStageId(profile.unlockedStage)).toBe(2);
     expect(initialNewRunStageId(1, profile.unlockedStage)).toBe(1);
     expect(defaultNewRunStageId(1, profile.unlockedStage)).toBe(1);
-    expect(playableStageId(2, profile.unlockedStage)).toBe(2);
+    expect(playableStageId(FINAL_STAGE, profile.unlockedStage)).toBe(FINAL_STAGE);
   });
 
-  it("40라운드 보스 클리어로 해금해도 현재 게임 객체의 맵은 바뀌지 않는다", () => {
+  it("40라운드 보스 클리어로 진행 기록이 늘어도 현재 게임 객체의 맵은 바뀌지 않는다", () => {
     const game = new Game("MAP-PERMISSION", "novice", 1);
     game.state.cleared = true;
     game.state.round = FINAL_ROUND;
@@ -132,17 +132,17 @@ describe("프로필 맵 해금", () => {
     expect(loadProfile().unlockedStage).toBe(2);
   });
 
-  it("새 게임 모달 기본 선택은 새로 해금된 다음 맵으로 자동 이동하지 않는다", () => {
+  it("새 게임 모달 기본 선택은 자유 선택 가능한 현재 맵을 유지한다", () => {
     expect(defaultNewRunStageId(1, 2)).toBe(1);
     expect(defaultNewRunStageId(2, 2)).toBe(2);
-    expect(defaultNewRunStageId(7, 3)).toBe(3);
+    expect(defaultNewRunStageId(7, 3)).toBe(7);
     expect(defaultNewRunStageId(0, 4)).toBe(1);
   });
 
   it("새 게임 모달은 명시 선호값 없이 현재 선택 맵을 유지한다", () => {
     expect(initialNewRunStageId(1, 2)).toBe(1);
     expect(initialNewRunStageId(2, 2)).toBe(2);
-    expect(initialNewRunStageId(3, 2)).toBe(2);
+    expect(initialNewRunStageId(3, 2)).toBe(3);
     expect(initialNewRunStageId(0, 2)).toBe(1);
   });
 
@@ -176,7 +176,7 @@ describe("프로필 맵 해금", () => {
     expect(loadProfile().unlockedStage).toBe(2);
   });
 
-  it("현재 선택 가능 맵을 새 게임에서 골라 40라운드까지 깨야 순서대로 다음 맵 권한이 추가된다", () => {
+  it("기존 진행 기록은 순차 클리어한 최전선 맵만 반영한다", () => {
     expect(profileRecordRun(true, "novice", FINAL_ROUND, 1, true)).toBe(true);
     expect(profileRecordRun(true, "novice", FINAL_ROUND, 2, true)).toBe(true);
 

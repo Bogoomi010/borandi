@@ -14,6 +14,7 @@
     "browser-balance": "node scripts/browser-balance-playtest.mjs",
     "browser-direct": "node scripts/browser-direct-playtest.mjs",
     "balance-proof": "node scripts/balance-proof.mjs",
+    "stage-minimaps": "vite-node scripts/generate-stage-minimaps.ts",
     "manual-playlog": "node scripts/manual-playlog.mjs",
     "balance-audit": "node scripts/balance-audit.mjs",
     "check": "node scripts/sandbox-check.mjs",

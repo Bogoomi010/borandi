@@ -532,7 +532,7 @@ export class Game {
     this.log(
       "system",
       cleared
-        ? `${stageById(this.state.stageId).name} 40라운드 최종 보스 클리어! 다음 맵은 새 게임에서 선택권으로만 열립니다.`
+        ? `${stageById(this.state.stageId).name} 40라운드 최종 보스 클리어! 다음 새 게임에서도 원하는 맵을 선택할 수 있습니다.`
         : `${this.state.round}라운드에서 패배`,
     );
   }

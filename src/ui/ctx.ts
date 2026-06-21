@@ -21,7 +21,7 @@ export interface AppCtx {
   runStartedAtMs: number;
   runEndedAt: string | null;
   runEndedAtMs: number | null;
-  /** 방금 끝난 판이 다음 맵 선택 권한을 새로 열었는지 */
+  /** 방금 끝난 판의 기존 맵 진행 기록 플래그 */
   lastRunUnlockedNext: boolean;
   /** 패널 다시 그리기 요청 */
   refresh: () => void;

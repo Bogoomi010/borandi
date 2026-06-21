@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200" role="img" aria-label="핏빛 장터 미니맵">
+  <rect width="320" height="200" rx="16" fill="#2d1719"/>
+  <rect x="7" y="7" width="306" height="186" rx="12" fill="#b74e58" fill-opacity=".08" stroke="#b74e58" stroke-opacity=".28"/>
+  <path d="M 40 0 V 200 M 0 25 H 320" stroke="#633238" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 80 0 V 200 M 0 50 H 320" stroke="#633238" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 120 0 V 200 M 0 75 H 320" stroke="#633238" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 160 0 V 200 M 0 100 H 320" stroke="#633238" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 200 0 V 200 M 0 125 H 320" stroke="#633238" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 240 0 V 200 M 0 150 H 320" stroke="#633238" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 280 0 V 200 M 0 175 H 320" stroke="#633238" stroke-opacity=".18" stroke-width="1"/>
+  <circle cx="130.8" cy="86.5" r="8" fill="#d39a4f" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="63.3" cy="116" r="5.7" fill="#a66e3c" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="233.6" cy="67.4" r="5.8" fill="#bdc0c9" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="199.5" cy="124" r="5.8" fill="#b84c70" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <path d="M 42 52.1 L 106.8 52.1 L 106.8 148.5 L 166.1 148.5 L 166.1 52.1 L 228.1 52.1 L 228.1 148.5 L 281.1 148.5" fill="none" stroke="#05070b" stroke-opacity=".65" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 42 52.1 L 106.8 52.1 L 106.8 148.5 L 166.1 148.5 L 166.1 52.1 L 228.1 52.1 L 228.1 148.5 L 281.1 148.5" fill="none" stroke="#d7c08a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 42 52.1 L 106.8 52.1 L 106.8 148.5 L 166.1 148.5 L 166.1 52.1 L 228.1 52.1 L 228.1 148.5 L 281.1 148.5" fill="none" stroke="#fff1b8" stroke-opacity=".52" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="42" cy="52.1" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="106.8" cy="52.1" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="106.8" cy="148.5" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="166.1" cy="148.5" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="166.1" cy="52.1" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="228.1" cy="52.1" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="228.1" cy="148.5" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="281.1" cy="148.5" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="42" cy="52.1" r="6.2" fill="#6ee0a0" stroke="#0b0e16" stroke-width="1.5"/>
+  <circle cx="281.1" cy="148.5" r="6.2" fill="#e85c66" stroke="#0b0e16" stroke-width="1.5"/>
+  <text x="14" y="184" fill="#f3f6ff" font-family="Arial, sans-serif" font-size="13" font-weight="700">8. 핏빛 장터</text>
+</svg>

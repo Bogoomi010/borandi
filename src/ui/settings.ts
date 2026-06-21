@@ -48,7 +48,7 @@ export interface Profile {
   runs: number;
   clears: Record<string, number>; // difficulty -> 클리어 수
   bestRound: number;
-  unlockedStage: number;        // 현재 런의 맵이 아니라, 새 게임에서 선택 가능한 최대 맵 번호
+  unlockedStage: number;        // 이전 진행 모델의 기록값. 새 게임 맵 선택은 전체 맵을 허용한다.
 }
 
 const DEFAULT_PROFILE: Profile = {
@@ -94,8 +94,8 @@ export function canUnlockNextStage(
   unlockedStage: number,
   finalBossCleared: boolean,
 ): boolean {
-  // 맵은 라운드 사이에 전환되지 않는다. 현재 선택 가능 맵을 새 게임에서 골라
-  // 40R 최종 보스까지 클리어했을 때만 다음 새 게임의 맵 선택 권한이 열린다.
+  // 맵은 라운드 사이에 전환되지 않는다. 이 값은 이전 진행 모델의
+  // 순차 클리어 기록으로만 남기며, 새 게임의 맵 선택을 제한하지 않는다.
   return cleared &&
     round === FINAL_ROUND &&
     finalBossCleared &&
@@ -104,20 +104,18 @@ export function canUnlockNextStage(
 }
 
 export function playableStageId(requestedStageId: number, unlockedStage: number): number {
-  const maxPlayable = maxSelectableStageId(unlockedStage);
   const requested = Math.max(1, Math.min(Math.floor(requestedStageId || 1), FINAL_STAGE));
-  return Math.min(requested, maxPlayable);
+  return requested;
 }
 
 export function defaultNewRunStageId(currentStageId: number, unlockedStage: number): number {
-  // 해금은 다음 새 게임의 선택 권한일 뿐이다. 모달을 열 때 자동으로
-  // 가장 뒤 해금 맵을 고르지 않고, 현재/이전 선택 맵을 유지한다.
+  // 새 게임에서는 전체 맵을 자유롭게 고를 수 있다. 모달 기본값은
+  // 자동 추천 없이 현재/이전 선택 맵을 유지한다.
   return playableStageId(currentStageId, unlockedStage);
 }
 
 export function initialNewRunStageId(currentStageId: number, unlockedStage: number): number {
-  // 다음 맵 해금은 선택 권한만 추가한다. 새 게임 모달은 어떤 경로로 열려도
-  // 방금 해금된 다음 맵으로 자동 이동하지 않고 현재/이전 선택 맵을 유지한다.
+  // 전체 맵을 자유 선택하되, 모달을 열 때 임의의 다른 맵으로 이동하지 않는다.
   return playableStageId(currentStageId, unlockedStage);
 }
 

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200" role="img" aria-label="룬 미궁 미니맵">
+  <rect width="320" height="200" rx="16" fill="#161f2d"/>
+  <rect x="7" y="7" width="306" height="186" rx="12" fill="#50a4c8" fill-opacity=".08" stroke="#50a4c8" stroke-opacity=".28"/>
+  <path d="M 40 0 V 200 M 0 25 H 320" stroke="#2e5d7c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 80 0 V 200 M 0 50 H 320" stroke="#2e5d7c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 120 0 V 200 M 0 75 H 320" stroke="#2e5d7c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 160 0 V 200 M 0 100 H 320" stroke="#2e5d7c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 200 0 V 200 M 0 125 H 320" stroke="#2e5d7c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 240 0 V 200 M 0 150 H 320" stroke="#2e5d7c" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 280 0 V 200 M 0 175 H 320" stroke="#2e5d7c" stroke-opacity=".18" stroke-width="1"/>
+  <circle cx="152.4" cy="79.1" r="5.4" fill="#5fc2d8" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="211.7" cy="105.5" r="5.6" fill="#9968b8" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="105.3" cy="136.9" r="5.3" fill="#8dbc4a" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="241.5" cy="52.1" r="4.9" fill="#d3ca8a" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <path d="M 43.2 43.5 L 272.5 43.5 L 272.5 68.1 L 66.9 68.1 L 66.9 93.2 L 272.5 93.2 L 272.5 118.4 L 66.9 118.4 L 66.9 156.5 L 272.5 156.5" fill="none" stroke="#05070b" stroke-opacity=".65" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 43.2 43.5 L 272.5 43.5 L 272.5 68.1 L 66.9 68.1 L 66.9 93.2 L 272.5 93.2 L 272.5 118.4 L 66.9 118.4 L 66.9 156.5 L 272.5 156.5" fill="none" stroke="#d7c08a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 43.2 43.5 L 272.5 43.5 L 272.5 68.1 L 66.9 68.1 L 66.9 93.2 L 272.5 93.2 L 272.5 118.4 L 66.9 118.4 L 66.9 156.5 L 272.5 156.5" fill="none" stroke="#fff1b8" stroke-opacity=".52" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="43.2" cy="43.5" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="272.5" cy="43.5" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="272.5" cy="68.1" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="66.9" cy="68.1" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="66.9" cy="93.2" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="272.5" cy="93.2" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="272.5" cy="118.4" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="66.9" cy="118.4" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="66.9" cy="156.5" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="272.5" cy="156.5" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="43.2" cy="43.5" r="6.2" fill="#6ee0a0" stroke="#0b0e16" stroke-width="1.5"/>
+  <circle cx="272.5" cy="156.5" r="6.2" fill="#e85c66" stroke="#0b0e16" stroke-width="1.5"/>
+  <text x="14" y="184" fill="#f3f6ff" font-family="Arial, sans-serif" font-size="13" font-weight="700">14. 룬 미궁</text>
+</svg>

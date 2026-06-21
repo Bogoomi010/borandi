@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200" role="img" aria-label="영묘 갈림길 미니맵">
+  <rect width="320" height="200" rx="16" fill="#25262a"/>
+  <rect x="7" y="7" width="306" height="186" rx="12" fill="#8a8d92" fill-opacity=".08" stroke="#8a8d92" stroke-opacity=".28"/>
+  <path d="M 40 0 V 200 M 0 25 H 320" stroke="#484a4f" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 80 0 V 200 M 0 50 H 320" stroke="#484a4f" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 120 0 V 200 M 0 75 H 320" stroke="#484a4f" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 160 0 V 200 M 0 100 H 320" stroke="#484a4f" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 200 0 V 200 M 0 125 H 320" stroke="#484a4f" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 240 0 V 200 M 0 150 H 320" stroke="#484a4f" stroke-opacity=".18" stroke-width="1"/>
+  <path d="M 280 0 V 200 M 0 175 H 320" stroke="#484a4f" stroke-opacity=".18" stroke-width="1"/>
+  <circle cx="166.1" cy="65" r="5.8" fill="#9b9fb0" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="101.6" cy="118.4" r="4.3" fill="#a4a6ad" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="223.9" cy="118.4" r="5.1" fill="#8a5440" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <circle cx="250.6" cy="65" r="5.2" fill="#d5d8de" fill-opacity=".82" stroke="#0b0e16" stroke-width="1.4"/>
+  <path d="M 41.4 100 L 105.3 44.7 L 272.5 44.7 L 211.7 100 L 272.5 155.3 L 105.3 155.3 L 41.4 100 L 157 100" fill="none" stroke="#05070b" stroke-opacity=".65" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 41.4 100 L 105.3 44.7 L 272.5 44.7 L 211.7 100 L 272.5 155.3 L 105.3 155.3 L 41.4 100 L 157 100" fill="none" stroke="#d7c08a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 41.4 100 L 105.3 44.7 L 272.5 44.7 L 211.7 100 L 272.5 155.3 L 105.3 155.3 L 41.4 100 L 157 100" fill="none" stroke="#fff1b8" stroke-opacity=".52" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="41.4" cy="100" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="105.3" cy="44.7" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="272.5" cy="44.7" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="211.7" cy="100" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="272.5" cy="155.3" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="105.3" cy="155.3" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="41.4" cy="100" r="2.7" fill="#f8f3d0" fill-opacity=".55"/>
+  <circle cx="157" cy="100" r="4.2" fill="#f8f3d0" fill-opacity=".95"/>
+  <circle cx="41.4" cy="100" r="6.2" fill="#6ee0a0" stroke="#0b0e16" stroke-width="1.5"/>
+  <circle cx="157" cy="100" r="6.2" fill="#e85c66" stroke="#0b0e16" stroke-width="1.5"/>
+  <text x="14" y="184" fill="#f3f6ff" font-family="Arial, sans-serif" font-size="13" font-weight="700">13. 영묘 갈림길</text>
+</svg>
