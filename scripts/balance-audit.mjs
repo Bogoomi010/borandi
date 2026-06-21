@@ -603,6 +603,14 @@ function manualFromResultCommandTemplate() {
   return `yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON${manualOutArg()}`;
 }
 
+function manualFromResultStdinDryRunCommandTemplate() {
+  return `pbpaste | yarn manual-playlog --from-result=-${manualOutArg()} --dry-run`;
+}
+
+function manualFromResultStdinCommandTemplate() {
+  return `pbpaste | yarn manual-playlog --from-result=-${manualOutArg()}`;
+}
+
 function manualProofWorkflowEvidence(step) {
   return [
     `시작 전 점검: ${manualPreflightCommandTemplate()}`,
@@ -613,6 +621,8 @@ function manualProofWorkflowEvidence(step) {
     `추천 시작 마커: ${startNextCommandTemplate(step)}`,
     `결과 JSON 검증: ${manualFromResultDryRunCommandTemplate()}`,
     `결과 JSON 저장: ${manualFromResultCommandTemplate()}`,
+    `복사 JSON 표준입력 검증: ${manualFromResultStdinDryRunCommandTemplate()}`,
+    `복사 JSON 표준입력 저장: ${manualFromResultStdinCommandTemplate()}`,
   ].join("; ");
 }
 
