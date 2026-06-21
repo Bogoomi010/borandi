@@ -12,7 +12,7 @@ import { UPGRADES, upgradeCost } from "../data/upgrades";
 import { SUMMON_COST, SELL_REFUND, DIFFICULTY_BY_ID } from "../data/difficulty";
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
 import { openManualProofGuideModal, openSelectorModal } from "./modals";
-import { MANUAL_PROOF_TARGET_SECONDS, manualProofReadyAt, manualProofRemainingSeconds, manualProofTargetFor } from "../core/manualProof";
+import { MANUAL_PROOF_TARGET_SECONDS, manualProofFinishReadiness, manualProofReadyAt, manualProofRemainingSeconds, manualProofTargetFor } from "../core/manualProof";
 import { loadProfile, maxSelectableStageId } from "./settings";
 
 // ---------- 상단 상태바 ----------
@@ -32,6 +32,13 @@ function clockTimeText(iso: string | null): string {
     second: "2-digit",
     hour12: false,
   });
+}
+
+function inputCountsForProof(ctx: AppCtx): Record<string, number> {
+  return ctx.game.state.inputHistory.reduce<Record<string, number>>((counts, input) => {
+    counts[input.type] = (counts[input.type] ?? 0) + 1;
+    return counts;
+  }, {});
 }
 
 export function renderTopbar(ctx: AppCtx) {
@@ -69,10 +76,17 @@ export function renderTopbar(ctx: AppCtx) {
     : proofTarget.state === "warn" ? "proof-warn" : "proof-wait";
   const proofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
   const proofRemainingSeconds = manualProofRemainingSeconds(proofSeconds);
-  const proofText = proofSeconds >= MANUAL_PROOF_TARGET_SECONDS
-    ? "12:00+ 충족"
+  const proofReadiness = manualProofFinishReadiness({
+    elapsedSeconds: proofSeconds,
+    inputCount: s.inputHistory.length,
+    inputCounts: inputCountsForProof(ctx),
+  });
+  const proofText = proofReadiness.ready
+    ? "저장조건 충족"
+    : proofSeconds >= MANUAL_PROOF_TARGET_SECONDS
+      ? "12:00+ · 입력조건 확인"
     : `${clockText(proofSeconds)}/12:00 · ${clockText(proofRemainingSeconds)} 남음`;
-  root.appendChild(stat("수동증거", proofText, proofSeconds >= MANUAL_PROOF_TARGET_SECONDS ? "proof-ok" : "proof-wait", () => openManualProofGuideModal(ctx)));
+  root.appendChild(stat("수동증거", proofText, proofReadiness.ready ? "proof-ok" : "proof-wait", () => openManualProofGuideModal(ctx)));
   root.appendChild(stat("증거조건", proofTarget.status, proofConditionClass, () => openManualProofGuideModal(ctx)));
   root.appendChild(stat("시드", s.seed));
 
@@ -583,8 +597,15 @@ export function renderActionbar(ctx: AppCtx) {
   const proofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
   const proofRemainingSeconds = manualProofRemainingSeconds(proofSeconds);
   const proofReadyAt = manualProofReadyAt(ctx.runStartedAt);
-  const proofTimeText = proofRemainingSeconds === 0
-    ? "12분 충족"
+  const proofReadiness = manualProofFinishReadiness({
+    elapsedSeconds: proofSeconds,
+    inputCount: s.inputHistory.length,
+    inputCounts: inputCountsForProof(ctx),
+  });
+  const proofTimeText = proofReadiness.ready
+    ? "저장조건 충족"
+    : proofRemainingSeconds === 0
+      ? `12분 충족 · ${proofReadiness.blockers.join(", ")}`
     : `${clockText(proofRemainingSeconds)} 남음`;
   const phaseText = s.phase === "ended"
     ? (s.cleared ? "클리어!" : "게임 종료")

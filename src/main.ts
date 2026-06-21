@@ -99,6 +99,7 @@ let lastRound = game.state.round;
 let lastSelectorCount = game.state.pendingSelectors.length;
 let autosaveTimer: number | null = null;
 let endedHandled = false;
+let manualProofTimeReachedNotified = false;
 let manualProofReadyNotified = false;
 
 function markRunStarted() {
@@ -106,6 +107,7 @@ function markRunStarted() {
   ctx.runStartedAtMs = performance.now();
   ctx.runEndedAt = null;
   ctx.runEndedAtMs = null;
+  manualProofTimeReachedNotified = false;
   manualProofReadyNotified = false;
 }
 
@@ -121,13 +123,33 @@ function currentLegendOrBetterCount(): number {
   )).length;
 }
 
+function currentInputCounts(): Record<string, number> {
+  return game.state.inputHistory.reduce<Record<string, number>>((counts, input) => {
+    counts[input.type] = (counts[input.type] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
 function maybeNotifyManualProofReady(now: number) {
   if (manualProofReadyNotified || ctx.scene !== "game" || game.state.phase === "ended") return;
   const proofSeconds = Math.max(0, Math.floor((now - ctx.runStartedAtMs) / 1000));
   if (proofSeconds < MANUAL_PROOF_TARGET_SECONDS) return;
-  manualProofReadyNotified = true;
+  const readiness = manualProofFinishReadiness({
+    elapsedSeconds: proofSeconds,
+    inputCount: game.state.inputHistory.length,
+    inputCounts: currentInputCounts(),
+  });
+  if (!readiness.ready) {
+    if (!manualProofTimeReachedNotified) {
+      manualProofTimeReachedNotified = true;
+      toast(`수동증거 12분 충족 · 아직 ${readiness.blockers.join(", ")}`, "warn", 5200);
+      panelsDirty = true;
+    }
+    return;
+  }
   const target = manualProofTargetFor(game.state.difficulty, currentLegendOrBetterCount());
-  toast(`수동증거 12분 충족 · ${target.status} · 결과 후 로그 기록`, target.state === "warn" ? "warn" : "ok", 5200);
+  manualProofReadyNotified = true;
+  toast(`수동증거 저장 조건 충족 · ${target.status} · 결과 후 로그 기록`, target.state === "warn" ? "warn" : "ok", 5200);
   panelsDirty = true;
 }
 
@@ -583,6 +605,7 @@ function renderGameToText(): string {
   const manualProofSeconds = Math.max(0, Math.floor((performance.now() - ctx.runStartedAtMs) / 1000));
   const manualProofRemaining = manualProofRemainingSeconds(manualProofSeconds);
   const manualProofTargetReadyAt = ctx.scene === "game" ? manualProofReadyAt(ctx.runStartedAt) : null;
+  const inputCounts = currentInputCounts();
   const gradeCounts: Record<Grade, number> = { common: 0, rare: 0, hero: 0, legend: 0, hidden: 0 };
   let maxGrade: Grade | null = null;
   for (const unit of s.units) {
@@ -674,10 +697,6 @@ function renderGameToText(): string {
     manualResultChecks = manualProofResultChecklist(summary);
     manualResultPassed = manualResultChecks.every((check) => check.ok);
   }
-  const inputCounts = s.inputHistory.reduce<Record<string, number>>((counts, input) => {
-    counts[input.type] = (counts[input.type] ?? 0) + 1;
-    return counts;
-  }, {});
   return JSON.stringify({
     coordinateSystem: "board origin top-left, x right, y down, logical size 960x560",
     scene: ctx.scene,
@@ -720,7 +739,7 @@ function renderGameToText(): string {
       targetSeconds: MANUAL_PROOF_TARGET_SECONDS,
       targetReadyAt: manualProofTargetReadyAt,
       remainingSeconds: manualProofRemaining,
-      targetMet: manualProofRemaining === 0,
+      targetMet: manualCurrentFinishReadiness?.ready ?? manualProofRemaining === 0,
       targetLabel: manualProofTarget.label,
       conditionStatus: manualProofTarget.status,
       conditionState: manualProofTarget.state,
@@ -728,6 +747,7 @@ function renderGameToText(): string {
       resultChecks: manualResultChecks,
       resultPassed: manualResultPassed,
       currentFinishReadiness: manualCurrentFinishReadiness,
+      timeReachedNotified: manualProofTimeReachedNotified,
       readyNotified: manualProofReadyNotified,
       startedAt: ctx.scene === "game" ? ctx.runStartedAt : null,
       commands: manualProofCommands,
