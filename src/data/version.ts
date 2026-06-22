@@ -1,3 +1,3 @@
-export const DATA_VERSION = "0.8.4"; // 중급자 5전설 진입선 보정
-export const APP_VERSION = "0.8.4";
+export const DATA_VERSION = "0.9.0"; // 영웅+ 액티브 스킬 시스템 (proc 발동)
+export const APP_VERSION = "0.9.0";
 export const SCHEMA_VERSION = 1;

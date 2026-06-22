@@ -81,7 +81,7 @@ console.log("[3] 조합/잠금");
     for (let i = 0; i < n; i++) g.state.units.push({
       uid: g.state.nextUid++, defId, locked: false,
       x: 130 + g.state.units.length * 30, y: 30,
-      acquiredRound: 1, totalDamage: 0, cooldown: 0,
+      acquiredRound: 1, totalDamage: 0, skillDamage: 0, cooldown: 0, skillCd: [], buffs: [],
       state: "idle", order: { kind: "none" }, anchorX: 130 + g.state.units.length * 30, anchorY: 30,
     });
   };
@@ -96,7 +96,7 @@ console.log("[3] 조합/잠금");
     for (let i = 0; i < n; i++) g2.state.units.push({
       uid: g2.state.nextUid++, defId, locked: true,
       x: 130 + g2.state.units.length * 30, y: 30,
-      acquiredRound: 1, totalDamage: 0, cooldown: 0,
+      acquiredRound: 1, totalDamage: 0, skillDamage: 0, cooldown: 0, skillCd: [], buffs: [],
       state: "idle", order: { kind: "none" }, anchorX: 130 + g2.state.units.length * 30, anchorY: 30,
     });
   };
