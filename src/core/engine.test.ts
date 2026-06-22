@@ -117,7 +117,8 @@ describe("조합", () => {
       const x = 130 + g.state.units.length * 30, y = 30;
       g.state.units.push({
         uid: g.state.nextUid++, defId, locked: false,
-        x, y, acquiredRound: 1, totalDamage: 0, cooldown: 0,
+        x, y, acquiredRound: 1, totalDamage: 0, skillDamage: 0, cooldown: 0,
+        skillCd: [], buffs: [],
         state: "idle", order: { kind: "none" }, anchorX: x, anchorY: y,
       });
     }
@@ -322,7 +323,8 @@ describe("phase 규칙", () => {
       const x = 130 + g.state.units.length * 30, y = 30;
       g.state.units.push({
         uid, defId, locked: false, x, y, acquiredRound: 1,
-        totalDamage: 0, cooldown: 0, state: "idle", order: { kind: "none" }, anchorX: x, anchorY: y,
+        totalDamage: 0, skillDamage: 0, cooldown: 0, skillCd: [], buffs: [],
+        state: "idle", order: { kind: "none" }, anchorX: x, anchorY: y,
       });
       ids.push(uid);
     }

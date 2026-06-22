@@ -532,7 +532,6 @@ export function maybeShowResult(ctx: AppCtx) {
       body.appendChild(el("div", "result-hint", `💡 ${summary.failHint}`));
     }
 
-    const row = el("div", "row-btns");
     const manualCommand = manualPlaylogCommand(summary);
     const manualDryRunSaveCommand = manualPlaylogDryRunCommand(summary);
     const manualFinishCommand = manualPlaylogFinishCommand(summary);
@@ -549,179 +548,86 @@ export function maybeShowResult(ctx: AppCtx) {
     const manualEmbeddedJsonThenNextCommand = manualPlaylogResultEmbeddedJsonCommand(manualResultJson, false, true);
     const manualEmbeddedJsonValidateSaveNextCommand = manualPlaylogResultValidateSaveNextCommand(manualResultJson);
 
-    body.appendChild(el("h3", "", "수동 플레이 로그"));
-    body.appendChild(el("h3", "", "결과 JSON 저장 후 검증"));
-    body.appendChild(el("pre", "report", "yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --dry-run"));
-    body.appendChild(el("h3", "", "클립보드 JSON 저장 전 검증"));
-    body.appendChild(el("pre", "report", manualClipboardDryRunCommand));
-    body.appendChild(el("h3", "", "클립보드 JSON 실제 저장"));
-    body.appendChild(el("pre", "report", manualClipboardCommand));
-    body.appendChild(el("h3", "", "저장 전 검증"));
-    body.appendChild(el("pre", "report", manualDryRunSaveCommand));
-    body.appendChild(el("h3", "", "실제 저장"));
-    body.appendChild(el("pre", "report", manualCommand));
-    body.appendChild(el("h3", "", "기록 후 다음 확인"));
-    body.appendChild(el("pre", "report", manualThenNextCommand));
-    body.appendChild(el("h3", "", "시작 마커 저장 전 검증"));
-    body.appendChild(el("pre", "report", manualFinishDryRunCommand));
-    body.appendChild(el("h3", "", "시작 마커로 기록"));
-    body.appendChild(el("pre", "report", manualFinishCommand));
-    body.appendChild(el("h3", "", "최근 시작 마커 저장 전 검증"));
-    body.appendChild(el("pre", "report", manualFinishLatestDryRunCommand));
-    body.appendChild(el("h3", "", "가장 최근 시작 마커로 기록"));
-    body.appendChild(el("pre", "report", manualFinishLatestCommand));
-    body.appendChild(el("h3", "", "최근 시작 마커 기록 후 다음 확인"));
-    body.appendChild(el("pre", "report", manualFinishLatestThenNextCommand));
+    // 개발자 · 밸런스 증거 도구 — 플레이어 동선과 분리해 접이식으로 정리한다.
+    const tools = el("details", "tool-group");
+    const summaryEl = el("summary", "", "개발자 · 밸런스 증거 도구");
+    summaryEl.appendChild(el("span", "summary-note", " 수동 플레이 로그 명령 · JSON 내보내기 · 복사"));
+    tools.appendChild(summaryEl);
+    const toolBody = el("div", "tool-body");
 
-    const exportBtn = el("button", "", "리포트 내보내기 (.md)");
+    const cmdBlock = (title: string, command: string) => {
+      toolBody.appendChild(el("h3", "", title));
+      toolBody.appendChild(el("pre", "report", command));
+    };
+    const copyBtn = (label: string, text: string, okMsg: string, group: HTMLElement) => {
+      const b = el("button", "", label);
+      b.onclick = async () => {
+        try { await navigator.clipboard.writeText(text); toast(okMsg, "ok"); }
+        catch { toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn"); }
+      };
+      group.appendChild(b);
+    };
+
+    // 1) 내보내기/복사
+    toolBody.appendChild(el("div", "btn-group-label", "내보내기 · 복사"));
+    const exportGroup = el("div", "btn-group");
+    const exportBtn = el("button", "", "리포트 (.md)");
     exportBtn.onclick = async () => {
       try {
-        const path = await writeReport(
-          `randi-result-${summary.seed}-${Date.now()}.md`,
-          buildReportMarkdown(summary),
-        );
+        const path = await writeReport(`randi-result-${summary.seed}-${Date.now()}.md`, buildReportMarkdown(summary));
         toast(`리포트 저장: ${path}`, "ok", 4000);
-      } catch {
-        toast("리포트 저장 실패", "danger");
-      }
+      } catch { toast("리포트 저장 실패", "danger"); }
     };
-    row.appendChild(exportBtn);
-
+    exportGroup.appendChild(exportBtn);
     const exportJsonBtn = el("button", "", "증거 JSON 내보내기");
     exportJsonBtn.onclick = async () => {
       try {
-        const path = await writeReport(
-          `randi-manual-result-${summary.seed}-${Date.now()}.json`,
-          manualResultJson,
-        );
+        const path = await writeReport(`randi-manual-result-${summary.seed}-${Date.now()}.json`, manualResultJson);
         toast(`증거 JSON 저장: ${path}`, "ok", 4000);
-      } catch {
-        toast("증거 JSON 저장 실패", "danger");
-      }
+      } catch { toast("증거 JSON 저장 실패", "danger"); }
     };
-    row.appendChild(exportJsonBtn);
+    exportGroup.appendChild(exportJsonBtn);
+    copyBtn("증거 JSON 복사", manualResultJson, "증거 JSON을 복사했습니다", exportGroup);
+    toolBody.appendChild(exportGroup);
 
-    const copyJsonBtn = el("button", "", "증거 JSON 복사");
-    copyJsonBtn.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(manualResultJson);
-        toast("증거 JSON을 복사했습니다. 터미널에서 --from-clipboard --dry-run을 실행하세요", "ok", 4000);
-      } catch {
-        toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn");
-      }
-    };
-    row.appendChild(copyJsonBtn);
+    // 2) JSON 포함 명령 복사
+    toolBody.appendChild(el("div", "btn-group-label", "JSON 포함 명령 복사"));
+    const embedGroup = el("div", "btn-group");
+    copyBtn("검증", manualEmbeddedJsonDryRunCommand, "JSON 포함 검증 명령을 복사했습니다", embedGroup);
+    copyBtn("저장", manualEmbeddedJsonCommand, "JSON 포함 저장 명령을 복사했습니다", embedGroup);
+    copyBtn("저장+다음", manualEmbeddedJsonThenNextCommand, "JSON 포함 저장 후 다음 확인 명령을 복사했습니다", embedGroup);
+    copyBtn("검증+저장+다음", manualEmbeddedJsonValidateSaveNextCommand, "JSON 검증 후 저장 및 다음 확인 명령을 복사했습니다", embedGroup);
+    toolBody.appendChild(embedGroup);
 
-    const copyEmbeddedJsonDryRun = el("button", "", "JSON포함 검증 복사");
-    copyEmbeddedJsonDryRun.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(manualEmbeddedJsonDryRunCommand);
-        toast("JSON 포함 검증 명령을 복사했습니다", "ok");
-      } catch {
-        toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn");
-      }
-    };
-    row.appendChild(copyEmbeddedJsonDryRun);
+    // 3) 명령어 복사
+    toolBody.appendChild(el("div", "btn-group-label", "명령어 복사"));
+    const cmdGroup = el("div", "btn-group");
+    copyBtn("검증 명령", manualDryRunSaveCommand, "저장 전 dry-run 검증 명령을 복사했습니다", cmdGroup);
+    copyBtn("로그 명령", manualCommand, "수동 플레이 로그 명령을 복사했습니다", cmdGroup);
+    copyBtn("기록+다음", manualThenNextCommand, "기록 후 다음 세션 확인 명령을 복사했습니다", cmdGroup);
+    copyBtn("마커기록", manualFinishCommand, "시작 마커 기반 기록 명령을 복사했습니다", cmdGroup);
+    copyBtn("최근마커 기록", manualFinishLatestCommand, "가장 최근 시작 마커 기록 명령을 복사했습니다", cmdGroup);
+    copyBtn("최근기록+다음", manualFinishLatestThenNextCommand, "최근 시작 마커 기록 후 다음 확인 명령을 복사했습니다", cmdGroup);
+    toolBody.appendChild(cmdGroup);
 
-    const copyEmbeddedJsonSave = el("button", "", "JSON포함 저장 복사");
-    copyEmbeddedJsonSave.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(manualEmbeddedJsonCommand);
-        toast("JSON 포함 저장 명령을 복사했습니다", "ok");
-      } catch {
-        toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn");
-      }
-    };
-    row.appendChild(copyEmbeddedJsonSave);
+    // 4) 전체 명령 레퍼런스
+    cmdBlock("결과 JSON 저장 후 검증", "yarn manual-playlog --from-result=PATH_TO_EXPORTED_JSON --dry-run");
+    cmdBlock("클립보드 JSON 저장 전 검증", manualClipboardDryRunCommand);
+    cmdBlock("클립보드 JSON 실제 저장", manualClipboardCommand);
+    cmdBlock("저장 전 검증", manualDryRunSaveCommand);
+    cmdBlock("실제 저장", manualCommand);
+    cmdBlock("기록 후 다음 확인", manualThenNextCommand);
+    cmdBlock("시작 마커 저장 전 검증", manualFinishDryRunCommand);
+    cmdBlock("시작 마커로 기록", manualFinishCommand);
+    cmdBlock("최근 시작 마커 저장 전 검증", manualFinishLatestDryRunCommand);
+    cmdBlock("가장 최근 시작 마커로 기록", manualFinishLatestCommand);
+    cmdBlock("최근 시작 마커 기록 후 다음 확인", manualFinishLatestThenNextCommand);
 
-    const copyEmbeddedJsonSaveNext = el("button", "", "JSON포함 저장+다음 복사");
-    copyEmbeddedJsonSaveNext.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(manualEmbeddedJsonThenNextCommand);
-        toast("JSON 포함 저장 후 다음 확인 명령을 복사했습니다", "ok");
-      } catch {
-        toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn");
-      }
-    };
-    row.appendChild(copyEmbeddedJsonSaveNext);
+    tools.appendChild(toolBody);
+    body.appendChild(tools);
 
-    const copyEmbeddedJsonValidateSaveNext = el("button", "", "JSON검증+저장+다음 복사");
-    copyEmbeddedJsonValidateSaveNext.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(manualEmbeddedJsonValidateSaveNextCommand);
-        toast("JSON 검증 후 저장 및 다음 확인 명령을 복사했습니다", "ok");
-      } catch {
-        toast("복사 실패: 증거 JSON 내보내기를 사용하세요", "warn");
-      }
-    };
-    row.appendChild(copyEmbeddedJsonValidateSaveNext);
-
-    const copyDryRun = el("button", "", "검증 명령 복사");
-    copyDryRun.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(manualDryRunSaveCommand);
-        toast("저장 전 dry-run 검증 명령을 복사했습니다", "ok");
-      } catch {
-        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
-      }
-    };
-    row.appendChild(copyDryRun);
-
-    const copyLog = el("button", "", "로그 명령 복사");
-    copyLog.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(manualCommand);
-        toast("수동 플레이 로그 명령을 복사했습니다", "ok");
-      } catch {
-        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
-      }
-    };
-    row.appendChild(copyLog);
-
-    const copyLogNext = el("button", "", "기록+다음 복사");
-    copyLogNext.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(manualThenNextCommand);
-        toast("기록 후 다음 세션 확인 명령을 복사했습니다", "ok");
-      } catch {
-        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
-      }
-    };
-    row.appendChild(copyLogNext);
-
-    const copyFinish = el("button", "", "마커기록 복사");
-    copyFinish.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(manualFinishCommand);
-        toast("시작 마커 기반 기록 명령을 복사했습니다", "ok");
-      } catch {
-        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
-      }
-    };
-    row.appendChild(copyFinish);
-
-    const copyFinishLatest = el("button", "", "최근마커 기록 복사");
-    copyFinishLatest.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(manualFinishLatestCommand);
-        toast("가장 최근 시작 마커 기록 명령을 복사했습니다", "ok");
-      } catch {
-        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
-      }
-    };
-    row.appendChild(copyFinishLatest);
-
-    const copyFinishLatestNext = el("button", "", "최근기록+다음 복사");
-    copyFinishLatestNext.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(manualFinishLatestThenNextCommand);
-        toast("최근 시작 마커 기록 후 다음 확인 명령을 복사했습니다", "ok");
-      } catch {
-        toast("복사 실패: 리포트에서 명령을 확인하세요", "warn");
-      }
-    };
-    row.appendChild(copyFinishLatestNext);
-
+    // 플레이어 동선 버튼만 하단에 노출
+    const row = el("div", "row-btns");
     const titleBtn = el("button", "", "타이틀로");
     titleBtn.onclick = () => { resetResultShown(); close(); ctx.goTitle(); };
     row.appendChild(titleBtn);
@@ -856,11 +762,11 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
       tooltip.appendChild(el("span", "", `수동 목표: ${manualTargetHint(d.id)}`));
       tooltip.appendChild(el("span", "", `보유 ${d.unitCap}기 · 적 체력 x${d.enemyHpMult} · 누적 ${d.enemyLimit} · 시작 ${d.startGold}골드`));
       b.appendChild(tooltip);
-      if (d.id === chosen) b.style.borderColor = "var(--accent)";
+      b.classList.toggle("selected", d.id === chosen);
       b.onclick = () => {
         chosen = d.id;
-        diffBtns.forEach((x) => (x.style.borderColor = "var(--line)"));
-        b.style.borderColor = "var(--accent)";
+        diffBtns.forEach((x) => x.classList.remove("selected"));
+        b.classList.add("selected");
       };
       diffBtns.push(b);
       diffRow.appendChild(b);
@@ -869,24 +775,26 @@ export function openNewRunModal(ctx: AppCtx, dismissable = true) {
 
     body.appendChild(el("h3", "", "이번 판 고정 맵 선택"));
     body.appendChild(el("div", "modal-note map-rule-note", `전체 ${STAGES.length}개 맵을 자유롭게 선택할 수 있습니다. 선택한 맵 하나로 1R부터 40R 최종 보스까지 진행합니다.`));
-    const stageRow = el("div", "choice-grid stage-choice-grid");
+    const stageRow = el("div", "stage-card-grid");
     const stageBtns: HTMLButtonElement[] = [];
     for (const stage of STAGES) {
-      const b = el("button", "choice-btn stage-choice") as HTMLButtonElement;
-      b.appendChild(el("span", "cname", `${stage.id}. ${stage.name}`));
-      const tooltip = el("span", "stage-tooltip");
-      const img = el("img") as HTMLImageElement;
+      const b = el("button", "stage-card") as HTMLButtonElement;
+      const img = el("img", "stage-thumb") as HTMLImageElement;
       img.src = stageMinimapUrl(stage.id);
       img.alt = `${stage.name} 미니맵`;
-      tooltip.appendChild(img);
-      tooltip.appendChild(el("span", "tooltip-title", `${stage.id}. ${stage.name}`));
-      tooltip.appendChild(el("span", "", stage.subtitle));
-      b.appendChild(tooltip);
-      if (stage.id === chosenStage) b.style.borderColor = "var(--accent)";
+      img.loading = "lazy";
+      b.appendChild(img);
+      const cbody = el("div", "stage-card-body");
+      cbody.appendChild(el("span", "stage-card-no", `STAGE ${stage.id}`));
+      cbody.appendChild(el("span", "stage-card-name", stage.name));
+      cbody.appendChild(el("span", "stage-card-sub", stage.subtitle));
+      b.appendChild(cbody);
+      b.appendChild(el("span", "stage-card-check", "✓"));
+      b.classList.toggle("selected", stage.id === chosenStage);
       b.onclick = () => {
         chosenStage = stage.id;
-        stageBtns.forEach((x) => (x.style.borderColor = "var(--line)"));
-        b.style.borderColor = "var(--accent)";
+        stageBtns.forEach((x) => x.classList.remove("selected"));
+        b.classList.add("selected");
       };
       stageBtns.push(b);
       stageRow.appendChild(b);
@@ -1087,7 +995,11 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       "위 6개 목표 세션과 4개 경계 관찰을 12분 이상씩 채우면 120분입니다. `yarn manual-playlog --next`와 `--plan`의 다음 필요 항목 순서대로 진행하세요.",
     ));
 
-    const row = el("div", "row-btns");
+    const tools = el("details", "tool-group");
+    const toolsSummary = el("summary", "", "명령 복사 도구");
+    toolsSummary.appendChild(el("span", "summary-note", " 모든 수동 증거 명령 복사"));
+    tools.appendChild(toolsSummary);
+    const row = el("div", "tool-body btn-group");
     if (currentStartCommand) {
       if (currentStartNextCommand) {
         const copyCurrentStartNextValidateSave = el("button", "", "현재 다음검증+마커 복사");
@@ -1296,10 +1208,14 @@ export function openManualProofGuideModal(ctx?: AppCtx) {
       }
     };
     row.appendChild(copyJsonSummary);
+    tools.appendChild(row);
+    body.appendChild(tools);
+
+    const footer = el("div", "row-btns");
     const closeBtn = el("button", "primary", "닫기");
     closeBtn.onclick = close;
-    row.appendChild(closeBtn);
-    body.appendChild(row);
+    footer.appendChild(closeBtn);
+    body.appendChild(footer);
   });
 }
 

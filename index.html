@@ -21,8 +21,10 @@
         <div id="menubar"></div>
         <!-- COMPONENT: Topbar - round, gold, difficulty, speed, pause, and save status. -->
         <div id="topbar"></div>
-        <!-- COMPONENT: MiddleLayout - board canvas and right panel. -->
+        <!-- COMPONENT: MiddleLayout - left roster, board canvas, and right panel. -->
         <div id="middle">
+          <!-- COMPONENT: LeftPanel - owned-unit roster grouped by type with grade filter. -->
+          <div id="left-panel"></div>
           <!-- COMPONENT: Board - canvas renderer and RTS pointer interactions. -->
           <div id="board-wrap">
             <canvas id="board"></canvas>
@@ -30,6 +32,8 @@
             <div id="unit-detail" class="hidden"></div>
             <!-- COMPONENT: RecipeSuggestions - craftable recipes related to selected units. -->
             <div id="recipe-suggestions" class="hidden"></div>
+            <!-- COMPONENT: DpsMeter - toggleable real-time per-unit damage meter. -->
+            <div id="dps-meter" class="hidden"></div>
           </div>
           <!-- COMPONENT: RightPanel - mission, boss, and log tabs. -->
           <div id="right-panel"></div>
