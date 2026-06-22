@@ -135,8 +135,8 @@ function startTitleFx(): () => void {
     // 중앙 균열 광선
     const cx = canvas.width / 2;
     const grad = ctx2d.createRadialGradient(cx, canvas.height * 0.42, 10, cx, canvas.height * 0.42, canvas.width * 0.55);
-    grad.addColorStop(0, "rgba(255,95,162,0.10)");
-    grad.addColorStop(0.4, "rgba(176,123,255,0.05)");
+    grad.addColorStop(0, "rgba(244,201,90,0.12)");
+    grad.addColorStop(0.4, "rgba(217,139,58,0.06)");
     grad.addColorStop(1, "rgba(0,0,0,0)");
     ctx2d.fillStyle = grad;
     ctx2d.fillRect(0, 0, canvas.width, canvas.height);
@@ -357,6 +357,15 @@ export function openCollection(ctx: AppCtx) {
           ? `${FAMILY_LABEL[u.family]} · ${u.roles.map((r) => ROLE_LABEL[r]).join("/")} · 공격 ${u.attack} · 속도 ${u.attackSpeed}`
           : "아직 만나지 못했다"));
         if (seen && u.desc) info.appendChild(el("div", "dex-desc", u.desc));
+        if (seen && u.skills && u.skills.length > 0) {
+          const skText = u.skills.map((sk) => {
+            const trig = sk.trigger.kind === "onAttack"
+              ? `${Math.round(sk.trigger.chance * 100)}%`
+              : `${sk.trigger.everySeconds}s`;
+            return `${sk.name}(${trig})`;
+          }).join(" · ");
+          info.appendChild(el("div", "dex-skill", `⚡ ${skText}`));
+        }
         card.appendChild(info);
         grid.appendChild(card);
       }

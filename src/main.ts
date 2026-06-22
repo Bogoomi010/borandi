@@ -11,6 +11,7 @@ import {
   renderUnitDetail, renderRecipeSuggestions,
 } from "./ui/panels";
 import { renderMenubar } from "./ui/menu";
+import { renderDpsMeter, toggleDps, resetDps } from "./ui/dpsMeter";
 import { toast, anyModalOpen, closeTopModal, confirmModal } from "./ui/widgets";
 import {
   manualPlaylogCommand,
@@ -187,6 +188,7 @@ const ctx: AppCtx = {
     game.onEvent = onGameEvent;
     renderer.selectedUids.clear();
     renderer.resetFx();
+    resetDps();
     craftableIds = craftableSet();
     ctx.paused = false;
     ctx.lastRunUnlockedNext = false;
@@ -211,6 +213,7 @@ const ctx: AppCtx = {
     game.onEvent = onGameEvent;
     renderer.selectedUids.clear();
     renderer.resetFx();
+    resetDps();
     craftableIds = craftableSet();
     ctx.paused = true;
     ctx.lastRunUnlockedNext = false;
@@ -333,6 +336,7 @@ function scheduleAutosave() {
 let acc = 0;
 let lastTime = performance.now();
 let lastTopbarAt = 0;
+let lastCastBorn = 0; // 스킬 발동 사운드 트리거용 high-water mark
 
 function loop(now: number) {
   if (ctx.scene === "game") {
@@ -390,21 +394,34 @@ function loop(now: number) {
     renderer.autoStartIn = game.state.breakTicks > 0 ? game.state.breakTicks * DT : null;
 
     renderer.draw(game.state);
+
+    // 스킬 발동 사운드 (castFx의 새 항목 감지; born은 게임 시간으로 단조 증가)
+    if (game.state.time + 0.001 < lastCastBorn) lastCastBorn = 0; // 새 런 리셋
+    let newestCast = lastCastBorn;
+    for (const f of game.state.castFx) if (f.born > newestCast) newestCast = f.born;
+    if (newestCast > lastCastBorn) {
+      if (!ctx.paused) audio.sfx("skill");
+      lastCastBorn = newestCast;
+    }
+
     maybeShowResult(ctx);
 
     if (panelsDirty) {
       panelsDirty = false;
       notifyNewlyCraftable();
       renderTopbar(ctx);
+      renderLeftPanel(ctx);
       renderRightPanel(ctx);
       renderUnitDetail(ctx);
       renderRecipeSuggestions(ctx);
       renderActionbar(ctx);
+      renderDpsMeter(ctx);
     } else if (game.state.phase === "wave" && now - lastTopbarAt > 250) {
       lastTopbarAt = now;
       renderTopbar(ctx);
       renderUnitDetail(ctx); // 전투 중 누적피해 갱신
       renderRecipeSuggestions(ctx);
+      renderDpsMeter(ctx); // 전투 중 실시간 DPS 갱신
     }
   }
   lastTime = now;
@@ -576,6 +593,10 @@ document.addEventListener("keydown", (e) => {
     case "e": case "E": ctx.act("setSpeed", { speed: 3 }); break;
     case "l": case "L":
       for (const uid of renderer.selectedUids) ctx.act("toggleLock", { unitId: uid });
+      break;
+    case "v": case "V": // DPS 미터 토글
+      toggleDps(ctx);
+      audio.sfx("click");
       break;
   }
 });

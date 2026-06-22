@@ -6,7 +6,7 @@ import type { Settings } from "./settings";
 export type SfxName =
   | "click" | "deny" | "summon" | "summonRare" | "merge" | "craft" | "sell"
   | "upgrade" | "waveStart" | "bossWarn" | "bossDown" | "leak"
-  | "mission" | "selector" | "victory" | "defeat";
+  | "mission" | "selector" | "victory" | "defeat" | "skill";
 
 export class GameAudio {
   private ctx: AudioContext | null = null;
@@ -154,6 +154,11 @@ export class GameAudio {
         for (const [i, f] of [392, 330, 262, 196].entries()) {
           this.tone(f, 0.5, "sawtooth", v * 0.16, i * 0.22);
         }
+        break;
+      case "skill":
+        // 스킬 발동: 짧은 상승 광휘음
+        this.tone(740, 0.08, "triangle", v * 0.16);
+        this.tone(1180, 0.16, "sine", v * 0.16, 0.05, 1480);
         break;
     }
   }

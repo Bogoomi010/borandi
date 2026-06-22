@@ -12,12 +12,12 @@ import tilesetUrl from "../assets/tilesets/dark-fantasy-village-tileset.png";
 import enemyPortalUrl from "../assets/effects/enemy-portal.png";
 
 const GRADE_COLOR: Record<Grade, string> = {
-  common: "#9aa1b5", rare: "#4cc3ff", hero: "#b07bff",
-  legend: "#ffb347", hidden: "#ff5fa2",
+  common: "#b9ac92", rare: "#5bb6d6", hero: "#b07bff",
+  legend: "#ffb347", hidden: "#df6aa0",
 };
 const FAMILY_COLOR: Record<string, string> = {
   flame: "#ff6b4a", frost: "#56c8ff", storm: "#ffe14d",
-  iron: "#b8c0cc", void: "#b07bff", forest: "#6fdd8b",
+  iron: "#cdbfa6", void: "#b07bff", forest: "#7fdd72",
 };
 
 const FAMILY_INITIAL: Record<string, string> = {
@@ -25,13 +25,13 @@ const FAMILY_INITIAL: Record<string, string> = {
 };
 
 const GROUND_COLOR = {
-  dirt: "#352821",
-  ash: "#454241",
-  grass: "#4c5134",
-  stone: "#383a43",
-  corrupt: "#302039",
-  blood: "#3a2020",
-  rune: "#262735",
+  dirt: "#3a2c1d",
+  ash: "#46403a",
+  grass: "#46512f",
+  stone: "#403a30",
+  corrupt: "#352338",
+  blood: "#3a2018",
+  rune: "#2c2535",
 } as const;
 
 const ATLAS: Record<StageDecorationKind, [number, number, number, number]> = {
@@ -124,7 +124,7 @@ class EnemyPortalAsset {
 
     ctx.globalCompositeOperation = "lighter";
     ctx.globalAlpha = 0.38 + Math.sin(time * 3.1) * 0.08;
-    ctx.fillStyle = "#7b4dff";
+    ctx.fillStyle = "#d9743a";
     ctx.beginPath();
     ctx.ellipse(0, 0, 42 * pulse, 24 * pulse, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -140,12 +140,12 @@ class EnemyPortalAsset {
     }
 
     // 이미지 로드 전 fallback. 실제 에셋이 뜨기 전에도 출발 지점이 비어 보이지 않게 한다.
-    ctx.strokeStyle = "#9b6dff";
+    ctx.strokeStyle = "#f0a850";
     ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.ellipse(0, 0, 34, 20, 0, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.strokeStyle = "#53d9ff";
+    ctx.strokeStyle = "#ffd98a";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(0, 0, 31, time % (Math.PI * 2), time % (Math.PI * 2) + Math.PI * 1.15);
@@ -164,10 +164,16 @@ export class BoardRenderer {
   showLabels = false;
   /** 적 피격 데미지 숫자 표시 */
   showDamage = true;
-  /** 적 eid별 직전 프레임 HP (데미지 숫자 산출용, 렌더 전용·결정론 무관) */
-  private enemyHp = new Map<number, number>();
+  /** 적 eid별 직전 프레임 메타 (데미지/이펙트 산출용, 렌더 전용·결정론 무관) */
+  private enemyMeta = new Map<number, { x: number; y: number; hp: number; maxHp: number; isBoss: boolean; hit: number }>();
   /** 떠오르는 데미지 숫자 */
-  private floaters: { x: number; y: number; amount: number; born: number }[] = [];
+  private floaters: { x: number; y: number; amount: number; born: number; frac: number; boss: boolean }[] = [];
+  /** 파티클(스파크/처치 버스트/머즐), 빔(트레이서), 링(충격파) — 전부 렌더 전용 */
+  private particles: { x: number; y: number; vx: number; vy: number; born: number; life: number; color: string; size: number; grav: number }[] = [];
+  private beams: { x0: number; y0: number; x1: number; y1: number; born: number; life: number; color: string; width: number }[] = [];
+  private rings: { x: number; y: number; born: number; life: number; color: string; r: number }[] = [];
+  /** 유닛 uid별 직전 쿨다운 (발사 엣지 감지용) */
+  private unitCd = new Map<number, number>();
   /** 라운드 종료 후 다음 라운드 자동 시작까지 남은 초 (null이면 표시 안 함) */
   autoStartIn: number | null = null;
   /** 드래그 다중 선택 박스 (보드 좌표, 없으면 null) */
@@ -188,8 +194,54 @@ export class BoardRenderer {
 
   /** 런 전환 시 렌더 전용 상태 초기화 (이전 런의 데미지 숫자/HP 잔재 제거) */
   resetFx() {
-    this.enemyHp.clear();
+    this.enemyMeta.clear();
     this.floaters.length = 0;
+    this.particles.length = 0;
+    this.beams.length = 0;
+    this.rings.length = 0;
+    this.unitCd.clear();
+  }
+
+  // ---------- 이펙트 스폰 헬퍼 ----------
+
+  private spawnSparks(x: number, y: number, color: string, count: number, speed: number, now: number) {
+    if (this.particles.length > 520) return;
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = speed * (0.4 + Math.random() * 0.8);
+      this.particles.push({
+        x, y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - speed * 0.3,
+        born: now, life: 0.28 + Math.random() * 0.28,
+        color, size: 1.4 + Math.random() * 2.2, grav: speed * 1.6,
+      });
+    }
+  }
+
+  private spawnBeam(x0: number, y0: number, x1: number, y1: number, color: string, width: number, now: number) {
+    if (this.beams.length > 140) this.beams.shift();
+    this.beams.push({ x0, y0, x1, y1, born: now, life: 0.11, color, width });
+  }
+
+  private spawnDeath(x: number, y: number, color: string, isBoss: boolean, now: number) {
+    this.spawnSparks(x, y, color, isBoss ? 26 : 12, isBoss ? 130 : 78, now);
+    this.spawnSparks(x, y, "#fff3d0", isBoss ? 10 : 5, isBoss ? 90 : 54, now);
+    if (this.rings.length > 44) this.rings.shift();
+    this.rings.push({ x, y, born: now, life: isBoss ? 0.5 : 0.32, color, r: isBoss ? 60 : 28 });
+  }
+
+  /** 사거리 안 가장 가까운 적의 화면 좌표 (없으면 null) — 트레이서 표적용 */
+  private nearestEnemyPos(state: GameState, ux: number, uy: number, range: number): { x: number; y: number } | null {
+    let best: { x: number; y: number } | null = null;
+    let bestD = range * range;
+    for (const e of state.enemies) {
+      const p = posAtDist(e.dist, state.stageId);
+      const dx = p.x - ux, dy = p.y - uy;
+      const d = dx * dx + dy * dy;
+      if (d <= bestD) { bestD = d; best = p; }
+    }
+    return best;
   }
 
   /** 화면 좌표 → 논리 보드 좌표 */
@@ -247,7 +299,7 @@ export class BoardRenderer {
 
     // 경로 (새 게임에서 선택한 맵의 닫힌 루프)
     ctx.lineWidth = 34;
-    ctx.strokeStyle = "#1d2230";
+    ctx.strokeStyle = "#241712";
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     ctx.beginPath();
@@ -256,11 +308,11 @@ export class BoardRenderer {
     ctx.closePath();
     ctx.stroke();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = stage.ground === "rune" ? "#8052d9" : "#2c3350";
+    ctx.strokeStyle = stage.ground === "rune" ? "#8052d9" : "#5a4226";
     ctx.stroke();
 
     // 진행 방향 화살표
-    ctx.fillStyle = "#3a4263";
+    ctx.fillStyle = "#7a5a30";
     for (let d = 160; d < pathLength; d += 260) {
       const p = posAtDist(d, state.stageId);
       const p2 = posAtDist(d + 8, state.stageId);
@@ -292,11 +344,24 @@ export class BoardRenderer {
       const selected = this.selectedUids.has(u.uid);
       const justFired = u.cooldown > 0 && u.cooldown > 1 / def.attackSpeed - 0.12;
 
+      // 발사 엣지 감지 → 트레이서 + 머즐 플래시 (한 발당 1회)
+      const prevCd = this.unitCd.get(u.uid);
+      if (prevCd !== undefined && u.cooldown > prevCd + 0.001) {
+        const color = FAMILY_COLOR[def.family] ?? "#ffd98a";
+        const target = this.nearestEnemyPos(state, s.x, s.y, def.range + 12);
+        if (target) {
+          const w = def.grade === "legend" || def.grade === "hidden" ? 3.2 : def.grade === "hero" ? 2.4 : 1.7;
+          this.spawnBeam(s.x, s.y - 2, target.x, target.y, color, w, state.time);
+        }
+        this.spawnSparks(s.x, s.y - 2, color, 3, 26, state.time);
+      }
+      this.unitCd.set(u.uid, u.cooldown);
+
       // 사거리 표시 (선택 시)
       if (selected) {
         ctx.beginPath();
         ctx.arc(s.x, s.y, def.range, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(91,140,255,.35)";
+        ctx.strokeStyle = "rgba(232,181,77,.4)";
         ctx.lineWidth = 1;
         ctx.stroke();
         // 이동/공격 목적지 안내선
@@ -375,8 +440,8 @@ export class BoardRenderer {
 
     // 적 — 외계인 걷기 스프라이트로 표현 (등급/상태는 크기·틴트로 구분)
     // 직전 프레임 HP를 비교해 데미지 숫자를 띄운다(렌더 전용, 게임 상태 불변).
-    const prevHp = this.enemyHp;
-    this.enemyHp = new Map();
+    const prevMeta = this.enemyMeta;
+    this.enemyMeta = new Map();
     let boss: GameState["enemies"][number] | null = null;
     for (const e of state.enemies) {
       const p = posAtDist(e.dist, state.stageId);
@@ -386,19 +451,27 @@ export class BoardRenderer {
       const size = e.isBoss ? 96 : 52;
       const r = size / 2;
 
-      if (this.showDamage) {
-        const prev = prevHp.get(e.eid);
-        if (prev !== undefined && e.hp < prev - 0.5) {
+      const prev = prevMeta.get(e.eid);
+      let hitT = prev?.hit ?? -1;
+      if (prev !== undefined && e.hp < prev.hp - 0.5) {
+        const amount = prev.hp - e.hp;
+        hitT = state.time;
+        const big = amount > e.maxHp * 0.1;
+        if (this.showDamage) {
           this.floaters.push({
             x: p.x + ((e.eid % 5) - 2) * 4,
             y: p.y - r * 0.6,
-            amount: prev - e.hp,
+            amount,
             born: state.time,
+            frac: amount / Math.max(1, e.maxHp),
+            boss: e.isBoss,
           });
-          if (this.floaters.length > 80) this.floaters.shift();
+          if (this.floaters.length > 90) this.floaters.shift();
         }
-        this.enemyHp.set(e.eid, e.hp);
+        // 피격 스파크 (항상)
+        this.spawnSparks(p.x, p.y - r * 0.45, big ? "#ffd36a" : "#fff0c4", big ? 6 : 3, big ? 95 : 58, state.time);
       }
+      this.enemyMeta.set(e.eid, { x: p.x, y: p.y, hp: e.hp, maxHp: e.maxHp, isBoss: e.isBoss, hit: hitT });
 
       // 진행 방향: 살짝 앞 지점과 비교해 좌우 반전 결정
       const ahead = posAtDist(e.dist + 4, state.stageId);
@@ -431,6 +504,18 @@ export class BoardRenderer {
         ctx.stroke();
       }
 
+      // 피격 플래시 (최근 0.09초 내 데미지)
+      if (hitT >= 0 && state.time - hitT < 0.09) {
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = 0.5 * (1 - (state.time - hitT) / 0.09);
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y - r * 0.12, r * 0.5, r * 0.62, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
       // 체력바 (스프라이트 머리 위)
       const w = e.isBoss ? 44 : 20;
       const ratio = Math.max(0, e.hp / e.maxHp);
@@ -441,16 +526,62 @@ export class BoardRenderer {
       ctx.fillRect(p.x - w / 2, barY, w * ratio, 4);
     }
 
-    // 데미지 숫자 — 떠오르며 페이드 (0.85초). 게임 시간(state.time) 기준.
+    // 처치 감지 — 직전 프레임에 있던 적이 사라졌고 체력이 낮았다면 처치로 간주
+    for (const [eid, m] of prevMeta) {
+      if (!this.enemyMeta.has(eid) && m.hp <= m.maxHp * 0.55) {
+        this.spawnDeath(m.x, m.y, m.isBoss ? "#ff6a4a" : "#ffb455", m.isBoss, state.time);
+      }
+    }
+
+    // 빔(트레이서) · 파티클 · 링 — 적 위에 가산 합성으로 그린다
+    this.drawEffects(state.time);
+
+    // 스킬 발동 링 (엔진 castFx, 렌더 전용)
+    if (state.castFx.length > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      for (const f of state.castFx) {
+        const age = state.time - f.born;
+        if (age < 0 || age > 0.6) continue;
+        const t = age / 0.6;
+        const base = f.kind === "buff" ? 38 : f.kind === "cc" ? 46 : 30;
+        const grow = f.kind === "buff" ? 54 : f.kind === "cc" ? 70 : 86;
+        ctx.globalAlpha = (1 - t) * 0.75;
+        ctx.strokeStyle = f.color;
+        ctx.lineWidth = (f.kind === "burst" ? 3.5 : 2.5) * (1 - t) + 0.5;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, base + t * grow, 0, Math.PI * 2);
+        ctx.stroke();
+        if (f.kind !== "buff") {
+          ctx.globalAlpha = (1 - t) * 0.4;
+          ctx.beginPath();
+          ctx.arc(f.x, f.y, (base + t * grow) * 0.6, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+
+    // 데미지 숫자 — 떠오르며 페이드. 피해량 비중으로 크기/색 차등 (크리티컬 강조).
     if (this.showDamage && this.floaters.length > 0) {
       ctx.textAlign = "center";
-      ctx.font = "bold 12px sans-serif";
       this.floaters = this.floaters.filter((f) => {
         const age = state.time - f.born;
-        if (age < 0 || age > 0.85) return false;
-        ctx.globalAlpha = Math.max(0, 1 - age / 0.85);
-        ctx.fillStyle = "#ffe14d";
-        ctx.fillText(`-${Math.round(f.amount).toLocaleString()}`, f.x, f.y - age * 34);
+        if (age < 0 || age > 0.9) return false;
+        const t = age / 0.9;
+        ctx.globalAlpha = Math.max(0, 1 - t * t);
+        const big = f.frac > 0.1 || f.boss;
+        const huge = f.frac > 0.22;
+        const sz = (huge ? 19 : big ? 15 : 12) * (1 + Math.max(0, 0.35 - age) * 0.9);
+        ctx.font = `900 ${sz.toFixed(1)}px sans-serif`;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(40,20,8,.9)";
+        ctx.fillStyle = huge ? "#ff7a4a" : big ? "#ffc24a" : "#fff0c2";
+        const tx = f.x, ty = f.y - age * 38;
+        const label = `-${Math.round(f.amount).toLocaleString()}`;
+        ctx.strokeText(label, tx, ty);
+        ctx.fillText(label, tx, ty);
         return true;
       });
       ctx.globalAlpha = 1;
@@ -507,6 +638,63 @@ export class BoardRenderer {
       ctx.lineWidth = 1;
       ctx.strokeRect(x, y, w, h);
     }
+  }
+
+  /** 빔·링·파티클을 가산 합성으로 렌더 + 만료 제거 */
+  private drawEffects(now: number) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.lineCap = "round";
+
+    this.beams = this.beams.filter((b) => {
+      const age = now - b.born;
+      if (age < 0 || age > b.life) return false;
+      const a = 1 - age / b.life;
+      ctx.globalAlpha = a;
+      ctx.strokeStyle = b.color;
+      ctx.lineWidth = b.width * (0.6 + a * 0.4);
+      ctx.beginPath();
+      ctx.moveTo(b.x0, b.y0);
+      ctx.lineTo(b.x1, b.y1);
+      ctx.stroke();
+      ctx.globalAlpha = a * 0.9;
+      ctx.fillStyle = "#fff6dc";
+      ctx.beginPath();
+      ctx.arc(b.x1, b.y1, b.width * 1.15, 0, Math.PI * 2);
+      ctx.fill();
+      return true;
+    });
+
+    this.rings = this.rings.filter((r) => {
+      const age = now - r.born;
+      if (age < 0 || age > r.life) return false;
+      const t = age / r.life;
+      ctx.globalAlpha = (1 - t) * 0.8;
+      ctx.strokeStyle = r.color;
+      ctx.lineWidth = 2.5 * (1 - t) + 0.5;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.r * (0.3 + t * 0.9), 0, Math.PI * 2);
+      ctx.stroke();
+      return true;
+    });
+
+    this.particles = this.particles.filter((p) => {
+      const age = now - p.born;
+      if (age < 0 || age > p.life) return false;
+      const a = 1 - age / p.life;
+      const px = p.x + p.vx * age;
+      const py = p.y + p.vy * age + 0.5 * p.grav * age * age;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(px, py, p.size * (0.4 + a * 0.6), 0, Math.PI * 2);
+      ctx.fill();
+      return true;
+    });
+
+    ctx.restore();
+    ctx.globalAlpha = 1;
   }
 
   private drawGradeShape(x: number, y: number, grade: Grade, r: number) {

@@ -8,7 +8,7 @@ import {
 } from "./path";
 import type {
   EnemyState, GameInput, GameState, Grade, MissionState, OwnedUnit,
-  PendingSelector, Phase, ResultSummary, RewardDef, UnitDef,
+  PendingSelector, Phase, ResultSummary, RewardDef, SkillDef, SkillEffect, UnitDef,
   DifficultyId,
 } from "./types";
 import { GRADE_ORDER } from "./types";
@@ -60,6 +60,12 @@ export interface ActionResult { ok: boolean; reason?: string; }
 const ok: ActionResult = { ok: true };
 const fail = (reason: string): ActionResult => ({ ok: false, reason });
 
+/** 스킬 발동 이펙트 색 (계열별, 렌더 전용) */
+const FX_COLOR: Record<string, string> = {
+  flame: "#ff6b4a", frost: "#56c8ff", storm: "#ffe14d",
+  iron: "#cdbfa6", void: "#b07bff", forest: "#7fdd72",
+};
+
 export class Game {
   state: GameState;
   private rng: Rng;
@@ -97,6 +103,7 @@ export class Game {
       nextUid: 1, nextEid: 1,
       waveSpawned: 0, waveKilled: 0,
       speed: 1,
+      castFx: [],
     };
     this.log("system", `시드 ${seed} · 난이도 ${diff.name} · 이번 판 고정 맵 ${stage.name}로 시작`);
   }
@@ -195,13 +202,36 @@ export class Game {
     const unit: OwnedUnit = {
       uid, defId, locked: false, x, y,
       acquiredRound: this.state.round,
-      totalDamage: 0, cooldown: 0,
+      totalDamage: 0, skillDamage: 0, cooldown: 0,
+      skillCd: (UNIT_BY_ID[defId].skills ?? []).map(() => 0),
+      buffs: [],
       state: "idle", order: { kind: "none" }, anchorX: x, anchorY: y,
     };
     this.state.units.push(unit);
     const def = UNIT_BY_ID[defId];
     this.log("summon", `${how}: ${def.name} 획득`);
     return unit;
+  }
+
+  /** 플레이어 보유 유닛 수 (소환수 제외) */
+  ownedUnitCount(): number {
+    return this.state.units.filter((u) => !u.temporary).length;
+  }
+
+  /** 스킬 소환수 생성 (보유칸/조합/판매 비대상, lifeSeconds 후 자동 소멸). 결정론적. */
+  private addTempUnit(defId: string, nearX: number, nearY: number, lifeSeconds: number) {
+    if (!UNIT_BY_ID[defId]) return;
+    const uid = this.state.nextUid++;
+    const { x, y } = this.resolvePlacement(uid, nearX, nearY);
+    this.state.units.push({
+      uid, defId, locked: false, x, y,
+      acquiredRound: this.state.round,
+      totalDamage: 0, skillDamage: 0, cooldown: 0,
+      skillCd: (UNIT_BY_ID[defId].skills ?? []).map(() => 0),
+      buffs: [],
+      state: "idle", order: { kind: "none" }, anchorX: x, anchorY: y,
+      temporary: true, expireAt: this.state.time + lifeSeconds,
+    });
   }
 
   /** 좌표를 사각형 내부 + 다른 유닛과 최소 간격으로 보정 (순수·결정론적) */
@@ -300,7 +330,7 @@ export class Game {
     const g = this.requirePhase(["prepare", "wave", "reward"], "소환");
     if (!g.ok) return g;
     if (this.state.gold < SUMMON_COST) return fail("골드가 부족합니다.");
-    if (this.state.units.length >= this.diff.unitCap) {
+    if (this.ownedUnitCount() >= this.diff.unitCap) {
       return fail("보유칸이 가득 차 소환할 수 없습니다.");
     }
     this.state.gold -= SUMMON_COST;
@@ -320,6 +350,7 @@ export class Game {
     const units = uids.map((id) => this.state.units.find((u) => u.uid === id));
     if (units.some((u) => !u)) return fail("선택한 유닛을 찾을 수 없습니다.");
     const list = units as OwnedUnit[];
+    if (list.some((u) => u.temporary)) return fail("소환수는 합성할 수 없습니다.");
     if (list.some((u) => u.locked)) return fail("잠금 유닛이 포함되어 있습니다.");
     const defs = list.map((u) => UNIT_BY_ID[u.defId]);
     const grade = defs[0].grade;
@@ -350,7 +381,7 @@ export class Game {
   private matchIngredients(recipeId: string): number[] | null {
     const recipe = RECIPE_BY_ID[recipeId];
     if (!recipe) return null;
-    const available = this.state.units.filter((u) => !u.locked);
+    const available = this.state.units.filter((u) => !u.locked && !u.temporary);
     const usedUids: number[] = [];
     for (const ing of recipe.ingredients) {
       let need = ing.count;
@@ -400,6 +431,7 @@ export class Game {
     if (!uids || uids.length === 0) return fail("판매할 유닛을 선택하세요.");
     const targets = this.state.units.filter((u) => uids.includes(u.uid));
     if (targets.length !== uids.length) return fail("선택한 유닛을 찾을 수 없습니다.");
+    if (targets.some((u) => u.temporary)) return fail("소환수는 판매할 수 없습니다.");
     if (targets.some((u) => u.locked)) return fail("잠금 유닛이 포함되어 있습니다.");
     let refund = 0;
     for (const u of targets) refund += SELL_REFUND[UNIT_BY_ID[u.defId].grade];
@@ -453,7 +485,7 @@ export class Game {
     if (idx === -1) return fail("선택권을 찾을 수 없습니다.");
     const sel = this.state.pendingSelectors[idx];
     if (!sel.candidateIds.includes(unitId)) return fail("후보에 없는 유닛입니다.");
-    if (this.state.units.length >= this.diff.unitCap) {
+    if (this.ownedUnitCount() >= this.diff.unitCap) {
       return fail("보유칸이 가득 찼습니다. 정리 후 선택하세요.");
     }
     this.state.pendingSelectors.splice(idx, 1);
@@ -594,6 +626,11 @@ export class Game {
     const s = this.state;
     s.tick++;
     s.time += DT;
+    if (s.castFx.length > 0) s.castFx = s.castFx.filter((f) => s.time - f.born < 0.6);
+    // 만료된 소환수 제거
+    if (s.units.some((u) => u.temporary)) {
+      s.units = s.units.filter((u) => !(u.temporary && u.expireAt !== undefined && s.time >= u.expireAt));
+    }
 
     const boss = bossForRound(s.round);
 
@@ -601,6 +638,7 @@ export class Game {
     if (s.breakTicks > 0) {
       this.moveEnemies();
       this.tickUnits(boss?.slowResist ?? 0);
+      this.tickDots();
       // 적을 전멸시켰으면 그 시점부터 10초로 단축 (60초 상한과 둘 중 빠른 쪽)
       if (s.enemies.length === 0 && s.breakTicks > ROUND_BREAK_CLEARED) {
         s.breakTicks = ROUND_BREAK_CLEARED;
@@ -624,7 +662,7 @@ export class Game {
         speed: wave.speed, armor: wave.armor,
         dist: 0, isBoss,
         slows: [], stunUntil: 0,
-        armorBreakStacks: 0, ampStacks: 0,
+        armorBreakStacks: 0, ampStacks: 0, dots: [],
         spawnAt: s.time,
       };
       s.enemies.push(enemy);
@@ -633,6 +671,7 @@ export class Game {
 
     this.moveEnemies();
     this.tickUnits(boss?.slowResist ?? 0);
+    this.tickDots();
 
     // 일반 라운드는 스폰 완료 시 정산한다. 보스 라운드는 보스를 처치해야 정산한다.
     if (s.waveSpawned >= wave.count && (wave.type !== "boss" || s.waveKilled >= wave.count)) this.completeRound();
@@ -735,6 +774,8 @@ export class Game {
     const units = [...s.units].sort((a, b) => a.uid - b.uid);
     for (const u of units) {
       u.cooldown -= DT;
+      for (let i = 0; i < u.skillCd.length; i++) u.skillCd[i] -= DT;
+      if (u.buffs.length > 0) u.buffs = u.buffs.filter((b) => b.until > s.time);
       const d = UNIT_BY_ID[u.defId];
       const attackR = d.range;
       const detectR = attackR + DETECT_BONUS;
@@ -804,6 +845,19 @@ export class Game {
         const tp = posAtDist(target.dist, s.stageId);
         if (Math.hypot(tp.x - u.x, tp.y - u.y) <= attackR) this.fireAt(u, d, target, lv, bossSlowResist);
       }
+
+      // 타이머형 궁극기 (자동 발동). 적이 있을 때만, uid·스킬 인덱스 순서로.
+      const sk = d.skills;
+      if (sk && s.enemies.length > 0) {
+        for (let i = 0; i < sk.length; i++) {
+          const skill = sk[i];
+          if (skill.trigger.kind !== "timer") continue;
+          if ((u.skillCd[i] ?? 0) > 0) continue;
+          const seed = target ?? s.enemies[0];
+          this.applySkill(u, d, seed, skill, lv, bossSlowResist);
+          u.skillCd[i] = skill.trigger.everySeconds;
+        }
+      }
     }
   }
 
@@ -816,13 +870,15 @@ export class Game {
     const s = this.state;
     const atkSpeed = d.attackSpeed *
       (d.family === "storm" ? 1 + 0.1 * lv.storm : 1) *
-      (1 + this.relicBonus("attackSpeedMult", d.family) + this.relicBonus("attackSpeedMult"));
+      (1 + this.relicBonus("attackSpeedMult", d.family) + this.relicBonus("attackSpeedMult")) *
+      this.buffMult(u, "attackSpeed");
     u.cooldown = 1 / atkSpeed;
 
     let atk = d.attack *
       this.legendCommandAttackMult() *
       (d.family === "flame" ? 1 + 0.12 * lv.flame : 1) *
-      (1 + this.relicBonus("attackMult", d.family) + this.relicBonus("attackMult"));
+      (1 + this.relicBonus("attackMult", d.family) + this.relicBonus("attackMult")) *
+      this.buffMult(u, "attack");
     if (e.isBoss && d.bossDamageBonus) {
       const bonus = d.bossDamageBonus +
         (d.family === "iron" ? 0.15 * lv.iron : 0) +
@@ -867,7 +923,185 @@ export class Game {
       e.hp = 0;
     }
 
+    // 액티브 스킬 proc (자동 시전). rng는 스킬 인덱스 순서로만 호출 → 결정론 유지.
+    const skills = d.skills;
+    if (skills) {
+      for (let i = 0; i < skills.length; i++) {
+        const sk = skills[i];
+        if (sk.trigger.kind !== "onAttack") continue;
+        if ((u.skillCd[i] ?? 0) > 0) continue;
+        if (this.rng.next() < sk.trigger.chance) {
+          this.applySkill(u, d, e, sk, lv, bossSlowResist);
+          u.skillCd[i] = sk.trigger.internalCd ?? 0;
+        }
+      }
+    }
+
     this.collectDead();
+  }
+
+  /** 유닛의 능력치 버프 배수 (활성 버프 곱) */
+  private buffMult(u: OwnedUnit, stat: "attack" | "attackSpeed"): number {
+    let m = 1;
+    for (const b of u.buffs) if (b.stat === stat && b.until > this.state.time) m *= b.mult;
+    return m;
+  }
+
+  /** 스킬 발동 시각 이펙트 push (렌더 전용) */
+  private pushCastFx(x: number, y: number, family: string, kind: "burst" | "buff" | "cc") {
+    const s = this.state;
+    s.castFx.push({ x, y, color: FX_COLOR[family] ?? "#ffd98a", kind, born: s.time });
+    if (s.castFx.length > 40) s.castFx.shift();
+  }
+
+  /** 연쇄 피해: 대상에서 가장 가까운 미피격 적으로 튕긴다 (결정론) */
+  private applyChain(u: OwnedUnit, d: UnitDef, first: EnemyState, base: number, ef: SkillEffect, voidLv: number) {
+    const s = this.state;
+    const jumps = ef.maxJumps ?? 3;
+    const falloff = ef.falloff ?? 0.7;
+    let power = ef.power ?? 1;
+    const hit = new Set<number>();
+    let cur: EnemyState | null = first;
+    for (let j = 0; j < jumps && cur; j++) {
+      hit.add(cur.eid);
+      const dealt = this.applyDamage(cur, base * power, d.attackType, voidLv);
+      u.totalDamage += dealt; u.skillDamage += dealt;
+      power *= falloff;
+      const cp = posAtDist(cur.dist, s.stageId);
+      let next: EnemyState | null = null; let bd = Infinity;
+      for (const c of s.enemies) {
+        if (hit.has(c.eid) || c.hp <= 0) continue;
+        const p = posAtDist(c.dist, s.stageId);
+        const dd = Math.hypot(p.x - cp.x, p.y - cp.y);
+        if (dd < bd) { bd = dd; next = c; }
+      }
+      cur = next;
+    }
+  }
+
+  /** 액티브 스킬 효과 적용. 발동 판정은 호출부에서 끝났고, 여기선 결정론적으로 순회한다. */
+  private applySkill(
+    u: OwnedUnit, d: UnitDef, current: EnemyState, sk: SkillDef,
+    lv: { flame: number; storm: number; iron: number; frost: number; void: number },
+    bossSlowResist: number,
+  ) {
+    const s = this.state;
+    const base = d.attack * this.legendCommandAttackMult()
+      * (d.family === "flame" ? 1 + 0.12 * lv.flame : 1) * this.buffMult(u, "attack");
+    const hasDamage = sk.effects.some((e) => e.type === "burst" || e.type === "chain" || e.type === "dot");
+    const fxKind: "burst" | "buff" | "cc" =
+      sk.target === "self" || sk.target === "alliesInRadius" ? "buff" : hasDamage ? "burst" : "cc";
+
+    // 아군 버프 스킬
+    if (sk.target === "self" || sk.target === "alliesInRadius") {
+      const radius = sk.effects.find((e) => e.radius)?.radius ?? 120;
+      const allies = sk.target === "self"
+        ? [u]
+        : s.units.filter((a) => Math.hypot(a.x - u.x, a.y - u.y) <= radius);
+      for (const ef of sk.effects) {
+        if (ef.type === "buffAttack" || ef.type === "buffAttackSpeed") {
+          const stat = ef.type === "buffAttack" ? "attack" : "attackSpeed";
+          for (const a of allies) a.buffs.push({ stat, mult: ef.mult ?? 1.2, until: s.time + (ef.duration ?? 4) });
+        } else if (ef.type === "summon" && ef.defId) {
+          for (let n = 0; n < (ef.count ?? 1); n++) {
+            this.addTempUnit(ef.defId, u.x + (n - 0.5) * 24, u.y + 18, ef.lifeSeconds ?? 8);
+          }
+        }
+      }
+      this.pushCastFx(u.x, u.y, d.family, fxKind);
+      return;
+    }
+
+    // 적 대상 스킬
+    for (const e of this.skillTargets(u, sk, current)) {
+      if (e.hp <= 0) continue;
+      for (const ef of sk.effects) {
+        switch (ef.type) {
+          case "burst": {
+            let dmg = base * (ef.power ?? 1);
+            if (e.isBoss && ef.bossBonus) dmg *= 1 + ef.bossBonus;
+            const dealt = this.applyDamage(e, dmg, d.attackType, lv.void);
+            u.totalDamage += dealt; u.skillDamage += dealt;
+            break;
+          }
+          case "chain":
+            this.applyChain(u, d, e, base, ef, lv.void);
+            break;
+          case "dot":
+            e.dots.push({
+              perSecond: base * (ef.perSecond ?? 0.3),
+              until: s.time + (ef.duration ?? 3),
+              attackerUid: u.uid,
+              attackType: d.attackType,
+            });
+            break;
+          case "slow": {
+            let pct = ef.pct ?? 0.3;
+            if (e.isBoss) pct *= 1 - Math.max(0, bossSlowResist - s.bossSlowResistReduction);
+            e.slows.push({ pct, until: s.time + (ef.duration ?? 2) });
+            break;
+          }
+          case "stun": {
+            const dur = (ef.duration ?? 1) * (e.isBoss ? 0.5 : 1);
+            e.stunUntil = Math.max(e.stunUntil, s.time + dur);
+            break;
+          }
+          case "armorBreak":
+            if (e.armorBreakStacks < 3) e.armorBreakStacks++;
+            break;
+          case "amp":
+            if (e.ampStacks < 3) e.ampStacks++;
+            break;
+          case "execute":
+            if (!e.isBoss && e.hp > 0 && e.hp <= e.maxHp * (ef.pct ?? 0.1)) {
+              u.totalDamage += e.hp; u.skillDamage += e.hp;
+              e.hp = 0;
+            }
+            break;
+          case "buffAttack":
+          case "buffAttackSpeed":
+          case "summon":
+            break; // 아군 버프/소환은 self/alliesInRadius 분기에서 처리
+        }
+      }
+    }
+    const cp = posAtDist(current.dist, s.stageId);
+    this.pushCastFx(cp.x, cp.y, d.family, fxKind);
+  }
+
+  /** 스킬 대상 선택 (결정론적; randomEnemy만 rng 사용) */
+  private skillTargets(u: OwnedUnit, sk: SkillDef, current: EnemyState): EnemyState[] {
+    const s = this.state;
+    switch (sk.target) {
+      case "currentTarget":
+        return [current];
+      case "areaAroundTarget": {
+        const radius = sk.effects.find((e) => e.radius)?.radius ?? 60;
+        const tp = posAtDist(current.dist, s.stageId);
+        return s.enemies.filter((e) => {
+          const p = posAtDist(e.dist, s.stageId);
+          return Math.hypot(p.x - tp.x, p.y - tp.y) <= radius;
+        });
+      }
+      case "nearestEnemy": {
+        let best = current; let bd = Infinity;
+        for (const e of s.enemies) {
+          const p = posAtDist(e.dist, s.stageId);
+          const dd = Math.hypot(p.x - u.x, p.y - u.y);
+          if (dd < bd) { bd = dd; best = e; }
+        }
+        return [best];
+      }
+      case "lowestHpEnemy":
+        return [s.enemies.reduce((a, b) => (b.hp < a.hp ? b : a), current)];
+      case "highestHpEnemy":
+        return [s.enemies.reduce((a, b) => (b.hp > a.hp ? b : a), current)];
+      case "randomEnemy":
+        return s.enemies.length > 0 ? [this.rng.pick(s.enemies)] : [current];
+      case "self":
+      case "alliesInRadius":
+        return [];
+    }
   }
 
   private applyDamage(e: EnemyState, raw: number, attackType: UnitDef["attackType"], voidLv: number): number {
@@ -884,6 +1118,23 @@ export class Game {
     const dmg = raw * (100 / (100 + effArmor)) * amp;
     e.hp -= dmg;
     return dmg;
+  }
+
+  /** 지속 피해(dot) 한 틱 적용 + 처치 정리. 피해는 시전자 totalDamage에 귀속. */
+  private tickDots() {
+    const s = this.state;
+    let any = false;
+    for (const e of s.enemies) {
+      if (e.dots.length === 0) continue;
+      e.dots = e.dots.filter((dt) => dt.until > s.time);
+      for (const dt of e.dots) {
+        const dealt = this.applyDamage(e, dt.perSecond * DT, dt.attackType, 0);
+        const attacker = s.units.find((a) => a.uid === dt.attackerUid);
+        if (attacker) { attacker.totalDamage += dealt; attacker.skillDamage += dealt; }
+        any = true;
+      }
+    }
+    if (any) this.collectDead();
   }
 
   private collectDead() {

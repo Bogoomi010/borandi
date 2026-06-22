@@ -20,6 +20,50 @@ export const ROLE_LABEL: Record<Role, string> = {
   hold: "홀딩", finisher: "마무리", economy: "경제",
 };
 
+// ===== 액티브 스킬 =====
+// 자동 시전. 모든 무작위 판정은 시드 RNG를 고정 순서로 사용한다(결정론 보존).
+
+export type SkillTrigger =
+  | { kind: "onAttack"; chance: number; internalCd?: number } // 적중 시 chance 확률, internalCd초 내부 쿨다운
+  | { kind: "timer"; everySeconds: number };                  // everySeconds마다 자동 발동(궁극기)
+
+export type SkillTarget =
+  | "currentTarget"
+  | "areaAroundTarget" // 현재 대상 + 주변 radius
+  | "nearestEnemy"
+  | "lowestHpEnemy"
+  | "highestHpEnemy"
+  | "randomEnemy"
+  | "self"             // 자기 자신 버프
+  | "alliesInRadius";  // 주변 아군 버프
+
+export interface SkillEffect {
+  type: "burst" | "slow" | "stun" | "armorBreak" | "amp" | "execute"
+      | "chain" | "dot" | "buffAttack" | "buffAttackSpeed" | "summon";
+  power?: number;    // burst/chain: 평타 공격력 배수
+  radius?: number;   // areaAroundTarget / alliesInRadius 반경
+  pct?: number;      // slow/execute 비율
+  duration?: number; // slow/stun/dot/buff 지속(초)
+  bossBonus?: number; // burst: 보스 추가 피해 비율
+  maxJumps?: number; // chain: 튕김 횟수
+  falloff?: number;  // chain: 튕길 때마다 피해 배수(0~1)
+  perSecond?: number; // dot: 초당 피해 = 평타 공격력 × perSecond
+  mult?: number;      // buff: 능력치 배수(예 1.25)
+  defId?: string;     // summon: 소환할 유닛 defId
+  count?: number;     // summon: 소환 수
+  lifeSeconds?: number; // summon: 생존 시간(초)
+}
+
+export interface SkillDef {
+  id: string;
+  name: string;
+  icon: string;       // src/assets/ui/icon-*.svg 키
+  trigger: SkillTrigger;
+  target: SkillTarget;
+  effects: SkillEffect[];
+  desc: string;
+}
+
 export interface UnitDef {
   id: string;
   name: string;
@@ -31,6 +75,8 @@ export interface UnitDef {
   attackSpeed: number; // 초당 공격 횟수
   range: number; // px
   targeting: Targeting;
+  /** 액티브 스킬(자동 시전). 없으면 패시브만. */
+  skills?: SkillDef[];
   /** 패시브 효과 수치 (없으면 0) */
   splashRadius?: number;       // flame: 스플래시 반경
   slowPct?: number;            // frost: 명중 시 감속 %
@@ -188,7 +234,12 @@ export interface OwnedUnit {
   y: number;
   acquiredRound: number;
   totalDamage: number;
+  skillDamage: number; // totalDamage 중 스킬로 입힌 피해(분리 집계)
   cooldown: number; // 남은 공격 쿨다운 (초)
+  skillCd: number[]; // def.skills와 같은 인덱스의 남은 내부 쿨다운(초). 스킬 없으면 [].
+  buffs: { stat: "attack" | "attackSpeed"; mult: number; until: number }[]; // 스킬 버프
+  temporary?: boolean; // 스킬 소환수: 보유칸·조합·판매·레시피에서 제외
+  expireAt?: number;   // 소환수 만료 게임 시간(초)
   state: UnitState;
   order: UnitOrder;
   anchorX: number; // leash 기준점(복귀 위치)
@@ -209,6 +260,7 @@ export interface EnemyState {
   stunUntil: number;
   armorBreakStacks: number;
   ampStacks: number;
+  dots: { perSecond: number; until: number; attackerUid: number; attackType: AttackType }[]; // 지속 피해
   spawnAt: number; // 게임 시간(초)
 }
 
@@ -288,6 +340,8 @@ export interface GameState {
   /** 라운드 사이 휴식 남은 틱 (>0이면 다음 라운드 스폰 대기 중). 0이면 스폰 진행. */
   breakTicks: number;
   speed: 1 | 2 | 3;
+  /** 스킬 발동 시각 이펙트 (렌더 전용, 판정/체크섬 무관) */
+  castFx: { x: number; y: number; color: string; kind: "burst" | "buff" | "cc"; born: number }[];
 }
 
 export interface ResultSummary {
