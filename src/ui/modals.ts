@@ -62,7 +62,8 @@ export function openSelectorModal(ctx: AppCtx) {
   ctx.audio.sfx("selector");
   const sel = s.pendingSelectors[0];
 
-  openModal((body, close) => {
+  openModal((body, close, setFrame) => {
+    setFrame("popups.reward");
     body.appendChild(el("h2", "", `🎁 ${GRADE_LABEL[sel.grade]} 선택권`));
     body.appendChild(el("h3", "", `출처: ${sel.source} — 1기를 선택하세요`));
     const grid = el("div", "choice-grid");
@@ -112,7 +113,8 @@ export function openRelicChoiceModal(ctx: AppCtx) {
   ctx.audio.sfx("mission");
   const choice = s.pendingRelicChoices[0];
 
-  openModal((body, close) => {
+  openModal((body, close, setFrame) => {
+    setFrame("popups.reward");
     body.appendChild(el("h2", "", "보스 유물 선택"));
     body.appendChild(el("div", "modal-note", `${choice.source} — 이번 판 동안 유지되는 유물 1개를 고르세요.`));
     const grid = el("div", "choice-grid relic-choice-grid");
@@ -473,7 +475,8 @@ export function maybeShowResult(ctx: AppCtx) {
   ctx.audio.sfx(summary.cleared ? "victory" : "defeat");
   void recordResult(summary).catch(() => toast("결과 저장 실패", "danger"));
 
-  openModal((body, close) => {
+  openModal((body, close, setFrame) => {
+    setFrame("popups.reward");
     const proofTarget = manualProofResultTarget(summary);
     const proofChecks = manualProofResultChecklist(summary);
     const proofPassed = proofChecks.every((check) => check.ok);

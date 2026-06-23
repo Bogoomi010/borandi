@@ -12,12 +12,12 @@ import tilesetUrl from "../assets/tilesets/dark-fantasy-village-tileset.png";
 import enemyPortalUrl from "../assets/effects/enemy-portal.png";
 
 const GRADE_COLOR: Record<Grade, string> = {
-  common: "#b9ac92", rare: "#5bb6d6", hero: "#b07bff",
-  legend: "#ffb347", hidden: "#df6aa0",
+  common: "#8d99a8", rare: "#3f9ae0", hero: "#b05cff",
+  legend: "#f0a830", hidden: "#e35ad0",
 };
 const FAMILY_COLOR: Record<string, string> = {
-  flame: "#ff6b4a", frost: "#56c8ff", storm: "#ffe14d",
-  iron: "#cdbfa6", void: "#b07bff", forest: "#7fdd72",
+  flame: "#ff6a3a", frost: "#57c4ff", storm: "#ffd84d",
+  iron: "#c4ccd6", void: "#b478ff", forest: "#79d65a",
 };
 
 const FAMILY_INITIAL: Record<string, string> = {

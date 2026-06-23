@@ -5,7 +5,7 @@
   "identifier": "kr.co.scope.randi",
   "build": {
     "beforeDevCommand": "yarn dev",
-    "devUrl": "http://localhost:1420",
+    "devUrl": "http://localhost:1421",
     "beforeBuildCommand": "yarn build",
     "frontendDist": "../dist"
   },
@@ -23,7 +23,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' customprotocol: asset: http://asset.localhost ipc: http://ipc.localhost; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: http://asset.localhost; connect-src 'self' ipc: http://ipc.localhost http://localhost:1420 ws://localhost:1420"
+      "csp": "default-src 'self' customprotocol: asset: http://asset.localhost ipc: http://ipc.localhost; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: http://asset.localhost; connect-src 'self' ipc: http://ipc.localhost http://localhost:1421 ws://localhost:1421"
     }
   },
   "bundle": {

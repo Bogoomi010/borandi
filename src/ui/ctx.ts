@@ -15,7 +15,6 @@ export interface AppCtx {
   scene: Scene;
   paused: boolean;
   activeTab: RightTab;
-  gradeFilter: string; // left-panel(보유 유닛 로스터) 등급 필터 상태
   saveStatus: "idle" | "saving" | "saved" | "failed";
   runStartedAt: string;
   runStartedAtMs: number;

@@ -7,7 +7,7 @@ import { stateChecksum } from "./core/checksum";
 import { BoardRenderer } from "./ui/board";
 import type { AppCtx } from "./ui/ctx";
 import {
-  renderTopbar, renderLeftPanel, renderRightPanel, renderActionbar,
+  renderTopbar, renderRightPanel, renderActionbar,
   renderUnitDetail, renderRecipeSuggestions,
 } from "./ui/panels";
 import { renderMenubar } from "./ui/menu";
@@ -30,6 +30,8 @@ import {
 } from "./ui/modals";
 import { loadSlot, makeSaveRecord, saveSlot } from "./save/saveApi";
 import { loadSettings, playableStageId, profileMarkSeen, profileRecordRun } from "./ui/settings";
+import { setLocale, onLocaleChange } from "./i18n";
+import { skinGameChrome } from "./ui/uiSkin";
 import { GameAudio } from "./ui/audio";
 import { showGame, showTitle, openPauseMenu } from "./ui/scenes";
 import { UNIT_BY_ID } from "./data/units";
@@ -64,6 +66,7 @@ import {
 } from "./core/manualProofCommands";
 
 const settings = loadSettings();
+setLocale(settings.lang); // 저장된 UI 언어 적용
 const audio = new GameAudio(settings);
 
 const canvas = document.getElementById("board") as HTMLCanvasElement;
@@ -170,7 +173,6 @@ const ctx: AppCtx = {
   scene: "title",
   paused: false,
   activeTab: "mission",
-  gradeFilter: "all",
   saveStatus: "idle",
   runStartedAt: new Date().toISOString(),
   runStartedAtMs: performance.now(),
@@ -410,7 +412,6 @@ function loop(now: number) {
       panelsDirty = false;
       notifyNewlyCraftable();
       renderTopbar(ctx);
-      renderLeftPanel(ctx);
       renderRightPanel(ctx);
       renderUnitDetail(ctx);
       renderRecipeSuggestions(ctx);
@@ -623,8 +624,16 @@ window.addEventListener("blur", () => {
 
 // ---------- 부팅 ----------
 
+// 언어 변경 시 메뉴바/패널/타이틀을 즉시 다시 그린다.
+onLocaleChange(() => {
+  renderMenubar(ctx);
+  panelsDirty = true;
+  if (ctx.scene === "title") showTitle(ctx);
+});
+
 renderMenubar(ctx);
 showTitle(ctx);
+void skinGameChrome(); // 빈 프레임 키트로 상시 패널 크롬 스킨 + 커스텀 커서
 requestAnimationFrame(loop);
 
 function renderGameToText(): string {
@@ -837,7 +846,6 @@ function advanceTimeForTest(ms: number) {
   renderer.draw(game.state);
   maybeNotifyManualProofReady(performance.now());
   renderTopbar(ctx);
-  renderLeftPanel(ctx);
   renderRightPanel(ctx);
   renderUnitDetail(ctx);
   renderActionbar(ctx);

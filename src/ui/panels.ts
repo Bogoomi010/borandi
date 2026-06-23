@@ -14,6 +14,7 @@ import { SUMMON_COST, SELL_REFUND, DIFFICULTY_BY_ID } from "../data/difficulty";
 import { FAMILY_COLOR, GRADE_COLOR } from "./board";
 import { openManualProofGuideModal, openRelicChoiceModal, openSelectorModal } from "./modals";
 import { dpsVisible, toggleDps } from "./dpsMeter";
+import { skinActionButton, applyNineSlice, applySpriteLocalized, skinByFile } from "./uiSkin";
 
 // ---------- 상단 상태바 ----------
 
@@ -24,9 +25,12 @@ export function renderTopbar(ctx: AppCtx) {
   const s = ctx.game.state;
   const diff = DIFFICULTY_BY_ID[s.difficulty];
 
-  const stat = (label: string, value: string, cls = "", onClick?: () => void) => {
+  const stat = (label: string, value: string, cls = "", iconFile?: string, onClick?: () => void) => {
     const d = el("div", `stat ${onClick ? "clickable" : ""}`);
-    d.appendChild(el("span", "label", label));
+    const lab = el("span", "label", label);
+    // 헤더 아이콘 이미지로 라벨 대체(있으면). 없으면 텍스트 라벨 유지.
+    if (iconFile) { lab.classList.add("stat-icon"); lab.title = label; void skinByFile(lab, iconFile); }
+    d.appendChild(lab);
     d.appendChild(el("span", `value ${cls}`, value));
     if (onClick) {
       d.title = "수동 밸런스 증거 안내 열기";
@@ -36,15 +40,15 @@ export function renderTopbar(ctx: AppCtx) {
   };
 
   const stage = stageById(s.stageId);
-  root.appendChild(stat("맵", `${stage.id}. ${stage.name}`));
-  root.appendChild(stat("라운드", `${Math.min(s.round, FINAL_ROUND)}/${FINAL_ROUND}`));
-  root.appendChild(stat("적", `${s.enemies.length}/${ctx.game.enemyLimit()}`, "life"));
-  root.appendChild(stat("골드", String(s.gold), "gold"));
-  root.appendChild(stat("난이도", diff.name));
+  root.appendChild(stat("맵", `${stage.id}. ${stage.name}`, "", "topbar/header-icon-map.png"));
+  root.appendChild(stat("라운드", `${Math.min(s.round, FINAL_ROUND)}/${FINAL_ROUND}`, "", "topbar/header-icon-round.png"));
+  root.appendChild(stat("적", `${s.enemies.length}/${ctx.game.enemyLimit()}`, "life", "topbar/header-icon-enemy.png"));
+  root.appendChild(stat("골드", String(s.gold), "gold", "topbar/header-icon-gold.png"));
+  root.appendChild(stat("난이도", diff.name, "", "topbar/header-icon-difficulty.png"));
 
   const nextBoss = BOSS_ROUND_LIST.find((r) => r >= s.round);
   if (nextBoss !== undefined) {
-    root.appendChild(stat("다음 보스", `${nextBoss}R (${nextBoss - s.round}라운드 후)`, "boss"));
+    root.appendChild(stat("다음 보스", `${nextBoss}R (${nextBoss - s.round}라운드 후)`, "boss", "topbar/header-icon-next-boss.png"));
   }
 
   if (s.pendingSelectors.length > 0) {
@@ -60,16 +64,21 @@ export function renderTopbar(ctx: AppCtx) {
 
   root.appendChild(el("div", "spacer"));
 
-  // 속도
+  // 속도 — 상태별 이미지(일반/선택). 텍스트는 이미지에 베이크되어 있어 숨김(CSS).
   const speed = el("div", "speed-btns");
   for (const v of [1, 2, 3] as const) {
-    const b = el("button", s.speed === v ? "active" : "", `x${v}`);
+    const active = s.speed === v;
+    const b = el("button", active ? "active" : "", `x${v}`);
+    void skinByFile(b, `topbar/speed-x${v}${active ? "-selected" : ""}.png`);
     b.onclick = () => { ctx.act("setSpeed", { speed: v }); };
     speed.appendChild(b);
   }
   root.appendChild(speed);
 
+  // 일시정지/재개 — 상태별 아이콘(▶/⏸).
   const pause = el("button", "pill-btn", ctx.paused ? "▶ 재개" : "⏸ 일시정지");
+  pause.title = ctx.paused ? "재개" : "일시정지";
+  void skinByFile(pause, ctx.paused ? "topbar/btn-play.png" : "topbar/btn-pause.png");
   pause.onclick = () => { ctx.paused = !ctx.paused; ctx.refresh(); };
   root.appendChild(pause);
 
@@ -84,114 +93,6 @@ export function renderTopbar(ctx: AppCtx) {
     save.onclick = () => ctx.autosave();
   }
   root.appendChild(save);
-}
-
-// ---------- 좌측: 보유 유닛 ----------
-
-// COMPONENT: LeftPanel - shows owned units grouped by unit type with grade filtering and lock controls.
-export function renderLeftPanel(ctx: AppCtx) {
-  const root = document.getElementById("left-panel")!;
-  root.innerHTML = "";
-  const s = ctx.game.state;
-  const cap = ctx.game.diff.unitCap;
-  const ownedN = ctx.game.ownedUnitCount();
-  const pressure = ownedN / cap;
-
-  const title = el("div", "panel-title");
-  title.appendChild(el("span", "", `보유 유닛 ${ownedN}/${cap}`));
-  root.appendChild(title);
-
-  const bar = el("div", `cap-bar ${pressure >= 0.9 ? "full" : pressure >= 0.7 ? "warn" : ""}`);
-  const fill = el("div");
-  fill.style.width = `${Math.min(100, pressure * 100)}%`;
-  bar.appendChild(fill);
-  root.appendChild(bar);
-  if (pressure >= 0.9) {
-    root.appendChild(el("div", "", "⚠ 소환 전 정리가 필요합니다")).style.cssText =
-      "color:var(--danger);font-size:11px";
-  }
-
-  // 등급 필터
-  const filters = el("div", "filter-row");
-  const options = ["all", ...GRADE_ORDER];
-  for (const g of options) {
-    const label = g === "all" ? "전체" : GRADE_LABEL[g as Grade];
-    const b = el("button", ctx.gradeFilter === g ? "active" : "", label);
-    b.onclick = () => { ctx.gradeFilter = g; ctx.refresh(); };
-    filters.appendChild(b);
-  }
-  root.appendChild(filters);
-
-  // 유닛 카드 — 동일 유닛은 한 카드로 묶고 보유 수량을 표시한다(과밀 방지).
-  const list = el("div", "unit-list");
-
-  // defId별 그룹화 (등급 내림차순 → defId). 소환수는 로스터에서 제외.
-  const groups = new Map<string, typeof s.units>();
-  for (const u of s.units) {
-    if (u.temporary) continue;
-    const arr = groups.get(u.defId);
-    if (arr) arr.push(u);
-    else groups.set(u.defId, [u]);
-  }
-  const groupKeys = [...groups.keys()].sort((a, b) => {
-    const ga = GRADE_ORDER.indexOf(UNIT_BY_ID[a].grade);
-    const gb = GRADE_ORDER.indexOf(UNIT_BY_ID[b].grade);
-    if (ga !== gb) return gb - ga;
-    return a.localeCompare(b);
-  });
-
-  const sel = ctx.renderer.selectedUids;
-  for (const defId of groupKeys) {
-    const d = UNIT_BY_ID[defId];
-    if (ctx.gradeFilter !== "all" && d.grade !== ctx.gradeFilter) continue;
-    const members = groups.get(defId)!;
-    const uids = members.map((m) => m.uid);
-    const selectedCount = uids.filter((id) => sel.has(id)).length;
-    const lockedCount = members.filter((m) => m.locked).length;
-    const allLocked = lockedCount === members.length;
-
-    const card = el("div", `unit-card ${selectedCount > 0 ? "selected" : ""}`);
-
-    const shape = el("span", "shape");
-    shape.style.cssText = `display:inline-block;width:14px;height:14px;background:${FAMILY_COLOR[d.family]};border:2px solid ${GRADE_COLOR[d.grade]};border-radius:${d.grade === "common" ? "50%" : "3px"}`;
-    card.appendChild(shape);
-
-    const name = el("div", "uname");
-    const titleRow = el("span", "");
-    titleRow.appendChild(document.createTextNode(d.name));
-    if (members.length > 1) titleRow.appendChild(el("span", "count", `×${members.length}`));
-    name.appendChild(titleRow);
-    const subText = selectedCount > 0 && selectedCount < members.length
-      ? `${FAMILY_LABEL[d.family]} · ${selectedCount}/${members.length} 선택`
-      : `${FAMILY_LABEL[d.family]} · ${d.roles.map((r) => ROLE_LABEL[r]).join("/")}`;
-    name.appendChild(el("small", "", subText));
-    card.appendChild(name);
-
-    card.appendChild(el("span", `badge grade-${d.grade}`, GRADE_LABEL[d.grade]));
-
-    const lock = el("button", `lock-btn ${lockedCount > 0 ? "locked" : ""}`, allLocked ? "🔒" : lockedCount > 0 ? "🔓*" : "🔓");
-    lock.title = allLocked ? "스택 잠금 해제" : "스택 잠금 (판매/조합 보호)";
-    lock.onclick = (e) => {
-      e.stopPropagation();
-      // 일부라도 풀려 있으면 전체 잠금, 모두 잠겨 있으면 전체 해제
-      for (const m of members) {
-        if (m.locked === allLocked) ctx.act("toggleLock", { unitId: m.uid });
-      }
-    };
-    card.appendChild(lock);
-
-    card.onclick = () => {
-      // 스택 전체 선택 토글 (정밀 선택은 전장 캔버스 클릭/드래그 사용)
-      if (selectedCount === members.length) {
-        for (const id of uids) sel.delete(id);
-      } else {
-        for (const id of uids) sel.add(id);
-      }
-      ctx.refresh();
-    };
-    list.appendChild(card);
-  }
-  root.appendChild(list);
 }
 
 // ---------- 우측: 조합/미션/보스/로그 탭 ----------
@@ -587,6 +488,8 @@ export function renderUnitDetail(ctx: AppCtx) {
     if (icon) d.appendChild(el("span", `ui-icon icon-${icon}`, ""));
     d.appendChild(el("span", "ud-slot-label", label));
     d.title = label;
+    // 슬롯 프레임(빈 슬롯 템플릿, 글자 없음). 라벨은 DOM으로 위에 렌더.
+    void applyNineSlice(d, active ? "slots.skill" : "slots.empty", { slice: 28, width: 9, fill: false });
     return d;
   };
 
@@ -650,6 +553,9 @@ export function renderUnitDetail(ctx: AppCtx) {
   shape.appendChild(el("span", "ud-portrait-mark", d.name.slice(0, 1)));
   shape.appendChild(el("span", "ud-portrait-family", FAMILY_LABEL[d.family]));
   if (u.locked) shape.appendChild(el("span", "ud-lock", "잠금"));
+  // 캐릭터 이미지 placeholder: 빈 금색 포트레이트 프레임을 테두리로 입힌다.
+  // (안의 색/이니셜은 임시 스탠드인 — 추후 유닛 캐릭터 이미지를 넣으면 됨)
+  void applyNineSlice(shape, "unit-detail.portrait-frame", { slice: 40, width: 14, fill: false });
   root.appendChild(shape);
 
   const main = el("div", "ud-main");
@@ -664,7 +570,12 @@ export function renderUnitDetail(ctx: AppCtx) {
   power.appendChild(el("span", "ui-icon icon-attack", ""));
   power.appendChild(el("span", "label", "공격력"));
   power.appendChild(el("span", "value", String(d.attack)));
-  power.appendChild(el("span", "type", ATTACK_TYPE_LABEL[d.attackType]));
+  const typeEl = el("span", "type", ATTACK_TYPE_LABEL[d.attackType]);
+  // 공격 타입 배지(고정 라벨, 언어별 이미지). magic/physical만 에셋 존재 → 나머지는 텍스트 유지.
+  const atKey = d.attackType === "magic" ? "unit-detail.attack-type.magic"
+    : d.attackType === "physical" ? "unit-detail.attack-type.physical" : null;
+  if (atKey) { typeEl.classList.add("type-skinned"); void applySpriteLocalized(typeEl, atKey); }
+  power.appendChild(typeEl);
   main.appendChild(power);
 
   const stats = el("div", "ud-stats");
@@ -672,6 +583,8 @@ export function renderUnitDetail(ctx: AppCtx) {
   stats.appendChild(stat("사거리", String(d.range), false, "range"));
   stats.appendChild(stat("타겟", TARGETING_LABEL[d.targeting], false, "target"));
   stats.appendChild(stat("누적딜", Math.round(u.totalDamage).toLocaleString(), true, "damage"));
+  // 스탯 그리드 프레임(빈 격자, 글자 없음) — 수치는 위에 DOM으로 렌더되어 충돌 없음.
+  void applyNineSlice(stats, "unit-detail.stat-grid", { slice: 34, width: 12, fill: false });
   main.appendChild(stats);
 
   const chips = passiveChips(d);
@@ -689,6 +602,7 @@ export function renderUnitDetail(ctx: AppCtx) {
   // 액티브 스킬을 우선 노출 (아이콘 + 발동률 + 설명 툴팁)
   for (const sk of (d.skills ?? []).slice(0, 4)) {
     const cell = el("div", "ud-slot active skill-slot");
+    void applyNineSlice(cell, "slots.skill", { slice: 28, width: 9, fill: false });
     cell.appendChild(el("span", `ui-icon icon-${sk.icon}`, ""));
     const rate = sk.trigger.kind === "onAttack"
       ? `${Math.round(sk.trigger.chance * 100)}%`
@@ -724,11 +638,13 @@ export function renderActionbar(ctx: AppCtx) {
     onClick: () => void;
   }) => {
     const b = el("button", `action-btn ${opts.primary ? "primary" : ""} ${opts.danger ? "danger" : ""}`);
+    skinActionButton(b, opts.icon); // 언어별 완성 버튼 이미지 배경 (에셋 없으면 no-op)
     if (opts.icon) b.appendChild(el("span", `ui-icon icon-${opts.icon}`, ""));
-    b.appendChild(el("span", "", label));
+    b.appendChild(el("span", "alabel", label));
     b.appendChild(el("span", "sub", sub));
     b.disabled = !!opts.disabled;
-    if (opts.title) b.title = opts.title;
+    // 이미지 스킨 시 DOM 텍스트는 숨겨지므로, 라벨+설명을 툴팁으로 보존한다.
+    b.title = opts.title || `${label}${sub ? " · " + sub : ""}`;
     b.onclick = opts.onClick;
     return b;
   };

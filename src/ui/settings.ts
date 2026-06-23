@@ -3,6 +3,7 @@
 
 import { FINAL_STAGE } from "../data/stages";
 import { FINAL_ROUND } from "../data/waves";
+import { type Locale, detectLocale } from "../i18n";
 
 export interface Settings {
   master: number;       // 0~1
@@ -13,6 +14,7 @@ export interface Settings {
   showDamage: boolean;  // 적 피격 데미지 숫자 표시
   defaultSpeed: 1 | 2 | 3;
   autoPause: boolean;   // 창 비활성 시 자동 일시정지
+  lang: Locale;         // UI 표시 언어 (en/ko/ja/zh)
 }
 
 const SETTINGS_KEY = "rrd_settings";
@@ -22,6 +24,7 @@ const DEFAULT_SETTINGS: Settings = {
   master: 0.8, sfx: 0.8, music: 0.5,
   shake: true, highContrast: false, showDamage: true,
   defaultSpeed: 1, autoPause: true,
+  lang: detectLocale("ko"), // 최초 실행 시 브라우저 언어로 추론, 없으면 한국어
 };
 
 export function loadSettings(): Settings {

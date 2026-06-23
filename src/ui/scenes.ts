@@ -14,6 +14,8 @@ import { APP_VERSION, DATA_VERSION } from "../data/version";
 import { DIFFICULTIES, DIFFICULTY_BY_ID } from "../data/difficulty";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { STAGES } from "../data/stages";
+import { t, setLocale, getLocale, LOCALES } from "../i18n";
+import { applySprite } from "./uiSkin";
 
 // ---------- 씬 전환 ----------
 
@@ -186,22 +188,22 @@ export function openPauseMenu(ctx: AppCtx) {
 
   const handle = openModal((body, close) => {
     body.classList.add("pause-menu");
-    body.appendChild(el("h2", "", "일시정지"));
+    body.appendChild(el("h2", "", t("pause.title")));
     const item = (label: string, cb: () => void) => {
       const b = el("button", "title-btn", label);
       b.onclick = () => { ctx.audio.sfx("click"); cb(); };
       body.appendChild(b);
     };
-    item("계속하기", () => close());
-    item("수동 저장", () => { close(); openSaveModal(ctx); });
-    item("불러오기", () => { close(); openLoadModal(ctx); });
-    item("옵션", () => openOptionsOverlay(ctx));
-    item("타이틀로", () => {
+    item(t("pause.resume"), () => close());
+    item(t("pause.save"), () => { close(); openSaveModal(ctx); });
+    item(t("pause.load"), () => { close(); openLoadModal(ctx); });
+    item(t("pause.options"), () => openOptionsOverlay(ctx));
+    item(t("pause.toTitle"), () => {
       close();
       ctx.autosave();
       ctx.goTitle();
     });
-    item("게임 종료", () => quitApp());
+    item(t("pause.quit"), () => quitApp());
   });
 
   // 닫힐 때 재개 처리 (backdrop 제거 감시)
@@ -221,8 +223,9 @@ export function openPauseMenu(ctx: AppCtx) {
 
 // COMPONENT: OptionsOverlay - settings modal for audio, visuals, fullscreen, and gameplay defaults.
 export function openOptionsOverlay(ctx: AppCtx) {
-  openModal((body, close) => {
-    body.appendChild(el("h2", "", "옵션"));
+  openModal((body, close, setFrame) => {
+    setFrame("popups.settings");
+    body.appendChild(el("h2", "", t("options.title")));
     const s = ctx.settings;
 
     const apply = () => {
@@ -257,11 +260,15 @@ export function openOptionsOverlay(ctx: AppCtx) {
     const toggle = (label: string, get: () => boolean, set: (v: boolean) => void) => {
       const row = el("div", "opt-row");
       row.appendChild(el("span", "opt-label", label));
-      const btn = el("button", `opt-toggle ${get() ? "on" : ""}`, get() ? "켜짐" : "꺼짐");
+      const btn = el("button", `opt-toggle ${get() ? "on" : ""}`, get() ? t("common.on") : t("common.off"));
+      // 토글 스위치 이미지(controls.toggle.on/off). 에셋 있으면 텍스트 대신 이미지 표시(폴백 안전).
+      const skinToggle = () => void applySprite(btn, get() ? "controls.toggle.on" : "controls.toggle.off", "contain");
+      skinToggle();
       btn.onclick = () => {
         set(!get());
         btn.classList.toggle("on", get());
-        btn.textContent = get() ? "켜짐" : "꺼짐";
+        btn.textContent = get() ? t("common.on") : t("common.off");
+        skinToggle();
         ctx.audio.sfx("click");
         apply();
       };
@@ -269,28 +276,50 @@ export function openOptionsOverlay(ctx: AppCtx) {
       body.appendChild(row);
     };
 
-    section("오디오");
-    slider("마스터 볼륨", () => s.master, (v) => { s.master = v; });
-    slider("효과음", () => s.sfx, (v) => { s.sfx = v; });
-    slider("배경 음악", () => s.music, (v) => { s.music = v; });
+    // 언어 선택 — 바꾸면 즉시 적용하고 모달을 새 언어로 다시 연다.
+    {
+      const langRow = el("div", "opt-row");
+      langRow.appendChild(el("span", "opt-label", t("options.language")));
+      const seg = el("div", "speed-btns");
+      for (const loc of LOCALES) {
+        const b = el("button", getLocale() === loc.id ? "active" : "", loc.label);
+        b.onclick = () => {
+          if (s.lang === loc.id) return;
+          s.lang = loc.id;
+          saveSettings(s);
+          ctx.audio.sfx("click");
+          setLocale(loc.id);
+          close();
+          openOptionsOverlay(ctx); // 새 언어로 다시 렌더
+        };
+        seg.appendChild(b);
+      }
+      langRow.appendChild(seg);
+      body.appendChild(langRow);
+    }
 
-    section("그래픽");
-    toggle("피격 화면 흔들림", () => s.shake, (v) => { s.shake = v; });
-    toggle("고대비 모드 (유닛 계열 표시)", () => s.highContrast, (v) => { s.highContrast = v; });
-    toggle("데미지 숫자 표시", () => s.showDamage, (v) => { s.showDamage = v; });
+    section(t("options.audio"));
+    slider(t("options.master"), () => s.master, (v) => { s.master = v; });
+    slider(t("options.sfx"), () => s.sfx, (v) => { s.sfx = v; });
+    slider(t("options.music"), () => s.music, (v) => { s.music = v; });
+
+    section(t("options.graphics"));
+    toggle(t("options.shake"), () => s.shake, (v) => { s.shake = v; });
+    toggle(t("options.highContrast"), () => s.highContrast, (v) => { s.highContrast = v; });
+    toggle(t("options.showDamage"), () => s.showDamage, (v) => { s.showDamage = v; });
     {
       const row = el("div", "opt-row");
-      row.appendChild(el("span", "opt-label", "전체화면"));
-      const btn = el("button", "opt-toggle", "전환");
+      row.appendChild(el("span", "opt-label", t("options.fullscreen")));
+      const btn = el("button", "opt-toggle", t("options.fullscreenBtn"));
       btn.onclick = () => { ctx.audio.sfx("click"); void toggleFullscreen(); };
       row.appendChild(btn);
       body.appendChild(row);
     }
 
-    section("게임플레이");
+    section(t("options.gameplay"));
     {
       const row = el("div", "opt-row");
-      row.appendChild(el("span", "opt-label", "기본 배속"));
+      row.appendChild(el("span", "opt-label", t("options.defaultSpeed")));
       const seg = el("div", "speed-btns");
       for (const v of [1, 2, 3] as const) {
         const b = el("button", s.defaultSpeed === v ? "active" : "", `x${v}`);
@@ -306,10 +335,10 @@ export function openOptionsOverlay(ctx: AppCtx) {
       row.appendChild(seg);
       body.appendChild(row);
     }
-    toggle("창 비활성 시 자동 일시정지", () => s.autoPause, (v) => { s.autoPause = v; });
+    toggle(t("options.autoPause"), () => s.autoPause, (v) => { s.autoPause = v; });
 
     const row = el("div", "row-btns");
-    const ok = el("button", "primary", "닫기");
+    const ok = el("button", "primary", t("common.close"));
     ok.onclick = () => { ctx.audio.sfx("click"); close(); };
     row.appendChild(ok);
     body.appendChild(row);

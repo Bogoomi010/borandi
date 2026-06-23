@@ -10,6 +10,7 @@ import {
 } from "./modals";
 import { openCollection, openOptionsOverlay, toggleFullscreen, quitApp } from "./scenes";
 import { writeReport, openAppDataDir, canOpenAppDataDir } from "../save/saveApi";
+import { t } from "../i18n";
 
 interface MenuItem {
   label: string;
@@ -25,16 +26,16 @@ export function renderMenubar(ctx: AppCtx) {
 
   const menus: Array<{ title: string; items: (MenuItem | "sep")[] }> = [
     {
-      title: "Game",
+      title: t("menu.game"),
       items: [
-        { label: "새 게임", hint: "New Run", onClick: () => openNewRunModal(ctx) },
-        { label: "같은 시드 재시작", onClick: () => ctx.newRun(ctx.game.state.seed, ctx.game.state.difficulty, ctx.game.state.stageId) },
+        { label: t("menu.newRun"), onClick: () => openNewRunModal(ctx) },
+        { label: t("menu.restartSeed"), onClick: () => ctx.newRun(ctx.game.state.seed, ctx.game.state.difficulty, ctx.game.state.stageId) },
         "sep",
-        { label: "수동 저장…", hint: "슬롯 3개", onClick: () => openSaveModal(ctx) },
-        { label: "불러오기…", onClick: () => openLoadModal(ctx) },
+        { label: t("menu.save"), hint: t("menu.save.hint"), onClick: () => openSaveModal(ctx) },
+        { label: t("menu.load"), onClick: () => openLoadModal(ctx) },
         "sep",
         {
-          label: "결과 리포트 내보내기",
+          label: t("menu.exportReport"),
           onClick: async () => {
             const summary = ctx.game.resultSummary();
             summary.playedAt = new Date().toISOString();
@@ -42,49 +43,49 @@ export function renderMenubar(ctx: AppCtx) {
             summary.wallSeconds = Math.max(1, Math.round((performance.now() - ctx.runStartedAtMs) / 1000));
             try {
               const p = await writeReport(`randi-run-${summary.seed}-${Date.now()}.md`, buildReportMarkdown(summary));
-              toast(`리포트 저장: ${p}`, "ok", 4000);
+              toast(t("toast.reportSaved", { path: p }), "ok", 4000);
             } catch {
-              toast("리포트 저장 실패", "danger");
+              toast(t("toast.reportFailed"), "danger");
             }
           },
         },
         "sep",
-        { label: "타이틀로", onClick: () => { ctx.autosave(); ctx.goTitle(); } },
-        { label: "게임 종료", onClick: () => quitApp() },
+        { label: t("menu.toTitle"), onClick: () => { ctx.autosave(); ctx.goTitle(); } },
+        { label: t("menu.quit"), onClick: () => quitApp() },
       ],
     },
     {
-      title: "View",
+      title: t("menu.view"),
       items: [
         {
-          label: "우측 패널 접기/펴기",
+          label: t("menu.toggleRightPanel"),
           onClick: () => document.getElementById("right-panel")!.classList.toggle("collapsed"),
         },
         "sep",
-        { label: "전체화면 전환", hint: "F11", onClick: () => void toggleFullscreen() },
+        { label: t("menu.fullscreen"), hint: "F11", onClick: () => void toggleFullscreen() },
       ],
     },
     {
-      title: "Tools",
+      title: t("menu.tools"),
       items: [
-        { label: "100시드 시뮬레이션…", onClick: () => openSimModal(ctx) },
-        { label: "5난이도 밸런스 게이트…", onClick: () => openBalanceGateModal() },
-        { label: "수동 밸런스 증거…", onClick: () => openManualProofGuideModal(ctx) },
+        { label: t("menu.sim100"), onClick: () => openSimModal(ctx) },
+        { label: t("menu.balanceGate"), onClick: () => openBalanceGateModal() },
+        { label: t("menu.manualProof"), onClick: () => openManualProofGuideModal(ctx) },
         "sep",
         {
-          label: "앱 데이터 폴더 열기",
+          label: t("menu.openDataDir"),
           disabled: () => !canOpenAppDataDir(),
           onClick: () => void openAppDataDir(),
         },
       ],
     },
     {
-      title: "Help",
+      title: t("menu.help"),
       items: [
-        { label: "단축키 / 규칙", onClick: () => openHelpModal() },
-        { label: "도감", onClick: () => openCollection(ctx) },
-        { label: "옵션", hint: "Esc", onClick: () => openOptionsOverlay(ctx) },
-        { label: "정보", onClick: () => openAboutModal() },
+        { label: t("menu.shortcuts"), onClick: () => openHelpModal() },
+        { label: t("menu.collection"), onClick: () => openCollection(ctx) },
+        { label: t("menu.options"), hint: "Esc", onClick: () => openOptionsOverlay(ctx) },
+        { label: t("menu.about"), onClick: () => openAboutModal() },
       ],
     },
   ];
