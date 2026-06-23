@@ -1,0 +1,72 @@
+[2m오후 10:14:45[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+D:/Workspace/repo_randi/src/ui/panels.ts:493:0: ERROR: Unexpected "export"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mD:/Workspace/repo_randi/src/ui/panels.ts[39m:493:0
+[33m  
+  [33mUnexpected "export"[33m
+  491|  
+  492|  // COMPONENT: UnitDetail - renders the bottom-left selected unit or multi-selection detail panel.
+  493|  export function renderUnitDetail(ctx: AppCtx) {
+     |  ^
+  494|    const root = document.getElementById("unit-detail");
+  495|    if (!root) return;
+  [39m
+[2m오후 10:14:45[22m [31m[1m[vite][22m[39m [31mInternal server error: Transform failed with 1 error:
+D:/Workspace/repo_randi/src/ui/panels.ts:493:0: ERROR: Unexpected "export"[39m
+  Plugin: [35mvite:esbuild[39m
+  File: [36mD:/Workspace/repo_randi/src/ui/panels.ts[39m:493:0
+[33m  
+  [33mUnexpected "export"[33m
+  491|  
+  492|  // COMPONENT: UnitDetail - renders the bottom-left selected unit or multi-selection detail panel.
+  493|  export function renderUnitDetail(ctx: AppCtx) {
+     |  ^
+  494|    const root = document.getElementById("unit-detail");
+  495|    if (!root) return;
+  [39m
+      at failureErrorWithLog (D:\Workspace\repo_randi\node_modules\esbuild\lib\main.js:1467:15)
+      at D:\Workspace\repo_randi\node_modules\esbuild\lib\main.js:736:50
+      at responseCallbacks.<computed> (D:\Workspace\repo_randi\node_modules\esbuild\lib\main.js:603:9)
+      at handleIncomingPacket (D:\Workspace\repo_randi\node_modules\esbuild\lib\main.js:658:12)
+      at Socket.readFromStdout (D:\Workspace\repo_randi\node_modules\esbuild\lib\main.js:581:7)
+      at Socket.emit (node:events:518:28)
+      at addChunk (node:internal/streams/readable:561:12)
+      at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+      at Readable.push (node:internal/streams/readable:392:5)
+      at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)
+[2m오후 10:14:49[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+D:/Workspace/repo_randi/src/ui/panels.ts:181:2: ERROR: Unexpected "*"
+  Plugin: [35mvite:esbuild[39m
+  File: [36mD:/Workspace/repo_randi/src/ui/panels.ts[39m:181:2
+[33m  
+  [33mUnexpected "*"[33m
+  179|    }
+  180|    root.appendChild(list);
+  181|    */
+     |    ^
+  182|  }
+  183|  
+  [39m
+[2m오후 10:14:49[22m [31m[1m[vite][22m[39m [31mInternal server error: Transform failed with 1 error:
+D:/Workspace/repo_randi/src/ui/panels.ts:181:2: ERROR: Unexpected "*"[39m
+  Plugin: [35mvite:esbuild[39m
+  File: [36mD:/Workspace/repo_randi/src/ui/panels.ts[39m:181:2
+[33m  
+  [33mUnexpected "*"[33m
+  179|    }
+  180|    root.appendChild(list);
+  181|    */
+     |    ^
+  182|  }
+  183|  
+  [39m
+      at failureErrorWithLog (D:\Workspace\repo_randi\node_modules\esbuild\lib\main.js:1467:15)
+      at D:\Workspace\repo_randi\node_modules\esbuild\lib\main.js:736:50
+      at responseCallbacks.<computed> (D:\Workspace\repo_randi\node_modules\esbuild\lib\main.js:603:9)
+      at handleIncomingPacket (D:\Workspace\repo_randi\node_modules\esbuild\lib\main.js:658:12)
+      at Socket.readFromStdout (D:\Workspace\repo_randi\node_modules\esbuild\lib\main.js:581:7)
+      at Socket.emit (node:events:518:28)
+      at addChunk (node:internal/streams/readable:561:12)
+      at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+      at Readable.push (node:internal/streams/readable:392:5)
+      at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)
