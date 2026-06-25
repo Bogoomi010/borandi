@@ -206,6 +206,10 @@ export function renderRecipeSuggestions(ctx: AppCtx) {
 
   const s = ctx.game.state;
   const selectedUnits = s.units.filter((u) => ctx.renderer.selectedUids.has(u.uid));
+  if (selectedUnits.length > 1) {
+    root.classList.add("hidden");
+    return;
+  }
   const selectedDefIds = new Set(selectedUnits.map((u) => u.defId));
   if (selectedDefIds.size === 0) {
     root.classList.add("hidden");
@@ -468,7 +472,7 @@ export function renderUnitDetail(ctx: AppCtx) {
   const selUids = [...ctx.renderer.selectedUids];
   const selected = s.units.filter((u) => ctx.renderer.selectedUids.has(u.uid));
 
-  if (selected.length === 0) {
+  if (selected.length !== 1) {
     root.classList.add("hidden");
     root.classList.remove("multi");
     return;
