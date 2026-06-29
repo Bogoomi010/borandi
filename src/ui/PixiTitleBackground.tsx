@@ -35,7 +35,7 @@ function spawn(width: number, height: number, colors: number[], y?: number): Par
   };
 }
 
-export function ReactTitleBackground({ active }: { active: boolean }) {
+export function PixiTitleBackground({ active }: { active: boolean }) {
   const particles = useRef<Particle[]>([]);
   const [frame, setFrame] = useState(0);
   const [size, setSize] = useState(() => ({

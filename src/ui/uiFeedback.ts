@@ -1,8 +1,8 @@
 import { anyReactOverlayOpen, closeTopReactOverlay, openReactOverlay } from "./reactOverlayBridge";
-import { pushReactToast, type ToastKind } from "./reactToastBridge";
+import { pushToast, type ToastKind } from "./toastBridge";
 
 export function toast(text: string, kind: ToastKind = "info", ms = 2600) {
-  pushReactToast(text, kind, ms);
+  pushToast(text, kind, ms);
 }
 
 export function anyModalOpen(): boolean {

@@ -111,6 +111,17 @@ button { font-family: inherit; }
   display: block;
 }
 
+.pixi-title-surface {
+  width: 100%;
+  height: 100%;
+}
+
+.pixi-title-surface canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 #title-content {
   position: relative; z-index: 1; flex: 1;
   display: flex; align-items: center; justify-content: center;
@@ -191,6 +202,28 @@ button { font-family: inherit; }
   background: linear-gradient(180deg, #2b313b, #13161c);
   border-bottom: 1px solid var(--line);
   font-size: 12px;
+  position: relative;
+  z-index: 20;
+}
+.pixi-menubar-root {
+  position: relative;
+  width: 100%;
+  height: 22px;
+}
+.pixi-menubar-surface {
+  width: 100%;
+  height: 22px;
+}
+.pixi-menubar-surface canvas,
+.pixi-menu-drop-surface canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.pixi-menu-drop-surface {
+  position: absolute;
+  top: 24px;
+  z-index: 70;
 }
 .menu-backdrop {
   position: fixed; inset: 0; z-index: 50;
@@ -228,6 +261,16 @@ button { font-family: inherit; }
   border-bottom: 2px solid var(--gold-bar-border);
   font-size: 13px; min-height: 38px;
   box-shadow: 0 3px 14px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .1), inset 0 -2px 0 rgba(0, 0, 0, .4);
+}
+.pixi-topbar-surface {
+  width: 100%;
+  height: 30px;
+  min-width: 0;
+}
+.pixi-topbar-surface canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 .stat { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .stat[data-icon]::before { content: ""; color: var(--crystal); opacity: .9; }
@@ -290,6 +333,18 @@ button { font-family: inherit; }
   box-shadow: inset 0 0 0 1px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04);
 }
 #right-panel.collapsed { display: none; }
+
+.pixi-right-panel-surface {
+  width: 100%;
+  min-height: 100%;
+  flex: 0 0 auto;
+}
+
+.pixi-right-panel-surface canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 
 #right-panel::-webkit-scrollbar, .modal::-webkit-scrollbar { width: 8px; }
 #right-panel::-webkit-scrollbar-thumb, .modal::-webkit-scrollbar-thumb {
@@ -442,6 +497,16 @@ button { font-family: inherit; }
   box-shadow: 0 -2px 14px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .1);
 }
 #action-controls { display: flex; align-items: center; gap: 8px; flex: 1; }
+.pixi-actionbar-surface {
+  width: 100%;
+  height: 60px;
+  min-width: 0;
+}
+.pixi-actionbar-surface canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 
 #recipe-suggestions {
   position: absolute; right: 14px; bottom: 14px; z-index: 7;
@@ -749,6 +814,11 @@ button { font-family: inherit; }
   position: fixed; bottom: 74px; left: 50%; transform: translateX(-50%);
   display: flex; flex-direction: column; gap: 6px; z-index: 80; pointer-events: none;
 }
+.pixi-toast-host canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 .toast {
   background: rgba(26, 31, 40, .96); border: 1px solid var(--line-glow); border-radius: 7px;
   padding: 8px 16px; font-size: 12px; color: var(--text);
@@ -784,6 +854,28 @@ button { font-family: inherit; }
   overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
   box-shadow: 0 18px 60px rgba(0, 0, 0, .7), 0 0 0 1px rgba(138, 147, 160, .14), 0 0 50px rgba(63, 134, 230, .1);
   animation: modal-in .18s ease-out;
+}
+.pixi-pause-modal {
+  position: relative;
+  z-index: 2147483001;
+  width: 360px;
+  height: 388px;
+  animation: modal-in .18s ease-out;
+}
+.pixi-pause-modal canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.pixi-modal-canvas {
+  position: relative;
+  z-index: 2147483001;
+  animation: modal-in .18s ease-out;
+}
+.pixi-modal-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 .modal--panel,
 .modal--settings,

@@ -1,15 +1,14 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { getRuntimeControls, getRuntimeSnapshot, subscribeRuntimeSnapshot } from "./runtimeBridge";
+import { PixiActionbar } from "./ui/PixiActionbar";
 import { PixiBoard } from "./ui/PixiBoard";
-import { ReactActionbar } from "./ui/ReactActionbar";
-import { ReactDpsMeter, ReactRecipeSuggestions, ReactUnitDetail } from "./ui/ReactBoardHud";
-import { ReactMenubar } from "./ui/ReactMenubar";
-import { ReactModalHost } from "./ui/ReactModalHost";
-import { ReactRightPanel } from "./ui/ReactRightPanel";
-import { ReactTitleBackground } from "./ui/ReactTitleBackground";
-import { ReactTitleScene } from "./ui/ReactTitleScene";
-import { ReactTopbar } from "./ui/ReactTopbar";
-import { ReactToastHost } from "./ui/ReactToastHost";
+import { PixiMenubar } from "./ui/PixiMenubar";
+import { PixiRightPanel } from "./ui/PixiRightPanel";
+import { PixiTitleBackground } from "./ui/PixiTitleBackground";
+import { PixiTitleScene } from "./ui/PixiTitleScene";
+import { PixiTopbar } from "./ui/PixiTopbar";
+import { PixiToastHost } from "./ui/PixiToastHost";
+import { PixiModalHost } from "./ui/PixiModalHost";
 
 let gameRuntimeStarted = false;
 
@@ -80,17 +79,17 @@ export function App() {
   return (
     <div id="app" className={pixiBoardActive ? "pixi-board-active" : ""}>
       <div id="title-scene" className={`scene${activeScene === "title" ? "" : " hidden"}`}>
-        <ReactTitleBackground active={activeScene === "title"} />
+        <PixiTitleBackground active={activeScene === "title"} />
         <div id="title-content">
-          <ReactTitleScene runtime={runtime} />
+          <PixiTitleScene runtime={runtime} />
         </div>
       </div>
       <div id="game-scene" className={`scene${activeScene === "game" ? "" : " hidden"}`}>
         <div id="menubar">
-          <ReactMenubar runtime={runtime} />
+          <PixiMenubar runtime={runtime} />
         </div>
         <div id="topbar">
-          <ReactTopbar runtime={runtime} />
+          <PixiTopbar runtime={runtime} />
         </div>
         <div id="middle">
           <div id="board-wrap">
@@ -102,27 +101,26 @@ export function App() {
                   selectedUids={runtime.selectedUids}
                   selectBox={runtime.selectBox}
                   attackMoveMode={runtime.attackMoveMode}
+                  paused={runtime.paused}
+                  dpsVisible={runtime.dpsVisible}
                   showLabels={runtime.showLabels}
                   showDamage={runtime.showDamage}
                 />
               </div>
             ) : null}
-            <ReactUnitDetail runtime={runtime} />
-            <ReactRecipeSuggestions runtime={runtime} />
-            <ReactDpsMeter runtime={runtime} />
           </div>
           <div id="right-panel" className={runtime?.rightPanelCollapsed ? "collapsed" : ""}>
-            <ReactRightPanel runtime={runtime} />
+            <PixiRightPanel runtime={runtime} />
           </div>
         </div>
         <div id="actionbar">
           <div id="action-controls">
-            <ReactActionbar runtime={runtime} />
+            <PixiActionbar runtime={runtime} />
           </div>
         </div>
       </div>
-      <ReactToastHost />
-      <ReactModalHost />
+      <PixiToastHost />
+      <PixiModalHost />
     </div>
   );
 }
