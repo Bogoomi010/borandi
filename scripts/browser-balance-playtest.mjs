@@ -103,10 +103,7 @@ async function readState(page) {
 }
 
 async function clearModals(page) {
-  await page.evaluate(() => {
-    const root = document.getElementById("modal-root");
-    if (root) root.innerHTML = "";
-  });
+  await page.evaluate(() => window.__randi_dev.clearOverlays());
 }
 
 async function runScenario(page, scenario) {
@@ -276,12 +273,14 @@ try {
     dev: !!window.__randi_dev,
     newRun: typeof window.__randi_dev?.newRun === "function",
     act: typeof window.__randi_dev?.act === "function",
+    clearOverlays: typeof window.__randi_dev?.clearOverlays === "function",
   }));
   assertHook(hooks.render, "render_game_to_text");
   assertHook(hooks.advance, "advanceTime");
   assertHook(hooks.dev, "__randi_dev");
   assertHook(hooks.newRun, "__randi_dev.newRun");
   assertHook(hooks.act, "__randi_dev.act");
+  assertHook(hooks.clearOverlays, "__randi_dev.clearOverlays");
 
   const results = [];
   for (const scenario of scenarios) {

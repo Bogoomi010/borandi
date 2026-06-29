@@ -2,7 +2,7 @@
 // ------------------------------------------------------------------
 // 사용:
 //   import { t, setLocale, onLocaleChange } from "../i18n";
-//   el("button", "", t("common.confirm"))
+//   <button>{t("common.confirm")}</button>
 //   t("toast.reportSaved", { path })   // {path} 보간
 //
 // 설계 메모:

@@ -145,10 +145,7 @@ async function readSnapshot(page) {
 }
 
 async function clearModals(page) {
-  await page.evaluate(() => {
-    const root = document.getElementById("modal-root");
-    if (root) root.innerHTML = "";
-  });
+  await page.evaluate(() => window.__randi_dev.clearOverlays());
 }
 
 async function act(page, type, payload) {
@@ -657,6 +654,7 @@ try {
     dev: !!window.__randi_dev,
     newRun: typeof window.__randi_dev?.newRun === "function",
     act: typeof window.__randi_dev?.act === "function",
+    clearOverlays: typeof window.__randi_dev?.clearOverlays === "function",
     balanceSnapshot: typeof window.__randi_dev?.balanceSnapshot === "function",
   }));
   assertHook(hooks.render, "render_game_to_text");
@@ -664,6 +662,7 @@ try {
   assertHook(hooks.dev, "__randi_dev");
   assertHook(hooks.newRun, "__randi_dev.newRun");
   assertHook(hooks.act, "__randi_dev.act");
+  assertHook(hooks.clearOverlays, "__randi_dev.clearOverlays");
   assertHook(hooks.balanceSnapshot, "__randi_dev.balanceSnapshot");
 
   const results = [];

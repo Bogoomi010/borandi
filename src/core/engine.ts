@@ -104,6 +104,7 @@ export class Game {
       waveSpawned: 0, waveKilled: 0,
       speed: 1,
       castFx: [],
+      damageFx: [],
     };
     this.log("system", `시드 ${seed} · 난이도 ${diff.name} · 이번 판 고정 맵 ${stage.name}로 시작`);
   }
@@ -627,6 +628,7 @@ export class Game {
     s.tick++;
     s.time += DT;
     if (s.castFx.length > 0) s.castFx = s.castFx.filter((f) => s.time - f.born < 0.6);
+    if (s.damageFx.length > 0) s.damageFx = s.damageFx.filter((f) => s.time - f.born < 0.8);
     // 만료된 소환수 제거
     if (s.units.some((u) => u.temporary)) {
       s.units = s.units.filter((u) => !(u.temporary && u.expireAt !== undefined && s.time >= u.expireAt));
@@ -1117,7 +1119,29 @@ export class Game {
     const amp = 1 + e.ampStacks * 0.04 * (1 + 0.1 * voidLv) * (1 + this.relicBonus("damageAmpMult"));
     const dmg = raw * (100 / (100 + effArmor)) * amp;
     e.hp -= dmg;
+    this.recordDamageFx(e, dmg, attackType);
     return dmg;
+  }
+
+  private recordDamageFx(e: EnemyState, dmg: number, attackType: UnitDef["attackType"]) {
+    if (dmg < 1) return;
+    const p = posAtDist(e.dist, this.state.stageId);
+    const jitterSeed = e.eid * 97 + this.state.tick * 13 + Math.round(dmg);
+    const jitterX = Math.sin(jitterSeed) * 8;
+    const jitterY = Math.cos(jitterSeed * 1.7) * 4;
+    const color =
+      attackType === "magic" ? "#75c9ff" :
+      attackType === "pierce" ? "#ffe06f" :
+      attackType === "true" ? "#ff78d4" :
+      "#f2f0dc";
+    this.state.damageFx.push({
+      x: p.x + jitterX,
+      y: p.y - (e.isBoss ? 34 : 22) + jitterY,
+      text: Math.round(dmg).toString(),
+      color,
+      born: this.state.time,
+    });
+    if (this.state.damageFx.length > 80) this.state.damageFx.splice(0, this.state.damageFx.length - 80);
   }
 
   /** 지속 피해(dot) 한 틱 적용 + 처치 정리. 피해는 시전자 totalDamage에 귀속. */

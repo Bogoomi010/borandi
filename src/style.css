@@ -42,7 +42,6 @@
   --gold-ink: #26210e;
   --crystal-selected: #8fd6ff;
 
-  --asset-board-floor: url("./assets/ui/board-floor.svg");
   --asset-panel-frame: url("./assets/ui/panel-frame.svg");
   --asset-stat-cell: url("./assets/ui/stat-cell.svg");
   --asset-slot-frame: url("./assets/ui/slot-frame.svg");
@@ -64,6 +63,7 @@ body {
   font-size: 13px;
   overflow: hidden;
   user-select: none;
+  cursor: url("./assets/ui/controls/cursor.png") 2 2, auto;
 }
 
 #app { position: relative; isolation: isolate; display: flex; flex-direction: column; height: 100vh; }
@@ -100,9 +100,15 @@ button { font-family: inherit; }
 
 #title-scene { position: relative; z-index: 0; }
 
-#title-bg {
+.title-bg-pixi {
   position: absolute; inset: 0; width: 100%; height: 100%;
   z-index: 0;
+}
+
+.title-bg-pixi canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 #title-content {
@@ -186,7 +192,11 @@ button { font-family: inherit; }
   border-bottom: 1px solid var(--line);
   font-size: 12px;
 }
-.menu-item { position: relative; }
+.menu-backdrop {
+  position: fixed; inset: 0; z-index: 50;
+  padding: 0; border: 0; background: transparent; cursor: default;
+}
+.menu-item { position: relative; z-index: 61; }
 .menu-item > button {
   background: none; border: 0; color: var(--text-dim);
   padding: 4px 10px; cursor: pointer; font-size: 12px; border-radius: 4px;
@@ -288,17 +298,41 @@ button { font-family: inherit; }
 
 #board-wrap {
   flex: 1; display: flex; align-items: center; justify-content: center;
-  background:
-    radial-gradient(720px 380px at 50% 38%, rgba(63, 134, 230, .08), transparent),
-    linear-gradient(90deg, rgba(5, 8, 12, .65), transparent 18%, transparent 82%, rgba(5, 8, 12, .72)),
-    linear-gradient(rgba(138, 147, 160, .09) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(138, 147, 160, .09) 1px, transparent 1px),
-    linear-gradient(135deg, rgba(231, 181, 62, .035), transparent 42%),
-    #0e1218;
-  background-size: auto, auto, 64px 64px, 64px 64px, auto, auto;
+  background: #0e1218;
   min-width: 0; position: relative;
 }
-canvas#board { max-width: 100%; max-height: 100%; }
+
+.pixi-board-layer {
+  display: none;
+}
+
+#app.pixi-board-active .pixi-board-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.pixi-board-input-surface {
+  width: min(100%, 960px);
+  max-height: 100%;
+  aspect-ratio: 12 / 7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+
+#app.pixi-board-active .pixi-board-input-surface canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+}
 
 #board-wrap.shake { animation: shake .38s linear; }
 @keyframes shake {
@@ -751,6 +785,18 @@ canvas#board { max-width: 100%; max-height: 100%; }
   box-shadow: 0 18px 60px rgba(0, 0, 0, .7), 0 0 0 1px rgba(138, 147, 160, .14), 0 0 50px rgba(63, 134, 230, .1);
   animation: modal-in .18s ease-out;
 }
+.modal--panel,
+.modal--settings,
+.modal--reward {
+  border-style: solid;
+  border-color: transparent;
+  border-image-slice: 40;
+  border-image-width: 24px;
+  border-image-repeat: stretch;
+}
+.modal--panel { border-image-source: url("./assets/ui/frames/panel-main.png"); }
+.modal--settings { border-image-source: url("./assets/ui/popups/settings.png"); }
+.modal--reward { border-image-source: url("./assets/ui/popups/reward.png"); }
 @keyframes modal-in { from { opacity: 0; transform: translateY(10px) scale(.985); } }
 
 /* 패널 프레임 에셋이 적용되면(data-ui-skin) 기본 모달 박스(테두리/둥근모서리/그림자)를 제거하고

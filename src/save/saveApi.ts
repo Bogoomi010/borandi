@@ -4,6 +4,7 @@
 import type { DifficultyId, GameInput, ResultSummary } from "../core/types";
 import { SCHEMA_VERSION, APP_VERSION, DATA_VERSION } from "../data/version";
 import { invoke, isTauri as tauriRuntime } from "@tauri-apps/api/core";
+import { downloadTextFile } from "../platform/browserDownload";
 
 export interface SaveRecord {
   schemaVersion: number;
@@ -126,14 +127,7 @@ export async function writeReport(filename: string, content: string): Promise<st
   if (isTauri()) {
     return await tauriInvoke<string>("write_run_report", { filename, content });
   }
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-  return filename;
+  return downloadTextFile(filename, content);
 }
 
 export async function openAppDataDir(): Promise<void> {

@@ -1,7 +1,7 @@
 // WebAudio 절차 합성 사운드 — 외부 에셋 없이 효과음과 앰비언트 BGM을 만든다.
 // 브라우저 정책상 첫 사용자 입력 후에만 AudioContext를 생성/재개할 수 있다.
 
-import type { Settings } from "./settings";
+import type { Settings } from "../profile/settings";
 
 export type SfxName =
   | "click" | "deny" | "summon" | "summonRare" | "merge" | "craft" | "sell"

@@ -1,7 +1,9 @@
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 // Tauri 개발 서버 권장 설정
 export default defineConfig({
+  plugins: [react()],
   clearScreen: false,
   server: {
     port: 1421,

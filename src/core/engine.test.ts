@@ -267,6 +267,16 @@ describe("전투/리플레이 재현성", () => {
     expect(replayed.state.cleared).toBe(game.state.cleared);
   }, 30000);
 
+  it("렌더 전용 Pixi 이펙트 상태는 체크섬에 영향을 주지 않는다", () => {
+    const game = new Game("RENDER-FX", "novice");
+    const before = stateChecksum(game.state);
+
+    game.state.castFx.push({ x: 10, y: 20, color: "#ffffff", kind: "burst", born: game.state.time });
+    game.state.damageFx.push({ x: 30, y: 40, text: "123", color: "#ffe06f", born: game.state.time });
+
+    expect(stateChecksum(game.state)).toBe(before);
+  });
+
   it("같은 시드 자동 플레이 두 판은 같은 결과를 만든다", () => {
     const a = new Game("SAME", "novice");
     const b = new Game("SAME", "novice");

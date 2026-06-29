@@ -1,11 +1,12 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 let tempDir = "";
 const CURRENT_DATA_VERSION = readCurrentDataVersion();
+const macClipboardIt = process.platform === "win32" ? it.skip : it;
 
 function makeTempPath(name) {
   tempDir = mkdtempSync(join(tmpdir(), "borandi-manual-log-"));
@@ -124,7 +125,7 @@ describe("manual-playlog plan", () => {
   });
 
   it("인게임 수동 증거 모달은 start-next 저장 전에 dry-run PASS를 요구한다", () => {
-    const modalSource = readFileSync("src/ui/modals.ts", "utf8");
+    const modalSource = readFileSync("src/ui/overlayActions.ts", "utf8");
 
     expect(modalSource).toContain("현재 판의 실제 시드로 다음 필요 수동 세션 dry-run 검증을 먼저 실행하세요.");
     expect(modalSource).toContain("검증이 PASS일 때만 시작 마커를 저장합니다.");
@@ -1400,10 +1401,11 @@ describe("manual-playlog plan", () => {
     });
   });
 
-  it("결과 화면 JSON은 macOS 클립보드 명령으로도 저장 전 검증하고 실제 저장할 수 있다", () => {
+  macClipboardIt("결과 화면 JSON은 macOS 클립보드 명령으로도 저장 전 검증하고 실제 저장할 수 있다", () => {
     const out = makeTempPath("from-clipboard-log.json");
     const fakeBin = join(tempDir, "bin");
-    const pbpaste = join(fakeBin, "pbpaste");
+    const pbpaste = join(fakeBin, process.platform === "win32" ? "pbpaste.cmd" : "pbpaste");
+    const clipboardJson = join(fakeBin, "clipboard.json");
     const resultJson = JSON.stringify({
       schemaVersion: 1,
       kind: "manual-playlog-result",
@@ -1428,9 +1430,17 @@ describe("manual-playlog plan", () => {
       },
     });
     mkdirSync(fakeBin, { recursive: true });
-    writeFileSync(pbpaste, `#!/bin/sh\ncat <<'JSON'\n${resultJson}\nJSON\n`, "utf8");
+    writeFileSync(clipboardJson, resultJson, "utf8");
+    writeFileSync(
+      pbpaste,
+      process.platform === "win32"
+        ? "@echo off\r\ntype \"%~dp0clipboard.json\"\r\n"
+        : "#!/bin/sh\ncat \"$(dirname \"$0\")/clipboard.json\"\n",
+      "utf8",
+    );
     chmodSync(pbpaste, 0o755);
-    const env = { PATH: `${fakeBin}:${process.env.PATH}` };
+    const testPath = `${fakeBin}${delimiter}${process.env.PATH ?? process.env.Path ?? ""}`;
+    const env = { PATH: testPath, Path: testPath };
 
     const output = runManualPlaylog([
       `--out=${out}`,

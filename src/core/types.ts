@@ -342,6 +342,8 @@ export interface GameState {
   speed: 1 | 2 | 3;
   /** 스킬 발동 시각 이펙트 (렌더 전용, 판정/체크섬 무관) */
   castFx: { x: number; y: number; color: string; kind: "burst" | "buff" | "cc"; born: number }[];
+  /** 데미지 숫자 이펙트 (렌더 전용, 판정/체크섬 무관) */
+  damageFx: { x: number; y: number; text: string; color: string; born: number }[];
 }
 
 export interface ResultSummary {
