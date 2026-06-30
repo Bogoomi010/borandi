@@ -5,15 +5,16 @@ import type { MenuCommand, RuntimeSnapshot } from "../runtimeBridge";
 import { getRuntimeControls } from "../runtimeBridge";
 import { canOpenAppDataDir } from "../save/saveApi";
 import { getLocale, onLocaleChange, t } from "../i18n";
+import { GameButton, GamePanel } from "./components";
 
 extend({ Container, Graphics, Text });
 
 type GraphicsDraw = NonNullable<PixiReactElementProps<typeof Graphics>["draw"]>;
 type MenuEntry = MenuItem | "sep";
 
-const MENUBAR_H = 22;
-const DROP_W = 230;
-const ROW_H = 26;
+const MENUBAR_H = 28;
+const DROP_W = 240;
+const ROW_H = 28;
 const SEP_H = 8;
 
 interface PixiMenubarProps {
@@ -62,7 +63,6 @@ function menuDefs(): MenuDef[] {
       items: [
         { label: t("menu.sim100"), command: "sim100" },
         { label: t("menu.balanceGate"), command: "balanceGate" },
-        { label: t("menu.manualProof"), command: "manualProof" },
         "sep",
         { label: t("menu.openDataDir"), command: "openDataDir", disabled: !canOpenAppDataDir() },
       ],
@@ -118,11 +118,11 @@ function useSurfaceSize(height: number) {
 }
 
 function menuButtonWidth(title: string) {
-  return Math.max(54, Math.min(96, title.length * 12 + 26));
+  return Math.max(68, Math.min(118, Array.from(title).length * 12 + 34));
 }
 
 function dropHeight(items: MenuEntry[]) {
-  return 8 + items.reduce((sum, item) => sum + (item === "sep" ? SEP_H : ROW_H), 0);
+  return 40 + items.reduce((sum, item) => sum + (item === "sep" ? SEP_H : ROW_H), 0);
 }
 
 function PixiMenuBarStage({
@@ -170,39 +170,16 @@ function MenuTitle({
   width: number;
   x: number;
 }) {
-  const [hovered, setHovered] = useState(false);
-  const draw = useMemo<GraphicsDraw>(() => (g) => {
-    g.clear();
-    g.rect(0, 0, width, MENUBAR_H).fill({ color: 0x000000, alpha: 0.001 });
-    if (hovered || active) {
-      g.roundRect(0, 1, width, MENUBAR_H - 2, 4).fill({ color: active ? 0x2a3544 : 0x232b36, alpha: 0.95 });
-      g.roundRect(0, 1, width, MENUBAR_H - 2, 4).stroke({ color: active ? 0x4aa3ff : 0x384452, width: 1, alpha: 0.85 });
-    }
-  }, [active, hovered, width]);
-
   return (
-    <pixiContainer
-      cursor="pointer"
-      eventMode="static"
-      onPointerEnter={() => setHovered(true)}
-      onPointerLeave={() => setHovered(false)}
-      onPointerTap={onPress}
+    <GameButton
+      height={MENUBAR_H}
+      label={title}
+      onPress={onPress}
+      selected={active}
+      tone={active ? "selected" : "normal"}
+      width={width}
       x={x}
-    >
-      <pixiGraphics draw={draw} />
-      <pixiText
-        eventMode="none"
-        text={title}
-        x={10}
-        y={4}
-        style={{
-          fill: active || hovered ? 0xeef3fa : 0x9fb2c7,
-          fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
-          fontSize: 12,
-          fontWeight: "bold" as const,
-        }}
-      />
-    </pixiContainer>
+    />
   );
 }
 
@@ -215,17 +192,12 @@ function PixiMenuDropStage({
 }) {
   const [hovered, setHovered] = useState<number | null>(null);
   const height = dropHeight(menu.items);
-  const draw = useMemo<GraphicsDraw>(() => (g) => {
-    g.clear();
-    g.roundRect(0, 0, DROP_W, height, 8).fill({ color: 0x141a22, alpha: 0.98 });
-    g.roundRect(0, 0, DROP_W, height, 8).stroke({ color: 0x4aa3ff, width: 1, alpha: 0.65 });
-  }, [height]);
 
-  let y = 4;
+  let y = 34;
 
   return (
     <pixiContainer>
-      <pixiGraphics draw={draw} />
+      <GamePanel accent="selected" height={height} title={menu.title} variant="small" width={DROP_W} />
       {menu.items.map((entry, index) => {
         const nextY = y;
         y += entry === "sep" ? SEP_H : ROW_H;

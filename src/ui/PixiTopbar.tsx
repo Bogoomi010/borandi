@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Application, extend, type PixiReactElementProps } from "@pixi/react";
-import { Container, Graphics, Text } from "pixi.js";
+import { Container, Graphics, Sprite, Text } from "pixi.js";
 import { DIFFICULTY_BY_ID } from "../data/difficulty";
 import { stageById } from "../data/stages";
 import { BOSS_ROUND_LIST, FINAL_ROUND } from "../data/waves";
 import { getRuntimeControls, type RuntimeSnapshot } from "../runtimeBridge";
+import { uiTexture } from "./assets/UiTextureRegistry";
+import { GameButton, GameResourceBadge, type GameResourceKind } from "./components";
+import { GAME_UI_COLORS, GAME_UI_FONT } from "./skin/GameUiTokens";
+import type { UiTextureKey } from "./skin/UiTextureKeys";
 
-extend({ Container, Graphics, Text });
+extend({ Container, Graphics, Sprite, Text });
 
 type GraphicsDraw = NonNullable<PixiReactElementProps<typeof Graphics>["draw"]>;
 
-const TOPBAR_H = 30;
+const TOPBAR_H = 50;
 
 interface PixiTopbarProps {
   runtime: RuntimeSnapshot | null;
@@ -18,9 +22,10 @@ interface PixiTopbarProps {
 
 interface StatSpec {
   id: string;
+  kind: GameResourceKind;
   label: string;
+  tone?: "normal" | "primary" | "danger" | "selected" | "disabled" | "reward" | "warning";
   value: string;
-  color: number;
   width: number;
 }
 
@@ -78,73 +83,35 @@ function saveText(status: RuntimeSnapshot["saveStatus"]) {
   return "";
 }
 
-function TopStat({
+function TopSpeedButton({
+  active,
   height,
-  spec,
+  onPress,
+  speed,
+  width,
   x,
   y,
 }: {
+  active: boolean;
   height: number;
-  spec: StatSpec;
-  x: number;
-  y: number;
-}) {
-  const draw = useMemo<GraphicsDraw>(() => (g) => {
-    g.clear();
-    g.roundRect(0, 0, spec.width, height, 5).fill({ color: 0x121820, alpha: 0.42 });
-    g.roundRect(0, 0, spec.width, height, 5).stroke({ color: 0x384452, width: 1, alpha: 0.5 });
-    g.circle(12, height / 2, 4).fill({ color: spec.color, alpha: 0.95 });
-  }, [height, spec.color, spec.width]);
-
-  return (
-    <pixiContainer x={x} y={y}>
-      <pixiGraphics draw={draw} />
-      <pixiText
-        text={spec.label}
-        x={22}
-        y={5}
-        style={{
-          fill: 0x9fb2c7,
-          fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
-          fontSize: 8,
-          fontWeight: "bold" as const,
-        }}
-      />
-      <pixiText
-        text={spec.value}
-        x={22}
-        y={15}
-        style={{
-          fill: spec.color,
-          fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
-          fontSize: 11,
-          fontWeight: "bold" as const,
-          wordWrap: true,
-          wordWrapWidth: Math.max(40, spec.width - 28),
-        }}
-      />
-    </pixiContainer>
-  );
-}
-
-function TopPill({
-  height,
-  spec,
-  x,
-  y,
-}: {
-  height: number;
-  spec: PillSpec;
+  onPress: () => void;
+  speed: 1 | 2 | 3;
+  width: number;
   x: number;
   y: number;
 }) {
   const [hovered, setHovered] = useState(false);
-  const accent = spec.warn ? 0xe8a33d : spec.active ? 0xe7b53e : 0x4aa3ff;
+  const textureKey: UiTextureKey = `topbar.speed.x${speed}${active ? ".selected" : ""}` as UiTextureKey;
   const draw = useMemo<GraphicsDraw>(() => (g) => {
     g.clear();
-    g.roundRect(0, 0, spec.width, height, 6).fill({ color: spec.active ? 0x3d2b10 : 0x17202b, alpha: 0.92 });
-    g.roundRect(0, 0, spec.width, height, 6).stroke({ color: hovered ? 0xbfdfff : accent, width: hovered ? 2 : 1, alpha: 0.9 });
-  }, [accent, height, hovered, spec.active, spec.width]);
+    if (hovered || active) {
+      g.roundRect(4, 5, width - 8, height - 10, 8).stroke({
+        color: active ? GAME_UI_COLORS.gold : GAME_UI_COLORS.arcane,
+        width: active ? 2 : 1,
+        alpha: hovered ? 0.5 : 0.32,
+      });
+    }
+  }, [active, height, hovered, width]);
 
   return (
     <pixiContainer
@@ -152,36 +119,69 @@ function TopPill({
       eventMode="static"
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
-      onPointerTap={spec.onPress}
+      onPointerTap={onPress}
       x={x}
       y={y}
     >
+      <pixiSprite height={height} texture={uiTexture(textureKey)} width={width} />
       <pixiGraphics draw={draw} />
       <pixiText
+        anchor={0.5}
         eventMode="none"
-        text={spec.label}
-        x={12}
-        y={5}
+        text={`x${speed}`}
+        x={width / 2}
+        y={height / 2}
         style={{
-          fill: spec.active ? 0xfff0bf : 0xeef3fa,
-          fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
+          fill: active ? 0xfff0bf : GAME_UI_COLORS.text,
+          fontFamily: GAME_UI_FONT,
           fontSize: 10,
           fontWeight: "bold" as const,
+          stroke: { color: GAME_UI_COLORS.obsidian, width: 2 },
         }}
       />
-      {spec.sub ? (
-        <pixiText
-          eventMode="none"
-          text={spec.sub}
-          x={12}
-          y={17}
-          style={{
-            fill: 0x9fb2c7,
-            fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
-            fontSize: 8,
-          }}
-        />
-      ) : null}
+    </pixiContainer>
+  );
+}
+
+function TopPauseButton({
+  height,
+  onPress,
+  paused,
+  width,
+  x,
+  y,
+}: {
+  height: number;
+  onPress: () => void;
+  paused: boolean;
+  width: number;
+  x: number;
+  y: number;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const draw = useMemo<GraphicsDraw>(() => (g) => {
+    g.clear();
+    if (hovered || paused) {
+      g.roundRect(4, 4, width - 8, height - 8, 10).stroke({
+        color: paused ? GAME_UI_COLORS.gold : GAME_UI_COLORS.arcane,
+        width: 2,
+        alpha: hovered ? 0.58 : 0.32,
+      });
+    }
+  }, [height, hovered, paused, width]);
+
+  return (
+    <pixiContainer
+      cursor="pointer"
+      eventMode="static"
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
+      onPointerTap={onPress}
+      x={x}
+      y={y}
+    >
+      <pixiSprite height={height} texture={uiTexture(paused ? "topbar.play" : "topbar.pause")} width={width} />
+      <pixiGraphics draw={draw} />
     </pixiContainer>
   );
 }
@@ -201,31 +201,32 @@ function PixiTopbarStage({
   const diff = DIFFICULTY_BY_ID[state.difficulty];
   const nextBoss = BOSS_ROUND_LIST.find((round) => round >= state.round);
   const compact = width < 1120;
-  const itemHeight = Math.min(TOPBAR_H, height);
+  const itemHeight = Math.min(46, height - 2);
   const y = Math.max(0, Math.floor((height - itemHeight) / 2));
-  const gap = compact ? 5 : 7;
-  const speedWidth = compact ? 96 : 112;
-  const pauseWidth = runtime.paused ? 78 : 86;
+  const gap = compact ? 5 : 8;
+  const speedWidth = compact ? 126 : 144;
+  const pauseWidth = 48;
   const save = saveText(runtime.saveStatus);
-  const saveWidth = save ? (runtime.saveStatus === "failed" ? 90 : 58) : 0;
+  const saveWidth = save ? (runtime.saveStatus === "failed" ? 94 : 66) : 0;
   const rightWidth = speedWidth + pauseWidth + saveWidth + gap * (save ? 2 : 1);
   const rightStart = Math.max(0, width - rightWidth);
 
   const stats: StatSpec[] = [
-    { id: "map", label: "MAP", value: `${stage.id}. ${stage.name}`, color: 0x8fd7ff, width: compact ? 136 : 168 },
-    { id: "round", label: "ROUND", value: `${Math.min(state.round, FINAL_ROUND)}/${FINAL_ROUND}`, color: 0xdbe7f5, width: compact ? 76 : 88 },
-    { id: "enemy", label: "ENEMY", value: `${state.enemies.length}/${runtime.enemyLimit}`, color: 0xff6f61, width: compact ? 82 : 92 },
-    { id: "gold", label: "GOLD", value: String(state.gold), color: 0xf6d365, width: compact ? 70 : 84 },
-    { id: "diff", label: "DIFF", value: diff?.id ?? state.difficulty, color: 0x8fd7ff, width: compact ? 86 : 104 },
+    { id: "map", kind: "map", label: "MAP", value: `${stage.id}. ${stage.name}`, tone: "normal", width: compact ? 146 : 184 },
+    { id: "round", kind: "round", label: "ROUND", value: `${Math.min(state.round, FINAL_ROUND)}/${FINAL_ROUND}`, tone: "normal", width: compact ? 92 : 108 },
+    { id: "enemy", kind: "enemy", label: "ENEMY", value: `${state.enemies.length}/${runtime.enemyLimit}`, tone: state.enemies.length > runtime.enemyLimit * 0.7 ? "danger" : "warning", width: compact ? 98 : 116 },
+    { id: "gold", kind: "gold", label: "GOLD", value: String(state.gold), tone: "reward", width: compact ? 86 : 104 },
+    { id: "diff", kind: "difficulty", label: "DIFF", value: diff?.id ?? state.difficulty, tone: "normal", width: compact ? 96 : 116 },
   ];
 
   if (!compact && nextBoss !== undefined) {
     stats.push({
       id: "boss",
+      kind: "boss",
       label: "NEXT BOSS",
       value: `${nextBoss}R (${Math.max(0, nextBoss - state.round)}R)`,
-      color: 0xe8a33d,
-      width: 128,
+      tone: "warning",
+      width: 154,
     });
   }
 
@@ -251,56 +252,74 @@ function PixiTopbarStage({
 
   return (
     <pixiContainer>
+      <pixiSprite alpha={0.98} height={height} texture={uiTexture("frame.topbar")} width={width} />
       {stats.map((spec) => {
         const nextX = x;
         x += spec.width + gap;
         if (nextX + spec.width > rightStart - 10) return null;
-        return <TopStat height={itemHeight} key={spec.id} spec={spec} x={nextX} y={y} />;
+        return (
+          <GameResourceBadge
+            height={itemHeight}
+            key={spec.id}
+            kind={spec.kind}
+            label={spec.label}
+            tone={spec.tone}
+            value={spec.value}
+            width={spec.width}
+            x={nextX}
+            y={y}
+          />
+        );
       })}
       {pending.map((spec, index) => {
         const nextX = x;
         x += spec.width + gap;
         if (nextX + spec.width > rightStart - 10) return null;
-        return <TopPill height={itemHeight} key={`${spec.label}-${index}`} spec={spec} x={nextX} y={y} />;
+        return (
+          <GameButton
+            height={itemHeight}
+            key={`${spec.label}-${index}`}
+            label={spec.label}
+            onPress={spec.onPress}
+            tone={spec.warn ? "warning" : "normal"}
+            width={spec.width}
+            x={nextX}
+            y={y}
+          />
+        );
       })}
       <pixiContainer x={rightStart} y={y}>
-        {[1, 2, 3].map((speed, index) => (
-          <TopPill
+        <pixiSprite alpha={0.82} height={itemHeight} texture={uiTexture("topbar.speed.group")} width={speedWidth} />
+        {([1, 2, 3] as const).map((speed, index) => (
+          <TopSpeedButton
+            active={state.speed === speed}
             height={itemHeight}
             key={speed}
-            spec={{
-              label: `x${speed}`,
-              active: state.speed === speed,
-              width: Math.floor((speedWidth - 8) / 3),
-              onPress: () => controls?.act("setSpeed", { speed }),
-            }}
+            onPress={() => controls?.act("setSpeed", { speed })}
+            speed={speed}
+            width={Math.floor(speedWidth / 3)}
             x={index * Math.floor(speedWidth / 3)}
             y={0}
           />
         ))}
       </pixiContainer>
-      <TopPill
+      <TopPauseButton
         height={itemHeight}
-        spec={{
-          label: runtime.paused ? "Resume" : "Pause",
-          active: runtime.paused,
-          width: pauseWidth,
-          onPress: () => controls?.togglePause(),
-        }}
+        onPress={() => controls?.togglePause()}
+        paused={runtime.paused}
+        width={pauseWidth}
         x={rightStart + speedWidth + gap}
         y={y}
       />
       {save ? (
-        <TopPill
+        <GameButton
           height={itemHeight}
-          spec={{
-            label: save,
-            warn: runtime.saveStatus === "failed",
-            width: saveWidth,
-            onPress: () => {
-              if (runtime.saveStatus === "failed") controls?.autosave();
-            },
+          label={save}
+          onPress={() => {
+            if (runtime.saveStatus === "failed") controls?.autosave();
           }}
+          tone={runtime.saveStatus === "failed" ? "danger" : "normal"}
+          width={saveWidth}
           x={rightStart + speedWidth + pauseWidth + gap * 2}
           y={y}
         />

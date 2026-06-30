@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Application, extend, type PixiReactElementProps } from "@pixi/react";
 import { Assets, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
-import { BOARD_H, BOARD_W, pathLengthForStage, posAtDist, waypointsForStage } from "../core/path";
+import { BOARD_H, BOARD_W, FIELD, PATH_WIDTH, pathLengthForStage, posAtDist, waypointsForStage } from "../core/path";
 import type { GameState, Grade, UnitDef } from "../core/types";
 import { analyzeRecipes } from "../core/advisor";
 import { UNIT_BY_ID } from "../data/units";
 import { stageById, type StageDecoration, type StageDecorationKind, type StageDef } from "../data/stages";
-import { getRuntimeControls, type BoardPointerInput } from "../runtimeBridge";
+import { getRuntimeControls, type BoardPointerInput, type RenderInterpolationFrame } from "../runtimeBridge";
 import { screenToBoard, type BoardBox } from "../board/boardHitTest";
 import groundDarkRockyUrl from "../assets/ui/tile_ground/ground-dark-rocky.png?url";
 import groundDirtPlainUrl from "../assets/ui/tile_ground/ground-dirt-plain.png?url";
@@ -31,6 +31,7 @@ import battlefieldPathMarkerUrl from "../assets/ui/battlefield/enemy-path-marker
 import battlefieldPlacedUnitUrl from "../assets/ui/battlefield/placed-unit-marker.png?url";
 import battlefieldSelectedUnitUrl from "../assets/ui/battlefield/selected-unit-marker.png?url";
 import enemyPortalUrl from "../assets/effects/enemy-portal.png?url";
+import { GameNineSlice } from "./skin/createNineSliceSprite";
 
 extend({ Container, Graphics, Sprite, Text });
 
@@ -131,6 +132,22 @@ const BOARD_TEXTURE_URLS = Array.from(new Set([
   ...forestAttackWestUrls,
 ]));
 
+const HUD_MARGIN = 14;
+const DPS_HUD_W = 236;
+const DPS_HUD_H = 220;
+const DPS_HUD_X = BOARD_W - DPS_HUD_W - HUD_MARGIN;
+const DPS_HUD_Y = 14;
+const UNIT_DETAIL_X = 18;
+const UNIT_DETAIL_W = 570;
+const UNIT_DETAIL_H = 154;
+const UNIT_DETAIL_Y = BOARD_H - UNIT_DETAIL_H - 18;
+const RECIPE_HUD_W = 310;
+const RECIPE_DETAILS_H = 96;
+const RECIPE_LIST_H = 128;
+const RECIPE_HUD_X = BOARD_W - RECIPE_HUD_W - 16;
+const RECIPE_LIST_Y = BOARD_H - RECIPE_LIST_H - 18;
+const RECIPE_DETAILS_Y = RECIPE_LIST_Y - RECIPE_DETAILS_H - 18;
+
 export interface PixiBoardProps {
   revision: number;
   state: GameState;
@@ -141,6 +158,7 @@ export interface PixiBoardProps {
   dpsVisible?: boolean;
   showLabels?: boolean;
   showDamage?: boolean;
+  renderFrame?: RenderInterpolationFrame;
 }
 
 type GraphicsDraw = NonNullable<PixiReactElementProps<typeof Graphics>["draw"]>;
@@ -166,6 +184,19 @@ interface DpsStat {
   last: number;
   dps: number;
   total: number;
+}
+
+interface RenderedUnit {
+  unit: GameState["units"][number];
+  x: number;
+  y: number;
+}
+
+interface RenderedEnemy {
+  enemy: GameState["enemies"][number];
+  dist: number;
+  x: number;
+  y: number;
 }
 
 type RecipeStatus = ReturnType<typeof analyzeRecipes>[number];
@@ -211,6 +242,46 @@ function cssColorToNumber(color: string | undefined, fallback: number) {
 
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
+}
+
+function lerp(a: number, b: number, alpha: number) {
+  return a + (b - a) * alpha;
+}
+
+function renderTimeForState(state: GameState, renderFrame?: RenderInterpolationFrame) {
+  if (!renderFrame) return state.time;
+  const stepSeconds = renderFrame.stepSeconds > 0
+    ? renderFrame.stepSeconds
+    : Math.max(0, state.time - renderFrame.previousTime);
+  return state.time + stepSeconds * clamp01(renderFrame.alpha);
+}
+
+function renderUnitPosition(unit: GameState["units"][number], renderFrame?: RenderInterpolationFrame) {
+  const previous = renderFrame?.units[unit.uid];
+  if (!previous) return { x: unit.x, y: unit.y };
+  const alpha = clamp01(renderFrame.alpha);
+  return {
+    x: lerp(previous.x, unit.x, alpha),
+    y: lerp(previous.y, unit.y, alpha),
+  };
+}
+
+function renderEnemyDist(
+  enemy: GameState["enemies"][number],
+  pathLength: number,
+  renderFrame?: RenderInterpolationFrame,
+) {
+  const previous = renderFrame?.enemies[enemy.eid];
+  if (!previous || pathLength <= 0) return enemy.dist;
+
+  const alpha = clamp01(renderFrame.alpha);
+  let current = enemy.dist;
+  const delta = current - previous.dist;
+  if (delta < -pathLength / 2) current += pathLength;
+  else if (delta > pathLength / 2) current -= pathLength;
+
+  const dist = lerp(previous.dist, current, alpha) % pathLength;
+  return dist < 0 ? dist + pathLength : dist;
 }
 
 function colorForCss(cssColor: string | undefined, fallback: number) {
@@ -495,16 +566,16 @@ function DecorationSpriteLayer({ stage, textures }: { stage: StageDef; textures:
   );
 }
 
-function directionForUnit(unit: GameState["units"][number]) {
+function directionForUnit(unit: GameState["units"][number], x = unit.x) {
   if (unit.order.kind === "move" || unit.order.kind === "attackMove") {
-    const dx = unit.order.x - unit.x;
+    const dx = unit.order.x - x;
     if (Math.abs(dx) > 8) return dx < 0 ? "west" : "east";
   }
   return "south";
 }
 
-function animationForUnit(unit: GameState["units"][number], textures: PixiBoardTextures) {
-  const direction = directionForUnit(unit);
+function animationForUnit(unit: GameState["units"][number], textures: PixiBoardTextures, x = unit.x) {
+  const direction = directionForUnit(unit, x);
   if (unit.state === "moving" || unit.state === "chasing") {
     return direction === "west" ? textures.unitAnimation.walkWest : textures.unitAnimation.walkEast;
   }
@@ -518,11 +589,15 @@ function animationForUnit(unit: GameState["units"][number], textures: PixiBoardT
 
 function UnitSpriteLayer({
   paused,
+  renderedUnits,
+  renderTime,
   selected,
   state,
   textures,
 }: {
   paused: boolean;
+  renderedUnits: RenderedUnit[];
+  renderTime: number;
   selected: ReadonlySet<number>;
   state: GameState;
   textures: PixiBoardTextures;
@@ -531,19 +606,20 @@ function UnitSpriteLayer({
 
   return (
     <pixiContainer>
-      {state.units.map((unit) => {
+      {renderedUnits.map(({ unit, x, y }) => {
         const def = UNIT_BY_ID[unit.defId];
         const isSelected = selected.has(unit.uid);
         const size = def.grade === "hidden" ? 66 : def.grade === "legend" ? 60 : def.grade === "hero" ? 54 : 48;
         const tint = FAMILY_COLOR[def.family] ?? 0xffffff;
-        const frames = animationForUnit(unit, textures);
+        const frames = animationForUnit(unit, textures, x);
         const frameRate = unit.state === "attacking" ? 14 : unit.state === "moving" || unit.state === "chasing" ? 12 : 7;
+        const animationTime = paused ? renderTime : renderTime * state.speed;
         const frameIndex = frames.length > 0
-          ? Math.floor((paused ? state.time : state.time * state.speed) * frameRate + unit.uid) % frames.length
+          ? Math.floor(animationTime * frameRate + unit.uid) % frames.length
           : 0;
         const frame = frames[frameIndex] ?? Texture.EMPTY;
         return (
-          <pixiContainer key={`unit-sprite-${unit.uid}`} x={unit.x} y={unit.y}>
+          <pixiContainer key={`unit-sprite-${unit.uid}`} x={x} y={y}>
             <pixiSprite
               alpha={isSelected ? 0.9 : 0.48}
               anchor={0.5}
@@ -571,19 +647,20 @@ function UnitSpriteLayer({
 }
 
 function EnemySpriteLayer({
-  state,
+  renderedEnemies,
+  renderTime,
   textures,
 }: {
-  state: GameState;
+  renderedEnemies: RenderedEnemy[];
+  renderTime: number;
   textures: PixiBoardTextures;
 }) {
   if (!textures.ready) return null;
 
   return (
     <pixiContainer>
-      {state.enemies.map((enemy) => {
-        const p = posAtDist(enemy.dist, state.stageId);
-        const stunned = enemy.stunUntil > state.time;
+      {renderedEnemies.map(({ enemy, x, y }) => {
+        const stunned = enemy.stunUntil > renderTime;
         const slowed = enemy.slows.length > 0;
         const size = enemy.isBoss ? 60 : 34;
         const tint = stunned ? 0xffe14d : slowed ? 0x8fdfff : enemy.armor > 0 ? 0xb8c0d4 : 0xffffff;
@@ -596,8 +673,8 @@ function EnemySpriteLayer({
             texture={enemy.isBoss || enemy.armor > 0 ? textures.enemy.elite : textures.enemy.normal}
             tint={tint}
             width={size}
-            x={p.x}
-            y={p.y - (enemy.isBoss ? 5 : 2)}
+            x={x}
+            y={y - (enemy.isBoss ? 5 : 2)}
           />
         );
       })}
@@ -676,8 +753,8 @@ function PixiUnitDetailPanel({
   const portraitTexture = textures.unitAnimation.idleSouth[0] ?? Texture.EMPTY;
 
   return (
-    <pixiContainer x={18} y={388}>
-      <HudPanel accent={gradeColor} height={154} width={570} x={0} y={0} />
+    <pixiContainer x={UNIT_DETAIL_X} y={UNIT_DETAIL_Y}>
+      <HudPanel accent={gradeColor} height={UNIT_DETAIL_H} width={UNIT_DETAIL_W} x={0} y={0} />
       <pixiGraphics draw={portraitDraw} />
       {textures.ready ? (
         <pixiSprite
@@ -809,8 +886,8 @@ function PixiDpsHud({
   if (!visible) return null;
 
   return (
-    <pixiContainer x={710} y={14}>
-      <HudPanel accent={0x4aa3ff} height={220} width={236} x={0} y={0} />
+    <pixiContainer x={DPS_HUD_X} y={DPS_HUD_Y}>
+      <HudPanel accent={0x4aa3ff} height={DPS_HUD_H} width={DPS_HUD_W} x={0} y={0} />
       <pixiText
         text="DPS"
         x={14}
@@ -976,8 +1053,8 @@ function RecipeDetails({
   const craftable = canCraftRecipe(status, state);
 
   return (
-    <pixiContainer x={636} y={300}>
-      <HudPanel accent={craftable ? 0x6cdd8b : 0xe8a33d} height={96} width={310} x={0} y={0} />
+    <pixiContainer x={RECIPE_HUD_X} y={RECIPE_DETAILS_Y}>
+      <HudPanel accent={craftable ? 0x6cdd8b : 0xe8a33d} height={RECIPE_DETAILS_H} width={RECIPE_HUD_W} x={0} y={0} />
       <pixiText
         text={craftable ? "READY" : "PLAN"}
         x={14}
@@ -1053,8 +1130,8 @@ function PixiRecipeSuggestionsPanel({
   return (
     <>
       {activeStatus ? <RecipeDetails state={state} status={activeStatus} /> : null}
-      <pixiContainer x={636} y={414}>
-        <HudPanel accent={craftableCount > 0 ? 0x6cdd8b : 0x4aa3ff} height={128} width={310} x={0} y={0} />
+      <pixiContainer x={RECIPE_HUD_X} y={RECIPE_LIST_Y}>
+        <HudPanel accent={craftableCount > 0 ? 0x6cdd8b : 0x4aa3ff} height={RECIPE_LIST_H} width={RECIPE_HUD_W} x={0} y={0} />
         <pixiText
           text={craftableCount > 0 ? "CRAFT" : "RECIPES"}
           x={16}
@@ -1116,6 +1193,7 @@ export function PixiBoard({
   dpsVisible = false,
   showLabels = false,
   showDamage = true,
+  renderFrame,
 }: PixiBoardProps) {
   const stage = stageById(state.stageId);
   const selected = selectedUids ?? new Set<number>();
@@ -1123,6 +1201,22 @@ export function PixiBoard({
   const dpsSnapshot = usePixiDpsSnapshot(state);
   const waypoints = useMemo(() => waypointsForStage(state.stageId), [state.stageId]);
   const pathLength = useMemo(() => pathLengthForStage(state.stageId), [state.stageId]);
+  const renderTime = useMemo(
+    () => renderTimeForState(state, renderFrame),
+    [renderFrame, revision, state.time],
+  );
+  const renderedUnits = useMemo<RenderedUnit[]>(
+    () => state.units.map((unit) => ({ unit, ...renderUnitPosition(unit, renderFrame) })),
+    [renderFrame, revision, state.units],
+  );
+  const renderedEnemies = useMemo<RenderedEnemy[]>(
+    () => state.enemies.map((enemy) => {
+      const dist = renderEnemyDist(enemy, pathLength, renderFrame);
+      const p = posAtDist(dist, state.stageId);
+      return { enemy, dist, x: p.x, y: p.y };
+    }),
+    [pathLength, renderFrame, revision, state.enemies, state.stageId],
+  );
   const selectedUnits = useMemo(() => state.units.filter((unit) => selected.has(unit.uid)), [selected, state.units]);
   const unitDetailVisible = selectedUnits.length === 1;
   const recipeHudVisible = useMemo(() => {
@@ -1140,9 +1234,9 @@ export function PixiBoard({
     };
   }, []);
   const isHudPoint = useCallback((input: BoardPointerInput) => {
-    if (unitDetailVisible && input.x >= 18 && input.x <= 588 && input.y >= 388 && input.y <= 542) return true;
-    if (dpsVisible && input.x >= 710 && input.x <= 946 && input.y >= 14 && input.y <= 234) return true;
-    if (recipeHudVisible && input.x >= 636 && input.x <= 946 && input.y >= 300 && input.y <= 542) return true;
+    if (unitDetailVisible && input.x >= UNIT_DETAIL_X && input.x <= UNIT_DETAIL_X + UNIT_DETAIL_W && input.y >= UNIT_DETAIL_Y && input.y <= UNIT_DETAIL_Y + UNIT_DETAIL_H) return true;
+    if (dpsVisible && input.x >= DPS_HUD_X && input.x <= DPS_HUD_X + DPS_HUD_W && input.y >= DPS_HUD_Y && input.y <= DPS_HUD_Y + DPS_HUD_H) return true;
+    if (recipeHudVisible && input.x >= RECIPE_HUD_X && input.x <= RECIPE_HUD_X + RECIPE_HUD_W && input.y >= RECIPE_DETAILS_Y && input.y <= RECIPE_LIST_Y + RECIPE_LIST_H) return true;
     return false;
   }, [dpsVisible, recipeHudVisible, unitDetailVisible]);
 
@@ -1191,7 +1285,7 @@ export function PixiBoard({
     g.stroke({ color: 0x8a93a0, width: 1, alpha: 0.08 });
     g.rect(0, 0, BOARD_W, BOARD_H).stroke({ color: 0x090c11, width: 18, alpha: 0.5 });
     g.rect(8, 8, BOARD_W - 16, BOARD_H - 16).stroke({ color: 0xe7b53e, width: 2, alpha: 0.16 });
-    g.rect(80, 70, 800, 420).stroke({ color: 0x9d7b4b, width: 2, alpha: 0.28 });
+    g.rect(FIELD.left, FIELD.top, FIELD.right - FIELD.left, FIELD.bottom - FIELD.top).stroke({ color: 0x9d7b4b, width: 2, alpha: 0.28 });
     const light = stage.ground === "rune" ? 0x8052d9 : stage.ground === "blood" ? 0x7d1c1c : 0xffffff;
     const dark = stage.ground === "rune" ? 0x241f2e : 0x000000;
     for (let i = 0; i < 120; i++) {
@@ -1221,8 +1315,7 @@ export function PixiBoard({
     for (let i = 1; i < waypoints.length; i++) {
       g.lineTo(waypoints[i][0], waypoints[i][1]);
     }
-    g.lineTo(waypoints[0][0], waypoints[0][1]);
-    g.stroke({ color: 0x241712, width: 34, alpha: 0.92 });
+    g.stroke({ color: 0x241712, width: PATH_WIDTH, alpha: 0.92 });
     g.stroke({ color: stage.ground === "rune" ? 0x8052d9 : 0x5a4226, width: 3, alpha: 0.72 });
     for (let dist = 160; dist < pathLength; dist += 260) {
       const p = posAtDist(dist, state.stageId);
@@ -1250,53 +1343,52 @@ export function PixiBoard({
 
   const drawUnits = useMemo<GraphicsDraw>(() => (g) => {
     g.clear();
-    for (const unit of state.units) {
+    for (const { unit, x, y } of renderedUnits) {
       const def = UNIT_BY_ID[unit.defId];
       const isSelected = selected.has(unit.uid);
       const justFired = unit.cooldown > 0 && unit.cooldown > 1 / def.attackSpeed - 0.12;
       if (isSelected) {
-        g.circle(unit.x, unit.y, def.range).stroke({ color: 0xe8b54d, width: 1, alpha: 0.4 });
+        g.circle(x, y, def.range).stroke({ color: 0xe8b54d, width: 1, alpha: 0.4 });
         if (unit.order.kind === "move" || unit.order.kind === "attackMove") {
           const orderColor = unit.order.kind === "attackMove" ? 0xe5534b : 0x6cdd8b;
-          g.moveTo(unit.x, unit.y);
+          g.moveTo(x, y);
           g.lineTo(unit.order.cx, unit.order.cy);
           g.stroke({ color: orderColor, width: 2, alpha: 0.5 });
           g.circle(unit.order.cx, unit.order.cy, 4).fill({ color: orderColor, alpha: 0.8 });
         }
       }
       if (justFired) {
-        g.circle(unit.x, unit.y, isSelected ? 25 : 20)
+        g.circle(x, y, isSelected ? 25 : 20)
           .stroke({ color: FAMILY_COLOR[def.family] ?? 0xffd98a, width: 2, alpha: 0.75 });
       }
       if (unit.locked) {
-        g.rect(unit.x - 7, unit.y - 22, 14, 5).fill({ color: 0xf6d365, alpha: 0.92 });
+        g.rect(x - 7, y - 22, 14, 5).fill({ color: 0xf6d365, alpha: 0.92 });
       }
     }
-  }, [revision, selected, state.units]);
+  }, [renderedUnits, revision, selected]);
 
   const drawEnemies = useMemo<GraphicsDraw>(() => (g) => {
     g.clear();
-    for (const enemy of state.enemies) {
-      const p = posAtDist(enemy.dist, state.stageId);
+    for (const { enemy, x, y } of renderedEnemies) {
       const radius = enemy.isBoss ? 26 : 13;
       const hpPct = enemy.maxHp > 0 ? Math.max(0, Math.min(1, enemy.hp / enemy.maxHp)) : 0;
-      g.ellipse(p.x, p.y + radius * 0.42, radius * 0.75, radius * 0.25).fill({ color: 0x000000, alpha: 0.28 });
+      g.ellipse(x, y + radius * 0.42, radius * 0.75, radius * 0.25).fill({ color: 0x000000, alpha: 0.28 });
       if (enemy.armorBreakStacks > 0 || enemy.ampStacks > 0) {
         const markerColor = enemy.ampStacks > 0 ? 0xb478ff : 0xff8a3d;
-        g.circle(p.x + radius * 0.48, p.y - radius * 0.52, 4).fill({ color: markerColor, alpha: 0.9 });
+        g.circle(x + radius * 0.48, y - radius * 0.52, 4).fill({ color: markerColor, alpha: 0.9 });
       }
-      g.rect(p.x - radius, p.y - radius - 10, radius * 2, 4).fill({ color: 0x2a1414, alpha: 0.9 });
-      g.rect(p.x - radius, p.y - radius - 10, radius * 2 * hpPct, 4).fill({
+      g.rect(x - radius, y - radius - 10, radius * 2, 4).fill({ color: 0x2a1414, alpha: 0.9 });
+      g.rect(x - radius, y - radius - 10, radius * 2 * hpPct, 4).fill({
         color: hpPct > 0.5 ? 0x68d06f : hpPct > 0.25 ? 0xe8a33d : 0xe5534b,
         alpha: 0.95,
       });
     }
-  }, [revision, state.enemies, state.stageId]);
+  }, [renderedEnemies, revision]);
 
   const drawCastFx = useMemo<GraphicsDraw>(() => (g) => {
     g.clear();
     for (const fx of state.castFx) {
-      const age = state.time - fx.born;
+      const age = renderTime - fx.born;
       if (age < 0 || age > 0.6) continue;
       const t = age / 0.6;
       const base = fx.kind === "buff" ? 38 : fx.kind === "cc" ? 46 : 30;
@@ -1311,7 +1403,7 @@ export function PixiBoard({
         g.circle(fx.x, fx.y, (base + t * grow) * 0.6).stroke({ color, width: 1.5, alpha: (1 - t) * 0.4 });
       }
     }
-  }, [revision, state.castFx, state.time]);
+  }, [renderTime, revision, state.castFx]);
 
   const drawBossBar = useMemo<GraphicsDraw>(() => (g) => {
     g.clear();
@@ -1371,27 +1463,45 @@ export function PixiBoard({
         <BoardGraphics draw={drawDecorations} />
         <DecorationSpriteLayer stage={stage} textures={textures} />
         <BoardGraphics draw={drawUnits} />
-        <UnitSpriteLayer paused={paused} selected={selected} state={state} textures={textures} />
-        <EnemySpriteLayer state={state} textures={textures} />
+        <UnitSpriteLayer
+          paused={paused}
+          renderedUnits={renderedUnits}
+          renderTime={renderTime}
+          selected={selected}
+          state={state}
+          textures={textures}
+        />
+        <EnemySpriteLayer
+          renderedEnemies={renderedEnemies}
+          renderTime={renderTime}
+          textures={textures}
+        />
         <BoardGraphics draw={drawEnemies} />
         <BoardGraphics draw={drawCastFx} />
         <BoardGraphics draw={drawBossBar} />
         <BoardGraphics draw={drawOverlay} />
-        {showLabels ? state.units.map((unit) => {
+        <GameNineSlice
+          alpha={0.9}
+          borders={{ left: 44, top: 42, right: 44, bottom: 42 }}
+          height={BOARD_H}
+          textureKey="frame.panel"
+          width={BOARD_W}
+        />
+        {showLabels ? renderedUnits.map(({ unit, x, y }) => {
           const def = UNIT_BY_ID[unit.defId];
           return (
             <pixiText
               key={`unit-label-${unit.uid}`}
               anchor={0.5}
               text={def.name}
-              x={unit.x}
-              y={unit.y + 28}
+              x={x}
+              y={y + 28}
               style={labelStyle}
             />
           );
         }) : null}
         {showDamage ? state.damageFx.map((fx, index) => {
-          const age = state.time - fx.born;
+          const age = renderTime - fx.born;
           const t = clamp01(age / 0.8);
           return (
             <pixiText

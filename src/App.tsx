@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { getRuntimeControls, getRuntimeSnapshot, subscribeRuntimeSnapshot } from "./runtimeBridge";
 import { PixiActionbar } from "./ui/PixiActionbar";
 import { PixiBoard } from "./ui/PixiBoard";
@@ -9,18 +9,37 @@ import { PixiTitleScene } from "./ui/PixiTitleScene";
 import { PixiTopbar } from "./ui/PixiTopbar";
 import { PixiToastHost } from "./ui/PixiToastHost";
 import { PixiModalHost } from "./ui/PixiModalHost";
+import { preloadUiTextures } from "./ui/assets/UiTextureRegistry";
 
 let gameRuntimeStarted = false;
 
 function startGameRuntime() {
   if (gameRuntimeStarted) return;
   gameRuntimeStarted = true;
-  void import("./gameRuntime");
+  void import("./gameRuntime").then(({ startGameRuntime: start }) => {
+    start();
+  });
 }
 
 export function App() {
+  const [uiSkinReady, setUiSkinReady] = useState(false);
+
   useEffect(() => {
     startGameRuntime();
+  }, []);
+
+  useEffect(() => {
+    let live = true;
+    void preloadUiTextures()
+      .catch((error) => {
+        console.error("Failed to preload UI skin textures", error);
+      })
+      .finally(() => {
+        if (live) setUiSkinReady(true);
+      });
+    return () => {
+      live = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -75,6 +94,7 @@ export function App() {
   );
   const pixiBoardActive = runtime?.scene === "game";
   const activeScene = runtime?.scene ?? "title";
+  const hudRuntime = uiSkinReady ? runtime : null;
 
   return (
     <div id="app" className={pixiBoardActive ? "pixi-board-active" : ""}>
@@ -86,14 +106,14 @@ export function App() {
       </div>
       <div id="game-scene" className={`scene${activeScene === "game" ? "" : " hidden"}`}>
         <div id="menubar">
-          <PixiMenubar runtime={runtime} />
+          <PixiMenubar runtime={hudRuntime} />
         </div>
         <div id="topbar">
-          <PixiTopbar runtime={runtime} />
+          <PixiTopbar runtime={hudRuntime} />
         </div>
         <div id="middle">
           <div id="board-wrap">
-            {runtime ? (
+            {runtime && uiSkinReady ? (
               <div className="pixi-board-layer">
                 <PixiBoard
                   revision={runtime.revision}
@@ -105,17 +125,18 @@ export function App() {
                   dpsVisible={runtime.dpsVisible}
                   showLabels={runtime.showLabels}
                   showDamage={runtime.showDamage}
+                  renderFrame={runtime.renderFrame}
                 />
               </div>
             ) : null}
           </div>
           <div id="right-panel" className={runtime?.rightPanelCollapsed ? "collapsed" : ""}>
-            <PixiRightPanel runtime={runtime} />
+            <PixiRightPanel runtime={hudRuntime} />
           </div>
         </div>
         <div id="actionbar">
           <div id="action-controls">
-            <PixiActionbar runtime={runtime} />
+            <PixiActionbar runtime={hudRuntime} />
           </div>
         </div>
       </div>

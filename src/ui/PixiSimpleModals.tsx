@@ -4,6 +4,7 @@ import { Container, Graphics, Text, type FederatedPointerEvent } from "pixi.js";
 import { FAMILY_LABEL, GRADE_LABEL, ROLE_LABEL, type DifficultyId, type Grade, type RelicDef, type UnitDef } from "../core/types";
 import { DIFFICULTIES } from "../data/difficulty";
 import { RECIPES } from "../data/recipes";
+import { BOARD_H, BOARD_W } from "../core/path";
 import { FINAL_STAGE, STAGES, stageById, type StageDef } from "../data/stages";
 import { UNITS } from "../data/units";
 import { UPGRADES, upgradeCost } from "../data/upgrades";
@@ -31,6 +32,7 @@ import {
   type ReactUpgradeOverlay,
 } from "./reactOverlayBridge";
 import { pushToast } from "./toastBridge";
+import { GameButton, GameModalFrame } from "./components";
 
 extend({ Container, Graphics, Text });
 
@@ -105,14 +107,7 @@ function PixiModalShell({
 }
 
 function PanelBg({ height, reward, width }: { height: number; reward?: boolean; width: number }) {
-  const draw = useMemo<GraphicsDraw>(() => (g) => {
-    g.clear();
-    g.roundRect(0, 0, width, height, 12).fill({ color: reward ? 0x171421 : 0x121820, alpha: 0.98 });
-    g.roundRect(0, 0, width, height, 12).stroke({ color: reward ? 0xe7b53e : 0x8fd7ff, width: 1, alpha: 0.86 });
-    g.roundRect(1, 1, width - 2, height - 2, 11).stroke({ color: 0xffffff, width: 1, alpha: 0.08 });
-  }, [height, reward, width]);
-
-  return <pixiGraphics draw={draw} />;
+  return <GameModalFrame height={height} tone={reward ? "reward" : "normal"} width={width} />;
 }
 
 function PixiButton({
@@ -132,42 +127,16 @@ function PixiButton({
   x: number;
   y: number;
 }) {
-  const [hovered, setHovered] = useState(false);
-  const accent = danger ? 0xe5534b : primary ? 0x3f86e6 : 0x8fd7ff;
-  const fill = primary ? 0x245fbd : danger ? 0x2a1820 : 0x151b24;
-  const draw = useMemo<GraphicsDraw>(() => (g) => {
-    g.clear();
-    g.roundRect(0, 0, width, BUTTON_H, 6).fill({ color: fill, alpha: hovered ? 1 : 0.96 });
-    g.roundRect(0, 0, width, BUTTON_H, 6).stroke({ color: hovered ? 0xbfdfff : accent, width: hovered ? 2 : 1, alpha: 0.92 });
-  }, [accent, fill, hovered, width]);
-
   return (
-    <pixiContainer
-      cursor="pointer"
-      eventMode="static"
-      onPointerEnter={() => setHovered(true)}
-      onPointerLeave={() => setHovered(false)}
-      onPointerTap={onPress}
+    <GameButton
+      height={BUTTON_H}
+      label={label}
+      onPress={onPress}
+      tone={danger ? "danger" : primary ? "primary" : "normal"}
+      width={width}
       x={x}
       y={y}
-    >
-      <pixiGraphics draw={draw} />
-      <pixiText
-        anchor={0.5}
-        eventMode="none"
-        text={label}
-        x={width / 2}
-        y={BUTTON_H / 2}
-        style={{
-          fill: danger ? 0xffb9b4 : 0xffffff,
-          fontFamily: FONT,
-          fontSize: 13,
-          fontWeight: "bold" as const,
-          wordWrap: true,
-          wordWrapWidth: Math.max(48, width - 16),
-        }}
-      />
-    </pixiContainer>
+    />
   );
 }
 
@@ -509,7 +478,7 @@ function AboutStage({ overlay }: { overlay: ReactAboutOverlay }) {
   return (
     <pixiContainer>
       <PanelBg height={height} width={width} />
-      <Header subtitle="Original 2D random defense MVP prototype." title="Rift Random Defense" width={width} />
+      <Header subtitle="2D random defense MVP prototype." title="BoRanDi" width={width} />
       <pixiText
         text={`App v${overlay.version} / Data v${overlay.dataVersion}\nRuntime: ${overlay.runtimeLabel}`}
         x={PADDING}
@@ -1878,8 +1847,8 @@ function StagePreview({ stage, width }: { stage: StageDef; width: number }) {
   const draw = useMemo<GraphicsDraw>(() => (g) => {
     const previewW = width - 14;
     const previewH = 30;
-    const scaleX = previewW / 960;
-    const scaleY = previewH / 560;
+    const scaleX = previewW / BOARD_W;
+    const scaleY = previewH / BOARD_H;
     g.clear();
     g.roundRect(0, 0, previewW, previewH, 5).fill({ color: 0x0b0f15, alpha: 0.9 });
     g.roundRect(0, 0, previewW, previewH, 5).stroke({ color: 0x384452, width: 1, alpha: 0.65 });

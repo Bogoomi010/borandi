@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Application, extend, type PixiReactElementProps } from "@pixi/react";
-import { Container, Graphics, Text } from "pixi.js";
+import { Container, Graphics, Sprite, Text } from "pixi.js";
 import { bossOutlook } from "../core/advisor";
 import type { GameState, MissionState } from "../core/types";
 import { GRADE_LABEL } from "../core/types";
@@ -8,23 +8,28 @@ import { MISSION_BY_ID } from "../data/missions";
 import { RELIC_BY_ID } from "../data/relics";
 import { getRuntimeControls, type RuntimeSnapshot } from "../runtimeBridge";
 import type { RightTab } from "../runtimeContext";
+import { GameButton, GamePanel, GameQuestCard, GameTabButton } from "./components";
+import { GAME_UI_COLORS, GAME_UI_FONT } from "./skin/GameUiTokens";
+import type { UiTextureKey } from "./skin/UiTextureKeys";
 
-extend({ Container, Graphics, Text });
+extend({ Container, Graphics, Sprite, Text });
 
 type GraphicsDraw = NonNullable<PixiReactElementProps<typeof Graphics>["draw"]>;
 
 const TAB_H = 32;
 const GAP = 8;
 const PANEL_MIN_H = 120;
+const PANEL_PAD = 12;
+const PANEL_HEADER_H = 44;
 
 interface PixiRightPanelProps {
   runtime: RuntimeSnapshot | null;
 }
 
-const TABS: Array<{ id: RightTab; label: string }> = [
-  { id: "mission", label: "미션" },
-  { id: "boss", label: "보스" },
-  { id: "log", label: "로그" },
+const TABS: Array<{ id: RightTab; icon: UiTextureKey; label: string }> = [
+  { id: "mission", icon: "icon.warning", label: "미션" },
+  { id: "boss", icon: "topbar.icon.boss", label: "보스" },
+  { id: "log", icon: "icon.dps", label: "로그" },
 ];
 
 function usePanelSize() {
@@ -124,7 +129,17 @@ function missionCardHeight(runtime: RuntimeSnapshot, mission: MissionState, widt
   const inner = Math.max(120, width - 22);
   const descLines = estimateTextLines(def.desc, inner, 11);
   const rewardLines = estimateTextLines(`보상: ${missionRewardText(mission)}`, inner, 11);
-  return 52 + descLines * 14 + rewardLines * 14 + (mission.status === "active" ? 15 : 0);
+  return Math.max(116, 72 + descLines * 14 + rewardLines * 13 + (mission.status === "active" ? 26 : 0));
+}
+
+function progressRatio(progress: string | undefined, done: boolean) {
+  if (done) return 1;
+  const match = progress?.match(/(\d+)\s*\/\s*(\d+)/);
+  if (!match) return 0;
+  const current = Number(match[1]);
+  const total = Number(match[2]);
+  if (!Number.isFinite(current) || !Number.isFinite(total) || total <= 0) return 0;
+  return Math.max(0, Math.min(1, current / total));
 }
 
 function relicRowHeight(desc: string, width: number) {
@@ -132,8 +147,8 @@ function relicRowHeight(desc: string, width: number) {
 }
 
 function contentHeight(runtime: RuntimeSnapshot, width: number) {
-  const inner = Math.max(220, width);
-  let height = TAB_H + GAP + 8;
+  const inner = Math.max(220, width - PANEL_PAD * 2);
+  let height = PANEL_HEADER_H + TAB_H + GAP + 14;
 
   if (runtime.activeTab === "mission") {
     const missions = visibleMissions(runtime.state);
@@ -164,6 +179,7 @@ function contentHeight(runtime: RuntimeSnapshot, width: number) {
 function TabButton({
   active,
   badge,
+  icon,
   label,
   onPress,
   width,
@@ -171,47 +187,23 @@ function TabButton({
 }: {
   active: boolean;
   badge: boolean;
+  icon: UiTextureKey;
   label: string;
   onPress: () => void;
   width: number;
   x: number;
 }) {
-  const [hovered, setHovered] = useState(false);
-  const draw = useMemo<GraphicsDraw>(() => (g) => {
-    g.clear();
-    g.roundRect(0, 0, width, TAB_H, 6).fill({ color: active ? 0x245fbd : hovered ? 0x1b2633 : 0x151b24, alpha: 0.94 });
-    g.roundRect(0, 0, width, TAB_H, 6).stroke({ color: active ? 0x3f86e6 : hovered ? 0x6fb8ff : 0x384452, width: active || hovered ? 2 : 1, alpha: 0.9 });
-    if (badge) {
-      g.circle(width - 10, 8, 3).fill({ color: 0xe5534b, alpha: 1 });
-      g.circle(width - 10, 8, 5).stroke({ color: 0xe5534b, width: 1, alpha: 0.5 });
-    }
-  }, [active, badge, hovered, width]);
-
   return (
-    <pixiContainer
-      cursor="pointer"
-      eventMode="static"
-      onPointerEnter={() => setHovered(true)}
-      onPointerLeave={() => setHovered(false)}
-      onPointerTap={onPress}
+    <GameTabButton
+      active={active}
+      badge={badge}
+      height={TAB_H}
+      icon={icon}
+      label={label}
+      onPress={onPress}
+      width={width}
       x={x}
-      y={0}
-    >
-      <pixiGraphics draw={draw} />
-      <pixiText
-        anchor={0.5}
-        eventMode="none"
-        text={label}
-        x={width / 2}
-        y={TAB_H / 2}
-        style={{
-          fill: active ? 0xffffff : 0x9fb2c7,
-          fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
-          fontSize: 12,
-          fontWeight: "bold" as const,
-        }}
-      />
-    </pixiContainer>
+    />
   );
 }
 
@@ -231,6 +223,7 @@ function Tabs({ runtime, width }: { runtime: RuntimeSnapshot; width: number }) {
         <TabButton
           active={runtime.activeTab === tab.id}
           badge={badges[tab.id]}
+          icon={tab.icon}
           key={tab.id}
           label={tab.label}
           onPress={() => controls?.setActiveTab(tab.id)}
@@ -256,94 +249,21 @@ function MissionCard({
   y: number;
 }) {
   const def = MISSION_BY_ID[mission.defId];
-  const statusColor = mission.status === "done" ? 0x4fd18b : mission.status === "expired" ? 0x596575 : 0x8fd7ff;
-  const reward = `보상: ${missionRewardText(mission)}`;
-  const descLines = estimateTextLines(def.desc, Math.max(120, width - 22), 11);
-  let cursor = 29;
-  const draw = useMemo<GraphicsDraw>(() => (g) => {
-    const alpha = mission.status === "done" ? 0.68 : mission.status === "expired" ? 0.45 : 1;
-    g.clear();
-    g.roundRect(0, 0, width, height, 7).fill({ color: 0x121820, alpha: 0.92 * alpha });
-    g.roundRect(0, 0, width, height, 7).stroke({ color: 0x384452, width: 1, alpha: 0.75 * alpha });
-    g.rect(0, 0, 3, height).fill({ color: statusColor, alpha: 0.95 * alpha });
-  }, [height, mission.status, statusColor, width]);
-
-  const progressY = cursor + descLines * 14;
-  const rewardY = progressY + (mission.status === "active" ? 15 : 0);
-  cursor = rewardY;
+  const progress = runtime.missionProgress[mission.defId];
 
   return (
-    <pixiContainer y={y}>
-      <pixiGraphics draw={draw} />
-      <pixiText
-        eventMode="none"
-        text={missionName(mission)}
-        x={12}
-        y={8}
-        style={{
-          fill: 0xeef3fa,
-          fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
-          fontSize: 12,
-          fontWeight: "bold" as const,
-          wordWrap: true,
-          wordWrapWidth: Math.max(80, width - 78),
-        }}
-      />
-      <pixiText
-        anchor={{ x: 1, y: 0 }}
-        eventMode="none"
-        text={missionStatusLabel(mission)}
-        x={width - 10}
-        y={9}
-        style={{
-          fill: statusColor,
-          fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
-          fontSize: 10,
-          fontWeight: "bold" as const,
-        }}
-      />
-      <pixiText
-        eventMode="none"
-        text={def.desc}
-        x={12}
-        y={29}
-        style={{
-          fill: 0x9fb2c7,
-          fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
-          fontSize: 11,
-          wordWrap: true,
-          wordWrapWidth: Math.max(120, width - 22),
-        }}
-      />
-      {mission.status === "active" ? (
-        <pixiText
-          eventMode="none"
-          text={`진행: ${runtime.missionProgress[mission.defId] ?? ""}`}
-          x={12}
-          y={progressY}
-          style={{
-            fill: 0x8fd7ff,
-            fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
-            fontSize: 11,
-            wordWrap: true,
-            wordWrapWidth: Math.max(120, width - 22),
-          }}
-        />
-      ) : null}
-      <pixiText
-        eventMode="none"
-        text={reward}
-        x={12}
-        y={cursor}
-        style={{
-          fill: 0xf6d365,
-          fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
-          fontSize: 11,
-          wordWrap: true,
-          wordWrapWidth: Math.max(120, width - 22),
-        }}
-      />
-    </pixiContainer>
+    <GameQuestCard
+      condition={def.desc}
+      height={height}
+      progressLabel={mission.status === "active" ? `진행 ${progress ?? ""}` : undefined}
+      progressRatio={progressRatio(progress, mission.status === "done")}
+      reward={`보상 ${missionRewardText(mission)}`}
+      status={mission.status}
+      statusLabel={missionStatusLabel(mission)}
+      title={missionName(mission)}
+      width={width}
+      y={y}
+    />
   );
 }
 
@@ -357,7 +277,7 @@ function MissionTab({ runtime, width, y }: { runtime: RuntimeSnapshot; width: nu
         text="표시할 미션이 없습니다."
         x={0}
         y={cursor}
-        style={{ fill: 0x9fb2c7, fontFamily: "Segoe UI, Malgun Gothic, sans-serif", fontSize: 12 }}
+        style={{ fill: GAME_UI_COLORS.textDim, fontFamily: GAME_UI_FONT, fontSize: 12 }}
       />
     );
   }
@@ -448,32 +368,31 @@ function SectionTitle({ title, width, y }: { title: string; width: number; y: nu
 
 function RelicRow({ desc, name, rarity, width, y }: { desc: string; name: string; rarity: string; width: number; y: number }) {
   const height = relicRowHeight(desc, width);
-  const rarityColor = rarity === "legendary" ? 0xf6d365 : rarity === "rare" ? 0x8fd7ff : 0xc7d2df;
+  const rarityColor = rarity === "legendary" ? GAME_UI_COLORS.gold : rarity === "rare" ? GAME_UI_COLORS.arcane : 0xc7d2df;
   const draw = useMemo<GraphicsDraw>(() => (g) => {
     g.clear();
-    g.roundRect(0, 0, width, height, 7).fill({ color: 0x151b24, alpha: 0.9 });
-    g.roundRect(0, 0, width, height, 7).stroke({ color: rarityColor, width: 1, alpha: 0.65 });
     g.circle(16, 18, 8).fill({ color: rarityColor, alpha: 0.16 });
     g.circle(16, 18, 5).stroke({ color: rarityColor, width: 1, alpha: 0.9 });
-  }, [height, rarityColor, width]);
+  }, [rarityColor]);
 
   return (
     <pixiContainer y={y}>
+      <GamePanel accent={rarity === "legendary" ? "reward" : "normal"} height={height} variant="small" width={width} />
       <pixiGraphics draw={draw} />
       <pixiText
         anchor={0.5}
         text="◆"
         x={16}
         y={18}
-        style={{ fill: rarityColor, fontFamily: "Segoe UI, Malgun Gothic, sans-serif", fontSize: 12 }}
+        style={{ fill: rarityColor, fontFamily: GAME_UI_FONT, fontSize: 12 }}
       />
       <pixiText
         text={name}
         x={34}
         y={8}
         style={{
-          fill: 0xeef3fa,
-          fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
+          fill: GAME_UI_COLORS.text,
+          fontFamily: GAME_UI_FONT,
           fontSize: 12,
           fontWeight: "bold" as const,
           wordWrap: true,
@@ -485,8 +404,8 @@ function RelicRow({ desc, name, rarity, width, y }: { desc: string; name: string
         x={34}
         y={25}
         style={{
-          fill: 0x9fb2c7,
-          fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
+          fill: GAME_UI_COLORS.textDim,
+          fontFamily: GAME_UI_FONT,
           fontSize: 11,
           wordWrap: true,
           wordWrapWidth: Math.max(100, width - 42),
@@ -497,37 +416,7 @@ function RelicRow({ desc, name, rarity, width, y }: { desc: string; name: string
 }
 
 function PanelButton({ label, onPress, width, y }: { label: string; onPress: () => void; width: number; y: number }) {
-  const [hovered, setHovered] = useState(false);
-  const draw = useMemo<GraphicsDraw>(() => (g) => {
-    g.clear();
-    g.roundRect(0, 0, width, 32, 6).fill({ color: hovered ? 0x2468c4 : 0x245fbd, alpha: 0.96 });
-    g.roundRect(0, 0, width, 32, 6).stroke({ color: hovered ? 0xbfdfff : 0x3f86e6, width: hovered ? 2 : 1, alpha: 0.9 });
-  }, [hovered, width]);
-
-  return (
-    <pixiContainer
-      cursor="pointer"
-      eventMode="static"
-      onPointerEnter={() => setHovered(true)}
-      onPointerLeave={() => setHovered(false)}
-      onPointerTap={onPress}
-      y={y}
-    >
-      <pixiGraphics draw={draw} />
-      <pixiText
-        anchor={0.5}
-        text={label}
-        x={width / 2}
-        y={16}
-        style={{
-          fill: 0xffffff,
-          fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
-          fontSize: 12,
-          fontWeight: "bold" as const,
-        }}
-      />
-    </pixiContainer>
-  );
+  return <GameButton height={34} label={label} onPress={onPress} tone="primary" width={width} y={y} />;
 }
 
 function BossTab({ runtime, width, y }: { runtime: RuntimeSnapshot; width: number; y: number }) {
@@ -679,16 +568,20 @@ function LogTab({ runtime, width, y }: { runtime: RuntimeSnapshot; width: number
   );
 }
 
-function PixiRightPanelStage({ runtime, width }: { runtime: RuntimeSnapshot; width: number }) {
-  const innerWidth = Math.max(1, width);
+function PixiRightPanelStage({ height, runtime, width }: { height: number; runtime: RuntimeSnapshot; width: number }) {
+  const innerWidth = Math.max(1, width - PANEL_PAD * 2);
   const contentY = TAB_H + GAP + 4;
 
   return (
     <pixiContainer>
-      <Tabs runtime={runtime} width={innerWidth} />
-      {runtime.activeTab === "mission" ? <MissionTab runtime={runtime} width={innerWidth} y={contentY} /> : null}
-      {runtime.activeTab === "boss" ? <BossTab runtime={runtime} width={innerWidth} y={contentY} /> : null}
-      {runtime.activeTab === "log" ? <LogTab runtime={runtime} width={innerWidth} y={contentY} /> : null}
+      <GamePanel accent="selected" height={height} title="작전 지령" variant="main" width={width}>
+        <pixiContainer x={PANEL_PAD} y={PANEL_HEADER_H}>
+          <Tabs runtime={runtime} width={innerWidth} />
+          {runtime.activeTab === "mission" ? <MissionTab runtime={runtime} width={innerWidth} y={contentY} /> : null}
+          {runtime.activeTab === "boss" ? <BossTab runtime={runtime} width={innerWidth} y={contentY} /> : null}
+          {runtime.activeTab === "log" ? <LogTab runtime={runtime} width={innerWidth} y={contentY} /> : null}
+        </pixiContainer>
+      </GamePanel>
     </pixiContainer>
   );
 }
@@ -703,7 +596,7 @@ export function PixiRightPanel({ runtime }: PixiRightPanelProps) {
     <div className="pixi-right-panel-surface" ref={ref} style={{ height: stageHeight }}>
       {active ? (
         <Application key={`${size.width}x${stageHeight}`} width={size.width} height={stageHeight} backgroundAlpha={0} antialias>
-          <PixiRightPanelStage runtime={runtime} width={size.width} />
+          <PixiRightPanelStage height={stageHeight} runtime={runtime} width={size.width} />
         </Application>
       ) : null}
     </div>

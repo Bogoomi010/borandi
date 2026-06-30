@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Application, extend, type PixiReactElementProps } from "@pixi/react";
-import { Container, Graphics, Text } from "pixi.js";
+import { Container, Graphics, Sprite, Text } from "pixi.js";
 import type { RuntimeSnapshot } from "../runtimeBridge";
 import { getRuntimeControls } from "../runtimeBridge";
 import { SUMMON_COST, SELL_REFUND } from "../data/difficulty";
 import { UNIT_BY_ID } from "../data/units";
 import { FINAL_ROUND, waveForRound } from "../data/waves";
+import { uiTexture } from "./assets/UiTextureRegistry";
+import { GameHotbarSlot, GamePanel, type GameHotbarGlyph } from "./components";
+import { GAME_UI_COLORS, GAME_UI_FONT, type GameUiTone } from "./skin/GameUiTokens";
 
-extend({ Container, Graphics, Text });
+extend({ Container, Graphics, Sprite, Text });
 
 type GraphicsDraw = NonNullable<PixiReactElementProps<typeof Graphics>["draw"]>;
 
-const ACTIONBAR_H = 60;
+const ACTIONBAR_H = 78;
 
 interface PixiActionbarProps {
   runtime: RuntimeSnapshot | null;
@@ -22,8 +25,10 @@ interface ActionSpec {
   label: string;
   sub: string;
   disabled?: boolean;
-  primary?: boolean;
-  danger?: boolean;
+  glyph: GameHotbarGlyph;
+  keycap: string;
+  selected?: boolean;
+  tone?: GameUiTone;
   width: number;
   onPress: () => void;
 }
@@ -85,90 +90,6 @@ function nextWaveText(runtime: RuntimeSnapshot) {
   return wave.type === "boss" ? "Boss round" : `${wave.enemyName} x${wave.count}`;
 }
 
-function PixiButton({
-  height,
-  spec,
-  x,
-  y,
-}: {
-  height: number;
-  spec: ActionSpec;
-  x: number;
-  y: number;
-}) {
-  const [hovered, setHovered] = useState(false);
-  const accent = spec.danger ? 0xe5534b : spec.primary ? 0x3f86e6 : 0x4aa3ff;
-  const draw = useMemo<GraphicsDraw>(() => (g) => {
-    const disabledAlpha = spec.disabled ? 0.46 : 1;
-    const fill = spec.primary ? 0x245fbd : spec.danger ? 0x2a1820 : 0x1a222d;
-    const border = hovered && !spec.disabled ? 0x9fd4ff : accent;
-
-    g.clear();
-    g.roundRect(0, 0, spec.width, height, 7).fill({ color: fill, alpha: spec.primary ? 0.95 * disabledAlpha : 0.9 * disabledAlpha });
-    g.roundRect(0, 0, spec.width, height, 7).stroke({ color: border, width: hovered && !spec.disabled ? 2 : 1, alpha: 0.82 * disabledAlpha });
-    g.roundRect(7, 9, 26, 26, 5).fill({ color: accent, alpha: 0.18 * disabledAlpha });
-    g.roundRect(7, 9, 26, 26, 5).stroke({ color: accent, width: 1, alpha: 0.7 * disabledAlpha });
-    if (hovered && !spec.disabled) {
-      g.roundRect(1, 1, spec.width - 2, height - 2, 6).stroke({ color: 0xffffff, width: 1, alpha: 0.16 });
-    }
-  }, [accent, height, hovered, spec.danger, spec.disabled, spec.primary, spec.width]);
-
-  return (
-    <pixiContainer
-      cursor={spec.disabled ? "default" : "pointer"}
-      eventMode={spec.disabled ? "none" : "static"}
-      onPointerEnter={() => setHovered(true)}
-      onPointerLeave={() => setHovered(false)}
-      onPointerTap={() => {
-        if (!spec.disabled) spec.onPress();
-      }}
-      x={x}
-      y={y}
-    >
-      <pixiGraphics draw={draw} />
-      <pixiText
-        eventMode="none"
-        text={spec.id}
-        x={13}
-        y={14}
-        style={{
-          fill: spec.disabled ? 0x7f8b98 : 0xeef3fa,
-          fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
-          fontSize: 9,
-          fontWeight: "bold" as const,
-        }}
-      />
-      <pixiText
-        eventMode="none"
-        text={spec.label}
-        x={42}
-        y={9}
-        style={{
-          fill: spec.disabled ? 0x7f8b98 : 0xffffff,
-          fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
-          fontSize: 12,
-          fontWeight: "bold" as const,
-          wordWrap: true,
-          wordWrapWidth: Math.max(32, spec.width - 48),
-        }}
-      />
-      <pixiText
-        eventMode="none"
-        text={spec.sub}
-        x={42}
-        y={32}
-        style={{
-          fill: spec.disabled ? 0x657180 : spec.primary ? 0xcfe2ff : 0x9fb2c7,
-          fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
-          fontSize: 9,
-          wordWrap: true,
-          wordWrapWidth: Math.max(32, spec.width - 48),
-        }}
-      />
-    </pixiContainer>
-  );
-}
-
 function PixiActionbarStage({
   height,
   runtime,
@@ -185,7 +106,7 @@ function PixiActionbarStage({
   const selectedIds = [...runtime.selectedUids];
   const canMergeCount = selectedIds.length === 3;
   const compact = width < 1060;
-  const buttonHeight = Math.min(54, height - 6);
+  const slotHeight = Math.min(74, height - 8);
 
   let refund = 0;
   for (const uid of selectedIds) {
@@ -199,21 +120,27 @@ function PixiActionbarStage({
       ? `${state.relicIds.length} owned`
       : "Boss reward";
 
-  const baseWidth = compact ? 78 : 104;
+  const baseWidth = compact ? 76 : 92;
   const actions: ActionSpec[] = [
     {
       id: "SUM",
+      keycap: "Z",
       label: "Summon",
       sub: `${SUMMON_COST}G`,
       disabled: ended || state.gold < SUMMON_COST || runtime.ownedUnitCount >= runtime.unitCap,
+      glyph: "summon",
+      tone: "reward",
       width: baseWidth,
       onPress: () => controls?.act("summon"),
     },
     {
       id: "M3",
+      keycap: "X",
       label: "Merge",
       sub: canMergeCount ? "ready" : `${selectedIds.length}/3`,
       disabled: ended || !canMergeCount,
+      glyph: "merge",
+      tone: "normal",
       width: baseWidth,
       onPress: () => {
         if (!controls?.act("merge3", { unitIds: selectedIds })) return;
@@ -222,27 +149,35 @@ function PixiActionbarStage({
     },
     {
       id: "DEL",
+      keycap: "Del",
       label: "Sell",
       sub: selectedIds.length > 0 ? `${selectedIds.length} +${refund}G` : "select",
-      danger: true,
       disabled: ended || selectedIds.length === 0,
+      glyph: "sell",
+      tone: "danger",
       width: baseWidth,
       onPress: () => controls?.confirmSell(selectedIds, refund),
     },
     {
       id: "UP",
+      keycap: "U",
       label: "Upgrade",
       sub: "families",
       disabled: ended,
-      width: compact ? 86 : 112,
+      glyph: "upgrade",
+      tone: "normal",
+      width: compact ? 80 : 96,
       onPress: () => controls?.openUpgrade(),
     },
     {
       id: "REL",
+      keycap: "R",
       label: "Relic",
       sub: relicSub,
       disabled: ended || (state.pendingRelicChoices.length === 0 && state.relicIds.length === 0),
-      width: compact ? 84 : 108,
+      glyph: "relic",
+      tone: "reward",
+      width: compact ? 80 : 96,
       onPress: () => {
         if (state.pendingRelicChoices.length > 0) controls?.openRelicChoice();
         else controls?.setActiveTab("boss");
@@ -250,32 +185,26 @@ function PixiActionbarStage({
     },
     {
       id: "DPS",
+      keycap: "D",
       label: "DPS",
       sub: runtime.dpsVisible ? "on" : "off",
-      primary: runtime.dpsVisible,
-      width: compact ? 78 : 96,
+      glyph: "dps",
+      selected: runtime.dpsVisible,
+      tone: runtime.dpsVisible ? "selected" : "normal",
+      width: compact ? 72 : 88,
       onPress: () => controls?.toggleDps(),
     },
   ];
 
-  if (!compact) {
-    actions.splice(5, 0, {
-      id: "LOG",
-      label: "Proof",
-      sub: "run notes",
-      disabled: ended,
-      width: 108,
-      onPress: () => controls?.openManualProofGuide(),
-    });
-  }
-
   if (inBreak && !ended) {
     actions.push({
       id: "GO",
+      keycap: "Space",
       label: `Start R${state.round}`,
       sub: nextWaveText(runtime),
-      primary: true,
-      width: compact ? 134 : 188,
+      glyph: "start",
+      tone: "primary",
+      width: compact ? 116 : 154,
       onPress: () => {
         if (state.pendingRelicChoices.length > 0) controls?.openRelicChoice();
         else if (state.pendingSelectors.length > 0) controls?.openSelector();
@@ -284,51 +213,69 @@ function PixiActionbarStage({
     });
   }
 
-  const gap = compact ? 6 : 8;
-  const phaseWidth = compact ? 154 : 230;
-  const phaseX = Math.max(0, width - phaseWidth);
-  let x = 0;
+  const gap = compact ? 5 : 8;
+  const phaseWidth = compact ? 154 : 224;
+  const phaseX = Math.max(0, width - phaseWidth - 6);
+  let cursorX = compact ? 8 : 14;
 
   const drawPhase = useMemo<GraphicsDraw>(() => (g) => {
     g.clear();
-    g.roundRect(0, 0, phaseWidth, buttonHeight, 7).fill({ color: 0x121820, alpha: 0.72 });
-    g.roundRect(0, 0, phaseWidth, buttonHeight, 7).stroke({ color: 0x384452, width: 1, alpha: 0.72 });
-  }, [buttonHeight, phaseWidth]);
+    g.circle(18, 22, 6).fill({ color: state.phase === "ended" ? GAME_UI_COLORS.danger : GAME_UI_COLORS.gold, alpha: 0.9 });
+    g.circle(18, 22, 10).stroke({ color: GAME_UI_COLORS.gold, width: 1, alpha: 0.34 });
+  }, [state.phase]);
 
   return (
     <pixiContainer>
+      <pixiSprite alpha={0.96} height={height} texture={uiTexture("frame.actionbar")} width={width} />
       {actions.map((spec) => {
-        const nextX = x;
-        x += spec.width + gap;
+        const nextX = cursorX;
+        cursorX += spec.width + gap;
         if (nextX + spec.width > phaseX - gap) return null;
-        return <PixiButton height={buttonHeight} key={spec.id} spec={spec} x={nextX} y={3} />;
+        return (
+          <GameHotbarSlot
+            cost={spec.sub}
+            disabled={spec.disabled}
+            glyph={spec.glyph}
+            height={slotHeight}
+            key={spec.id}
+            keycap={spec.keycap}
+            label={spec.label}
+            onPress={spec.onPress}
+            selected={spec.selected}
+            tone={spec.tone}
+            width={spec.width}
+            x={nextX}
+            y={Math.max(2, Math.floor((height - slotHeight) / 2))}
+          />
+        );
       })}
-      <pixiContainer x={phaseX} y={3}>
+      <GamePanel accent={inBreak ? "warning" : "normal"} height={slotHeight} textureKey="frame.panelSmall" variant="small" width={phaseWidth} x={phaseX} y={Math.max(2, Math.floor((height - slotHeight) / 2))}>
         <pixiGraphics draw={drawPhase} />
         <pixiText
           text={phaseText(runtime)}
-          x={14}
-          y={11}
+          x={34}
+          y={12}
           style={{
-            fill: 0xdbe7f5,
-            fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
+            fill: GAME_UI_COLORS.text,
+            fontFamily: GAME_UI_FONT,
             fontSize: compact ? 10 : 12,
             fontWeight: "bold" as const,
+            stroke: { color: GAME_UI_COLORS.obsidian, width: 2 },
             wordWrap: true,
-            wordWrapWidth: phaseWidth - 28,
+            wordWrapWidth: phaseWidth - 48,
           }}
         />
         <pixiText
           text={`${runtime.ownedUnitCount}/${runtime.unitCap} units`}
-          x={14}
-          y={32}
+          x={34}
+          y={38}
           style={{
-            fill: 0x9fb2c7,
-            fontFamily: "Segoe UI, Malgun Gothic, sans-serif",
+            fill: GAME_UI_COLORS.textDim,
+            fontFamily: GAME_UI_FONT,
             fontSize: 9,
           }}
         />
-      </pixiContainer>
+      </GamePanel>
     </pixiContainer>
   );
 }
