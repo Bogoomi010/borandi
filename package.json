@@ -1,9 +1,9 @@
 {
-  "name": "rift-random-defense",
+  "name": "borandi",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "차원 균열 랜덤 디펜스 - Tauri 2D 캐릭터 랜덤 디펜스 MVP",
+  "description": "Borandi - 랜덤 디펜스",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

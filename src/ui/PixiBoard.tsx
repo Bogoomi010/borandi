@@ -8,7 +8,6 @@ import { UNIT_BY_ID } from "../data/units";
 import { stageById, type StageDecoration, type StageDecorationKind, type StageDef } from "../data/stages";
 import { getRuntimeControls, type BoardPointerInput, type RenderInterpolationFrame } from "../runtimeBridge";
 import { screenToBoard, type BoardBox } from "../board/boardHitTest";
-import { GameNineSlice } from "./skin/createNineSliceSprite";
 
 extend({ Container, Graphics, Sprite, Text });
 
@@ -1154,29 +1153,47 @@ export function PixiBoard({
 
   const drawBackground = useMemo<GraphicsDraw>(() => (g) => {
     g.clear();
-    g.rect(0, 0, BOARD_W, BOARD_H).fill({ color: GROUND_COLOR[stage.ground], alpha: 0.24 });
-    for (let x = 0; x <= BOARD_W; x += 64) {
-      g.moveTo(x, 0);
-      g.lineTo(x, BOARD_H);
+    const base = GROUND_COLOR[stage.ground] ?? 0x3a2c1d;
+    // 심연 바닥 + 지면 틴트 ('차원 균열' 메뉴와 동일한 어둠 위에 스테이지 색을 얹는다)
+    g.rect(0, 0, BOARD_W, BOARD_H).fill({ color: 0x0a0d12, alpha: 0.92 });
+    g.rect(0, 0, BOARD_W, BOARD_H).fill({ color: base, alpha: 0.24 });
+    // 중앙 마법 글로우
+    const glow = stage.ground === "rune" ? 0xa167ff
+      : stage.ground === "corrupt" ? 0x8052d9
+      : stage.ground === "blood" ? 0xc0504a
+      : 0xf4c95a;
+    const gx = BOARD_W / 2, gy = BOARD_H / 2;
+    g.circle(gx, gy, 360).fill({ color: glow, alpha: 0.03 });
+    g.circle(gx, gy, 230).fill({ color: glow, alpha: 0.045 });
+    // 떠 있는 균열 다이아 파편
+    for (let i = 0; i < 30; i++) {
+      const x = (i * 149 + state.stageId * 53) % BOARD_W;
+      const y = (i * 97 + state.stageId * 31) % BOARD_H;
+      const d = 2 + (i % 4);
+      g.poly([x, y - d, x + d * 0.65, y, x, y + d, x - d * 0.65, y])
+        .fill({ color: i % 3 === 0 ? glow : 0xffffff, alpha: i % 3 === 0 ? 0.1 : 0.045 });
     }
-    for (let y = 0; y <= BOARD_H; y += 64) {
-      g.moveTo(0, y);
-      g.lineTo(BOARD_W, y);
-    }
-    g.stroke({ color: 0x8a93a0, width: 1, alpha: 0.08 });
-    g.rect(0, 0, BOARD_W, BOARD_H).stroke({ color: 0x090c11, width: 18, alpha: 0.5 });
-    g.rect(8, 8, BOARD_W - 16, BOARD_H - 16).stroke({ color: 0xe7b53e, width: 2, alpha: 0.16 });
-    g.rect(FIELD.left, FIELD.top, FIELD.right - FIELD.left, FIELD.bottom - FIELD.top).stroke({ color: 0x9d7b4b, width: 2, alpha: 0.28 });
-    const light = stage.ground === "rune" ? 0x8052d9 : stage.ground === "blood" ? 0x7d1c1c : 0xffffff;
-    const dark = stage.ground === "rune" ? 0x241f2e : 0x000000;
-    for (let i = 0; i < 120; i++) {
+    // 지면 질감 (이전 그리드 대신 절차 노이즈만)
+    for (let i = 0; i < 90; i++) {
       const x = (i * 73 + state.stageId * 41) % BOARD_W;
       const y = (i * 47 + state.stageId * 29) % BOARD_H;
-      g.rect(x, y, 2 + (i % 5), 1 + (i % 3)).fill({
-        color: i % 2 === 0 ? light : dark,
-        alpha: i % 2 === 0 ? 0.08 : 0.16,
-      });
+      g.rect(x, y, 2 + (i % 5), 1 + (i % 3)).fill({ color: 0x000000, alpha: 0.14 });
     }
+    // 배치 가능 구역 — 모따기 라인 + 금색 코너 브래킷 (콘솔 전장 보드 문법)
+    const fx = FIELD.left, fy = FIELD.top;
+    const fw = FIELD.right - FIELD.left, fh = FIELD.bottom - FIELD.top;
+    const cc = 18;
+    g.poly([
+      fx + cc, fy, fx + fw - cc, fy, fx + fw, fy + cc, fx + fw, fy + fh - cc,
+      fx + fw - cc, fy + fh, fx + cc, fy + fh, fx, fy + fh - cc, fx, fy + cc,
+    ]).stroke({ color: 0xe7b53e, width: 1.2, alpha: 0.2 });
+    const bl = 22;
+    const bs = { color: 0xe7b53e, width: 2, alpha: 0.42 };
+    g.moveTo(fx, fy + bl).lineTo(fx, fy + 5).lineTo(fx + 5, fy).lineTo(fx + bl, fy).stroke(bs);
+    g.moveTo(fx + fw - bl, fy).lineTo(fx + fw - 5, fy).lineTo(fx + fw, fy + 5).lineTo(fx + fw, fy + bl).stroke(bs);
+    g.moveTo(fx + fw, fy + fh - bl).lineTo(fx + fw, fy + fh - 5).lineTo(fx + fw - 5, fy + fh).lineTo(fx + fw - bl, fy + fh).stroke(bs);
+    g.moveTo(fx + bl, fy + fh).lineTo(fx + 5, fy + fh).lineTo(fx, fy + fh - 5).lineTo(fx, fy + fh - bl).stroke(bs);
+    // 특수 지형 룬 문양
     if (stage.ground === "rune" || stage.ground === "corrupt") {
       for (let i = 0; i < 8; i++) {
         const x = 120 + ((i * 103 + state.stageId * 17) % 700);
@@ -1192,26 +1209,59 @@ export function PixiBoard({
   const drawPath = useMemo<GraphicsDraw>(() => (g) => {
     g.clear();
     if (waypoints.length === 0) return;
-    g.moveTo(waypoints[0][0], waypoints[0][1]);
-    for (let i = 1; i < waypoints.length; i++) {
-      g.lineTo(waypoints[i][0], waypoints[i][1]);
+    const edge = stage.ground === "rune" ? 0x8052d9
+      : stage.ground === "corrupt" ? 0x6a4a8a
+      : 0x6a4e2a;
+    const trace = () => {
+      g.moveTo(waypoints[0][0], waypoints[0][1]);
+      for (let i = 1; i < waypoints.length; i++) {
+        g.lineTo(waypoints[i][0], waypoints[i][1]);
+      }
+    };
+    // 외곽 그림자 → 경계선 → 노면 순으로 겹쳐 그려 가장자리 라인을 남긴다
+    trace();
+    g.stroke({ color: 0x05070b, width: PATH_WIDTH + 8, alpha: 0.5 });
+    trace();
+    g.stroke({ color: edge, width: PATH_WIDTH + 2, alpha: 0.6 });
+    trace();
+    g.stroke({ color: 0x241712, width: PATH_WIDTH - 4, alpha: 0.98 });
+    trace();
+    g.stroke({ color: 0x2e2015, width: PATH_WIDTH - 14, alpha: 0.9 });
+    // 노면 마모 점
+    for (let dist = 40; dist < pathLength; dist += 56) {
+      const p = posAtDist(dist + ((dist * 7) % 20) - 10, state.stageId);
+      g.circle(p.x + ((dist * 13) % 11) - 5, p.y + ((dist * 17) % 9) - 4, 1.5 + (dist % 3))
+        .fill({ color: 0x0c0f14, alpha: 0.3 });
     }
-    g.stroke({ color: 0x241712, width: PATH_WIDTH, alpha: 0.92 });
-    g.stroke({ color: stage.ground === "rune" ? 0x8052d9 : 0x5a4226, width: 3, alpha: 0.72 });
-    for (let dist = 160; dist < pathLength; dist += 260) {
+    // 진행 방향 금빛 셰브론
+    for (let dist = 160; dist < pathLength; dist += 220) {
       const p = posAtDist(dist, state.stageId);
       const p2 = posAtDist(dist + 8, state.stageId);
       const angle = Math.atan2(p2.y - p.y, p2.x - p.x);
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
-      const points = [
-        [6, 0],
-        [-4, -5],
-        [-4, 5],
-      ].map(([x, y]) => [p.x + x * cos - y * sin, p.y + x * sin + y * cos]);
-      g.poly(points.flat()).fill({ color: 0x7a5a30, alpha: 0.9 });
+      const pt = (x: number, y: number) => [p.x + x * cos - y * sin, p.y + x * sin + y * cos];
+      g.poly([...pt(-3, -7), ...pt(7, 0), ...pt(-3, 7), ...pt(0, 0)])
+        .fill({ color: 0xe7b53e, alpha: 0.5 });
     }
   }, [pathLength, stage.ground, state.stageId, waypoints]);
+
+  const drawBoardFrame = useMemo<GraphicsDraw>(() => (g) => {
+    g.clear();
+    // 전장 외곽 — 채움 없는 콘솔 프레임 (금속 밴드 + 금 헤어라인 + 대형 브래킷)
+    g.rect(0, 0, BOARD_W, BOARD_H).stroke({ color: 0x05070b, width: 14, alpha: 0.85 });
+    g.rect(4, 4, BOARD_W - 8, BOARD_H - 8).stroke({ color: 0x384452, width: 2, alpha: 0.9 });
+    g.rect(9, 9, BOARD_W - 18, BOARD_H - 18).stroke({ color: 0xe7b53e, width: 1, alpha: 0.28 });
+    const bl = 30;
+    const bs = { color: 0xe7b53e, width: 2.5, alpha: 0.75 };
+    g.moveTo(6, 6 + bl).lineTo(6, 11).lineTo(11, 6).lineTo(6 + bl, 6).stroke(bs);
+    g.moveTo(BOARD_W - 6 - bl, 6).lineTo(BOARD_W - 11, 6).lineTo(BOARD_W - 6, 11).lineTo(BOARD_W - 6, 6 + bl).stroke(bs);
+    g.moveTo(BOARD_W - 6, BOARD_H - 6 - bl).lineTo(BOARD_W - 6, BOARD_H - 11).lineTo(BOARD_W - 11, BOARD_H - 6).lineTo(BOARD_W - 6 - bl, BOARD_H - 6).stroke(bs);
+    g.moveTo(6 + bl, BOARD_H - 6).lineTo(11, BOARD_H - 6).lineTo(6, BOARD_H - 11).lineTo(6, BOARD_H - 6 - bl).stroke(bs);
+    // 상단 중앙 다이아 장식
+    g.poly([BOARD_W / 2, 2, BOARD_W / 2 + 7, 8, BOARD_W / 2, 14, BOARD_W / 2 - 7, 8])
+      .fill({ color: 0xe7b53e, alpha: 0.7 });
+  }, []);
 
   const drawDecorations = useMemo<GraphicsDraw>(() => (g) => {
     g.clear();
@@ -1361,13 +1411,7 @@ export function PixiBoard({
         <BoardGraphics draw={drawCastFx} />
         <BoardGraphics draw={drawBossBar} />
         <BoardGraphics draw={drawOverlay} />
-        <GameNineSlice
-          alpha={0.9}
-          borders={{ left: 44, top: 42, right: 44, bottom: 42 }}
-          height={BOARD_H}
-          textureKey="frame.panel"
-          width={BOARD_W}
-        />
+        <BoardGraphics draw={drawBoardFrame} />
         {showLabels ? renderedUnits.map(({ unit, x, y }) => {
           const def = UNIT_BY_ID[unit.defId];
           return (

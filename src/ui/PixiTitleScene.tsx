@@ -162,7 +162,7 @@ function PixiTitleStage({
     <pixiContainer>
       <pixiText
         anchor={{ x: 0.5, y: 0 }}
-        text="RIFT RANDOM DEFENSE"
+        text="B O R A N D I"
         x={centerX}
         y={logoY}
         style={{
@@ -174,7 +174,7 @@ function PixiTitleStage({
       />
       <pixiText
         anchor={{ x: 0.5, y: 0 }}
-        text={"차원 균열\n랜덤 디펜스"}
+        text={"BORANDI"}
         x={centerX}
         y={logoY + 36}
         style={{

@@ -1,0 +1,23 @@
+{
+  "name": "borandi-next",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "description": "Borandi — 랜덤 디펜스 (Pixi v8 재구축)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "shots": "node scripts/screenshots.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vite": "^6.3.0",
+    "vitest": "^3.1.0",
+    "playwright-core": "^1.61.0"
+  },
+  "dependencies": {
+    "pixi.js": "^8.19.0"
+  }
+}
