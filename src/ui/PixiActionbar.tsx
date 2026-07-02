@@ -6,8 +6,8 @@ import { getRuntimeControls } from "../runtimeBridge";
 import { SUMMON_COST, SELL_REFUND } from "../data/difficulty";
 import { UNIT_BY_ID } from "../data/units";
 import { FINAL_ROUND, waveForRound } from "../data/waves";
-import { uiTexture } from "./assets/UiTextureRegistry";
 import { GameHotbarSlot, GamePanel, type GameHotbarGlyph } from "./components";
+import { drawConsoleFrame } from "./skin/consoleDraw";
 import { GAME_UI_COLORS, GAME_UI_FONT, type GameUiTone } from "./skin/GameUiTokens";
 
 extend({ Container, Graphics, Sprite, Text });
@@ -226,7 +226,11 @@ function PixiActionbarStage({
 
   return (
     <pixiContainer>
-      <pixiSprite alpha={0.96} height={height} texture={uiTexture("frame.actionbar")} width={width} />
+      <pixiGraphics
+        draw={(g) => {
+          drawConsoleFrame(g, "frame.actionbar", width, height, 0.96);
+        }}
+      />
       {actions.map((spec) => {
         const nextX = cursorX;
         cursorX += spec.width + gap;

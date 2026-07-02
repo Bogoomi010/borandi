@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { extend, type PixiReactElementProps } from "@pixi/react";
 import { Container, Graphics, Sprite } from "pixi.js";
-import { uiTexture } from "../assets/UiTextureRegistry";
 import { GAME_UI_COLORS } from "../skin/GameUiTokens";
 
 extend({ Container, Graphics, Sprite });
@@ -32,7 +31,6 @@ export function GameScrollBar({ height, ratio, thumbRatio, x = 0, y = 0 }: GameS
 
   return (
     <pixiContainer x={x} y={y}>
-      <pixiSprite alpha={0.26} height={height} texture={uiTexture("frame.divider")} width={14} />
       <pixiGraphics draw={draw} />
     </pixiContainer>
   );

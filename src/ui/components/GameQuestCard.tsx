@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { extend, type PixiReactElementProps } from "@pixi/react";
 import { Container, Graphics, Sprite, Text } from "pixi.js";
-import { uiTexture } from "../assets/UiTextureRegistry";
+import { drawConsoleFrame } from "../skin/consoleDraw";
 import { GAME_UI_COLORS, GAME_UI_FONT, type GameUiTone, toneColor } from "../skin/GameUiTokens";
 import { GameProgressBar } from "./GameProgressBar";
 
@@ -46,21 +46,20 @@ export function GameQuestCard({
   const accent = toneColor(tone);
   const alpha = status === "expired" ? 0.56 : status === "done" ? 0.78 : 1;
   const draw = useMemo<GraphicsDraw>(() => (g) => {
-    g.clear();
-    g.roundRect(12, 12, width - 24, height - 24, 8).fill({ color: GAME_UI_COLORS.obsidian, alpha: 0.24 });
-    g.rect(18, 42, width - 36, 1).fill({ color: accent, alpha: 0.24 });
+    drawConsoleFrame(g, status === "done" ? "mission.card.done" : "mission.card.active", width, height);
     if (status === "done") {
-      g.circle(width - 24, 24, 7).fill({ color: GAME_UI_COLORS.gold, alpha: 0.92 });
-      g.moveTo(width - 28, 24);
-      g.lineTo(width - 25, 28);
-      g.lineTo(width - 19, 19);
+      // 봉인 인장
+      g.circle(width - 24, 22, 8).fill({ color: GAME_UI_COLORS.gold, alpha: 0.92 });
+      g.circle(width - 24, 22, 10.5).stroke({ color: GAME_UI_COLORS.gold, width: 1, alpha: 0.4 });
+      g.moveTo(width - 28, 22);
+      g.lineTo(width - 25, 26);
+      g.lineTo(width - 19, 17);
       g.stroke({ color: GAME_UI_COLORS.obsidian, width: 2, alpha: 0.9 });
     }
-  }, [accent, height, status, width]);
+  }, [height, status, width]);
 
   return (
     <pixiContainer alpha={alpha} x={x} y={y}>
-      <pixiSprite height={height} texture={uiTexture(status === "done" ? "mission.card.done" : "mission.card.active")} width={width} />
       <pixiGraphics draw={draw} />
       <pixiText
         eventMode="none"

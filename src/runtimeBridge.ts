@@ -21,6 +21,14 @@ export type MenuCommand =
   | "options"
   | "about";
 
+export interface RenderInterpolationFrame {
+  alpha: number;
+  previousTime: number;
+  stepSeconds: number;
+  units: Record<number, { x: number; y: number }>;
+  enemies: Record<number, { dist: number }>;
+}
+
 export interface RuntimeSnapshot {
   revision: number;
   scene: "title" | "game";
@@ -39,6 +47,7 @@ export interface RuntimeSnapshot {
   attackMoveMode: boolean;
   showLabels: boolean;
   showDamage: boolean;
+  renderFrame?: RenderInterpolationFrame;
 }
 
 interface RuntimeSnapshotInput {
@@ -58,6 +67,7 @@ interface RuntimeSnapshotInput {
   attackMoveMode: boolean;
   showLabels: boolean;
   showDamage: boolean;
+  renderFrame?: RenderInterpolationFrame;
 }
 
 export interface RuntimeControls {
@@ -124,6 +134,13 @@ export function publishRuntimeSnapshot(input: RuntimeSnapshotInput) {
     attackMoveMode: input.attackMoveMode,
     showLabels: input.showLabels,
     showDamage: input.showDamage,
+    renderFrame: input.renderFrame ? {
+      alpha: input.renderFrame.alpha,
+      previousTime: input.renderFrame.previousTime,
+      stepSeconds: input.renderFrame.stepSeconds,
+      units: { ...input.renderFrame.units },
+      enemies: { ...input.renderFrame.enemies },
+    } : undefined,
   };
 
   for (const listener of listeners) listener();

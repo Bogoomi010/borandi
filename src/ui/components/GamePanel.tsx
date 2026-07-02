@@ -1,7 +1,6 @@
 import { type ReactNode, useMemo } from "react";
 import { extend, type PixiReactElementProps } from "@pixi/react";
 import { Container, Graphics, Sprite, Text } from "pixi.js";
-import { uiTexture } from "../assets/UiTextureRegistry";
 import { gameUiSkin } from "../skin/GameUiSkin";
 import { GAME_UI_COLORS, GAME_UI_FONT, type GameUiTone, toneColor } from "../skin/GameUiTokens";
 import { GameNineSlice } from "../skin/createNineSliceSprite";
@@ -46,8 +45,14 @@ export function GamePanel({
       .fill({ color: GAME_UI_COLORS.ink, alpha: innerAlpha });
     g.roundRect(14, 14, Math.max(1, width - 28), Math.max(1, height - 28), 6)
       .stroke({ color: accentColor, width: 1, alpha: 0.16 });
-    g.rect(22, 12, Math.max(1, width - 44), 1).fill({ color: GAME_UI_COLORS.steel, alpha: 0.18 });
-  }, [accentColor, height, innerAlpha, width]);
+    if (title) {
+      // 타이틀 밑 금선 + 다이아 (구 divider 이미지 대체)
+      const lw = Math.min(width - 44, 190);
+      g.rect(22, 28, lw, 1).fill({ color: GAME_UI_COLORS.goldDeep, alpha: 0.55 });
+      g.poly([22 + lw + 6, 28.5, 22 + lw + 11, 25.5, 22 + lw + 16, 28.5, 22 + lw + 11, 31.5])
+        .fill({ color: GAME_UI_COLORS.gold, alpha: 0.7 });
+    }
+  }, [accentColor, height, innerAlpha, title, width]);
 
   return (
     <pixiContainer x={x} y={y}>
@@ -55,14 +60,6 @@ export function GamePanel({
       <GameNineSlice borders={borders} height={height} textureKey={frameKey} width={width} />
       {title ? (
         <>
-          <pixiSprite
-            alpha={0.95}
-            height={22}
-            texture={uiTexture("frame.divider")}
-            width={Math.min(width - 44, 190)}
-            x={22}
-            y={10}
-          />
           <pixiText
             eventMode="none"
             text={title}

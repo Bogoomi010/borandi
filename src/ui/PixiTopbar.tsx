@@ -5,9 +5,9 @@ import { DIFFICULTY_BY_ID } from "../data/difficulty";
 import { stageById } from "../data/stages";
 import { BOSS_ROUND_LIST, FINAL_ROUND } from "../data/waves";
 import { getRuntimeControls, type RuntimeSnapshot } from "../runtimeBridge";
-import { uiTexture } from "./assets/UiTextureRegistry";
 import { GameButton, GameResourceBadge, type GameResourceKind } from "./components";
-import { GAME_UI_COLORS, GAME_UI_FONT } from "./skin/GameUiTokens";
+import { drawConsoleFrame } from "./skin/consoleDraw";
+import { GAME_UI_COLORS } from "./skin/GameUiTokens";
 import type { UiTextureKey } from "./skin/UiTextureKeys";
 
 extend({ Container, Graphics, Sprite, Text });
@@ -15,6 +15,27 @@ extend({ Container, Graphics, Sprite, Text });
 type GraphicsDraw = NonNullable<PixiReactElementProps<typeof Graphics>["draw"]>;
 
 const TOPBAR_H = 50;
+
+function ConsoleFrame({
+  alpha = 1,
+  height,
+  texKey,
+  width,
+  x = 0,
+  y = 0,
+}: {
+  alpha?: number;
+  height: number;
+  texKey: UiTextureKey;
+  width: number;
+  x?: number;
+  y?: number;
+}) {
+  const draw = useMemo<GraphicsDraw>(() => (g) => {
+    drawConsoleFrame(g, texKey, width, height, alpha);
+  }, [alpha, height, texKey, width]);
+  return <pixiGraphics draw={draw} x={x} y={y} />;
+}
 
 interface PixiTopbarProps {
   runtime: RuntimeSnapshot | null;
@@ -101,17 +122,26 @@ function TopSpeedButton({
   y: number;
 }) {
   const [hovered, setHovered] = useState(false);
-  const textureKey: UiTextureKey = `topbar.speed.x${speed}${active ? ".selected" : ""}` as UiTextureKey;
   const draw = useMemo<GraphicsDraw>(() => (g) => {
     g.clear();
-    if (hovered || active) {
-      g.roundRect(4, 5, width - 8, height - 10, 8).stroke({
-        color: active ? GAME_UI_COLORS.gold : GAME_UI_COLORS.arcane,
-        width: active ? 2 : 1,
-        alpha: hovered ? 0.5 : 0.32,
-      });
+    // 히트 영역 + 상태 배경
+    g.roundRect(2, 3, width - 4, height - 6, 6)
+      .fill({ color: active ? 0xf6d365 : 0xffffff, alpha: active ? 0.13 : hovered ? 0.06 : 0.008 });
+    if (active) {
+      g.roundRect(2, 3, width - 4, height - 6, 6)
+        .stroke({ color: GAME_UI_COLORS.gold, width: 1.4, alpha: 0.7 });
     }
-  }, [active, height, hovered, width]);
+    // 텍스트 대신 ▶ 화살표 개수로 배속 표현
+    const n = speed;
+    const aw = 7, gap = 2.5;
+    const total = n * aw + (n - 1) * gap;
+    const cy = height / 2;
+    for (let k = 0; k < n; k++) {
+      const ax = width / 2 - total / 2 + k * (aw + gap);
+      g.poly([ax, cy - 5.5, ax + aw, cy, ax, cy + 5.5])
+        .fill({ color: active ? 0xffe9a8 : 0x8a93a5, alpha: active ? 1 : 0.8 });
+    }
+  }, [active, height, hovered, speed, width]);
 
   return (
     <pixiContainer
@@ -123,22 +153,7 @@ function TopSpeedButton({
       x={x}
       y={y}
     >
-      <pixiSprite height={height} texture={uiTexture(textureKey)} width={width} />
       <pixiGraphics draw={draw} />
-      <pixiText
-        anchor={0.5}
-        eventMode="none"
-        text={`x${speed}`}
-        x={width / 2}
-        y={height / 2}
-        style={{
-          fill: active ? 0xfff0bf : GAME_UI_COLORS.text,
-          fontFamily: GAME_UI_FONT,
-          fontSize: 10,
-          fontWeight: "bold" as const,
-          stroke: { color: GAME_UI_COLORS.obsidian, width: 2 },
-        }}
-      />
     </pixiContainer>
   );
 }
@@ -160,13 +175,21 @@ function TopPauseButton({
 }) {
   const [hovered, setHovered] = useState(false);
   const draw = useMemo<GraphicsDraw>(() => (g) => {
-    g.clear();
+    drawConsoleFrame(g, "button.generic.normal", width, height, hovered ? 1 : 0.9);
     if (hovered || paused) {
-      g.roundRect(4, 4, width - 8, height - 8, 10).stroke({
+      g.roundRect(3, 3, width - 6, height - 6, 8).stroke({
         color: paused ? GAME_UI_COLORS.gold : GAME_UI_COLORS.arcane,
-        width: 2,
-        alpha: hovered ? 0.58 : 0.32,
+        width: 1.6,
+        alpha: hovered ? 0.55 : 0.35,
       });
+    }
+    // 일시정지/재생 아이콘 — 코드로 그림
+    const cx = width / 2, cy = height / 2;
+    if (paused) {
+      g.poly([cx - 5, cy - 7, cx + 8, cy, cx - 5, cy + 7]).fill({ color: 0xf6d365, alpha: 0.95 });
+    } else {
+      g.roundRect(cx - 7, cy - 7, 5, 14, 1.5).fill({ color: GAME_UI_COLORS.text, alpha: 0.9 });
+      g.roundRect(cx + 2, cy - 7, 5, 14, 1.5).fill({ color: GAME_UI_COLORS.text, alpha: 0.9 });
     }
   }, [height, hovered, paused, width]);
 
@@ -180,7 +203,6 @@ function TopPauseButton({
       x={x}
       y={y}
     >
-      <pixiSprite height={height} texture={uiTexture(paused ? "topbar.play" : "topbar.pause")} width={width} />
       <pixiGraphics draw={draw} />
     </pixiContainer>
   );
@@ -252,7 +274,7 @@ function PixiTopbarStage({
 
   return (
     <pixiContainer>
-      <pixiSprite alpha={0.98} height={height} texture={uiTexture("frame.topbar")} width={width} />
+      <ConsoleFrame alpha={0.98} height={height} texKey="frame.topbar" width={width} />
       {stats.map((spec) => {
         const nextX = x;
         x += spec.width + gap;
@@ -289,7 +311,7 @@ function PixiTopbarStage({
         );
       })}
       <pixiContainer x={rightStart} y={y}>
-        <pixiSprite alpha={0.82} height={itemHeight} texture={uiTexture("topbar.speed.group")} width={speedWidth} />
+        <ConsoleFrame alpha={0.82} height={itemHeight} texKey="topbar.speed.group" width={speedWidth} />
         {([1, 2, 3] as const).map((speed, index) => (
           <TopSpeedButton
             active={state.speed === speed}

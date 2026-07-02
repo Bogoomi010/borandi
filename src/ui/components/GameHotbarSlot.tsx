@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { extend, type PixiReactElementProps } from "@pixi/react";
 import { Container, Graphics, Sprite, Text } from "pixi.js";
-import { uiTexture } from "../assets/UiTextureRegistry";
+import { drawConsoleFrame } from "../skin/consoleDraw";
 import { gameUiSkin } from "../skin/GameUiSkin";
 import { GAME_UI_COLORS, GAME_UI_FONT, type GameUiTone, toneColor } from "../skin/GameUiTokens";
 import { GameKeycap } from "./GameKeycap";
@@ -129,18 +129,19 @@ export function GameHotbarSlot({
   const labelY = Math.max(42, height * 0.58);
 
   const draw = useMemo<GraphicsDraw>(() => (g) => {
-    g.clear();
+    drawConsoleFrame(g, textureKey, width, height, disabled ? 0.75 : 1);
     g.rect(0, 0, width, height).fill({ color: GAME_UI_COLORS.obsidian, alpha: 0.001 });
     if (!disabled && (hovered || selected || tone === "primary")) {
-      g.roundRect(7, 7, width - 14, height - 14, 10).stroke({ color: accent, width: hovered ? 3 : 2, alpha: hovered ? 0.62 : 0.42 });
+      g.roundRect(6, 6, width - 12, height - 12, 9)
+        .stroke({ color: accent, width: hovered ? 2.5 : 1.6, alpha: hovered ? 0.6 : 0.4 });
     }
     if (disabled) {
-      g.roundRect(10, 10, width - 20, height - 20, 8).fill({ color: GAME_UI_COLORS.obsidian, alpha: 0.28 });
+      g.roundRect(8, 8, width - 16, height - 16, 8).fill({ color: GAME_UI_COLORS.obsidian, alpha: 0.3 });
       g.moveTo(width * 0.24, height * 0.32);
       g.lineTo(width * 0.76, height * 0.68);
-      g.stroke({ color: GAME_UI_COLORS.steel, width: 3, alpha: 0.48 });
+      g.stroke({ color: GAME_UI_COLORS.steel, width: 3, alpha: 0.4 });
     }
-  }, [accent, disabled, height, hovered, selected, tone, width]);
+  }, [accent, disabled, height, hovered, selected, textureKey, tone, width]);
 
   return (
     <pixiContainer
@@ -159,7 +160,6 @@ export function GameHotbarSlot({
       x={x}
       y={y + (pressed && !disabled ? 2 : 0)}
     >
-      <pixiSprite alpha={disabled ? 0.72 : 1} height={height} texture={uiTexture(textureKey)} width={width} />
       <pixiGraphics draw={draw} />
       <ActionGlyph glyph={glyph} size={iconSize} tone={activeTone} x={(width - iconSize) / 2} y={12} />
       <GameKeycap alpha={disabled ? 0.54 : 1} label={keycap} width={32} height={19} x={8} y={7} />

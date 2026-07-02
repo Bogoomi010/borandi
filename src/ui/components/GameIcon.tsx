@@ -1,9 +1,12 @@
-import { extend } from "@pixi/react";
-import { Container, Sprite } from "pixi.js";
-import { uiTexture } from "../assets/UiTextureRegistry";
+import { useMemo } from "react";
+import { extend, type PixiReactElementProps } from "@pixi/react";
+import { Container, Graphics } from "pixi.js";
+import { drawIconGlyph } from "../skin/consoleDraw";
 import type { UiTextureKey } from "../skin/UiTextureKeys";
 
-extend({ Container, Sprite });
+extend({ Container, Graphics });
+
+type GraphicsDraw = NonNullable<PixiReactElementProps<typeof Graphics>["draw"]>;
 
 interface GameIconProps {
   alpha?: number;
@@ -14,6 +17,7 @@ interface GameIconProps {
   y?: number;
 }
 
+/** 이미지 대신 코드로 그리는 아이콘 글리프 */
 export function GameIcon({
   alpha = 1,
   height = 24,
@@ -22,5 +26,9 @@ export function GameIcon({
   x = 0,
   y = 0,
 }: GameIconProps) {
-  return <pixiSprite alpha={alpha} height={height} texture={uiTexture(textureKey)} width={width} x={x} y={y} />;
+  const size = Math.min(width, height);
+  const draw = useMemo<GraphicsDraw>(() => (g) => {
+    drawIconGlyph(g, textureKey, size);
+  }, [size, textureKey]);
+  return <pixiGraphics alpha={alpha} draw={draw} x={x + width / 2} y={y + height / 2} />;
 }

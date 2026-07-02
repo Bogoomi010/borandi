@@ -860,6 +860,10 @@ setRuntimeScene("title");
 publishSnapshot();
 requestAnimationFrame(loop);
 
+export function startGameRuntime() {
+  // Runtime startup still happens during module evaluation; App calls this as the stable dynamic-import entry point.
+}
+
 function renderGameToText(): string {
   const s = game.state;
   const stage = stageById(s.stageId);

@@ -1,24 +1,14 @@
 import { useMemo } from "react";
 import { extend, type PixiReactElementProps } from "@pixi/react";
 import { Container, Graphics, Sprite, Text } from "pixi.js";
-import { uiTexture } from "../assets/UiTextureRegistry";
+import { drawConsoleFrame, drawResourceIcon } from "../skin/consoleDraw";
 import { GAME_UI_COLORS, GAME_UI_FONT, type GameUiTone, toneColor } from "../skin/GameUiTokens";
-import type { UiTextureKey } from "../skin/UiTextureKeys";
 
 extend({ Container, Graphics, Sprite, Text });
 
 type GraphicsDraw = NonNullable<PixiReactElementProps<typeof Graphics>["draw"]>;
 
 export type GameResourceKind = "map" | "round" | "enemy" | "gold" | "difficulty" | "boss";
-
-const RESOURCE_TEXTURE: Record<GameResourceKind, UiTextureKey> = {
-  map: "topbar.badge.map",
-  round: "topbar.badge.round",
-  enemy: "topbar.badge.enemy",
-  gold: "topbar.badge.gold",
-  difficulty: "topbar.badge.difficulty",
-  boss: "topbar.badge.boss",
-};
 
 interface GameResourceBadgeProps {
   height: number;
@@ -48,16 +38,20 @@ export function GameResourceBadge({
   const textX = Math.max(42, iconSpace - 2);
   const textWidth = Math.max(40, width - textX - 12);
   const draw = useMemo<GraphicsDraw>(() => (g) => {
-    g.clear();
+    drawConsoleFrame(g, "topbar.badge." + kind, width, height);
     if (tone === "danger" || tone === "warning" || tone === "reward") {
-      g.roundRect(8, 7, width - 16, height - 14, 8).stroke({ color: accent, width: 2, alpha: 0.36 });
+      g.roundRect(4, 4, width - 8, height - 8, 6).stroke({ color: accent, width: 1.6, alpha: 0.4 });
     }
-  }, [accent, height, tone, width]);
+  }, [accent, height, kind, tone, width]);
+
+  const iconDraw = useMemo<GraphicsDraw>(() => (g) => {
+    drawResourceIcon(g, kind, Math.min(24, height * 0.52));
+  }, [height, kind]);
 
   return (
     <pixiContainer x={x} y={y}>
-      <pixiSprite height={height} texture={uiTexture(RESOURCE_TEXTURE[kind])} width={width} />
       <pixiGraphics draw={draw} />
+      <pixiGraphics draw={iconDraw} x={Math.min(width * 0.32, height * 1.3) / 2} y={height / 2} />
       <pixiText
         eventMode="none"
         text={label}

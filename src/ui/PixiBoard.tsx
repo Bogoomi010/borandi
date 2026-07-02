@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Application, extend, type PixiReactElementProps } from "@pixi/react";
-import { Assets, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
+import { Container, Graphics, Sprite, Text } from "pixi.js";
 import { BOARD_H, BOARD_W, FIELD, PATH_WIDTH, pathLengthForStage, posAtDist, waypointsForStage } from "../core/path";
 import type { GameState, Grade, UnitDef } from "../core/types";
 import { analyzeRecipes } from "../core/advisor";
@@ -8,40 +8,10 @@ import { UNIT_BY_ID } from "../data/units";
 import { stageById, type StageDecoration, type StageDecorationKind, type StageDef } from "../data/stages";
 import { getRuntimeControls, type BoardPointerInput, type RenderInterpolationFrame } from "../runtimeBridge";
 import { screenToBoard, type BoardBox } from "../board/boardHitTest";
-import groundDarkRockyUrl from "../assets/ui/tile_ground/ground-dark-rocky.png?url";
-import groundDirtPlainUrl from "../assets/ui/tile_ground/ground-dirt-plain.png?url";
-import groundGrassPatchesUrl from "../assets/ui/tile_ground/ground-grass-patches.png?url";
-import groundMagicRuneUrl from "../assets/ui/tile_ground/ground-magic-rune.png?url";
-import groundRockyCrackedUrl from "../assets/ui/tile_ground/ground-rocky-cracked.png?url";
-import groundSandyPebblesUrl from "../assets/ui/tile_ground/ground-sandy-pebbles.png?url";
-import groundScorchedUrl from "../assets/ui/tile_ground/ground-scorched.png?url";
-import objectAbandonedShackUrl from "../assets/ui/tile_object/object-abandoned-shack.png?url";
-import objectArcanePortalUrl from "../assets/ui/tile_object/object-arcane-portal.png?url";
-import objectBlueCrystalClusterUrl from "../assets/ui/tile_object/object-blue-crystal-cluster.png?url";
-import objectBoulderPileUrl from "../assets/ui/tile_object/object-boulder-pile.png?url";
-import objectBrokenCartUrl from "../assets/ui/tile_object/object-broken-cart.png?url";
-import objectCampfireUrl from "../assets/ui/tile_object/object-campfire.png?url";
-import objectDeadTreeUrl from "../assets/ui/tile_object/object-dead-tree.png?url";
-import objectRuneBannerUrl from "../assets/ui/tile_object/object-rune-banner.png?url";
-import objectStoneShrineUrl from "../assets/ui/tile_object/object-stone-shrine.png?url";
-import objectWoodenFenceUrl from "../assets/ui/tile_object/object-wooden-fence.png?url";
-import battlefieldEnemyEliteUrl from "../assets/ui/battlefield/enemy-marker-elite.png?url";
-import battlefieldEnemyNormalUrl from "../assets/ui/battlefield/enemy-marker-normal.png?url";
-import battlefieldPathMarkerUrl from "../assets/ui/battlefield/enemy-path-marker.png?url";
-import battlefieldPlacedUnitUrl from "../assets/ui/battlefield/placed-unit-marker.png?url";
-import battlefieldSelectedUnitUrl from "../assets/ui/battlefield/selected-unit-marker.png?url";
-import enemyPortalUrl from "../assets/effects/enemy-portal.png?url";
 import { GameNineSlice } from "./skin/createNineSliceSprite";
 
 extend({ Container, Graphics, Sprite, Text });
 
-const forestIdleEastUrls = sortedGlob(import.meta.glob("../assets/unit-legendary-forest/animation-idle02/east/frame_*.png", { eager: true, import: "default", query: "?url" }) as Record<string, string>);
-const forestIdleWestUrls = sortedGlob(import.meta.glob("../assets/unit-legendary-forest/animation-idle02/west/frame_*.png", { eager: true, import: "default", query: "?url" }) as Record<string, string>);
-const forestIdleSouthUrls = sortedGlob(import.meta.glob("../assets/unit-legendary-forest/animation-idle02/south/frame_*.png", { eager: true, import: "default", query: "?url" }) as Record<string, string>);
-const forestWalkEastUrls = sortedGlob(import.meta.glob("../assets/unit-legendary-forest/animation-walk/east/frame_*.png", { eager: true, import: "default", query: "?url" }) as Record<string, string>);
-const forestWalkWestUrls = sortedGlob(import.meta.glob("../assets/unit-legendary-forest/animation-walk/west/frame_*.png", { eager: true, import: "default", query: "?url" }) as Record<string, string>);
-const forestAttackEastUrls = sortedGlob(import.meta.glob("../assets/unit-legendary-forest/animation-attack/east/frame_*.png", { eager: true, import: "default", query: "?url" }) as Record<string, string>);
-const forestAttackWestUrls = sortedGlob(import.meta.glob("../assets/unit-legendary-forest/animation-attack/west/frame_*.png", { eager: true, import: "default", query: "?url" }) as Record<string, string>);
 
 const GRADE_COLOR: Record<Grade, number> = {
   common: 0x8d99a8,
@@ -70,67 +40,8 @@ const FAMILY_COLOR: Record<string, number> = {
   forest: 0x79d65a,
 };
 
-const GROUND_TEXTURE_URL: Record<StageDef["ground"], string> = {
-  dirt: groundDirtPlainUrl,
-  ash: groundScorchedUrl,
-  grass: groundGrassPatchesUrl,
-  stone: groundRockyCrackedUrl,
-  corrupt: groundDarkRockyUrl,
-  blood: groundSandyPebblesUrl,
-  rune: groundMagicRuneUrl,
-};
 
-const DECORATION_TEXTURE_URL: Record<StageDecorationKind, string> = {
-  cottage: objectAbandonedShackUrl,
-  stoneHouse: objectStoneShrineUrl,
-  witchHut: objectArcanePortalUrl,
-  rootHouse: objectDeadTreeUrl,
-  manor: objectAbandonedShackUrl,
-  forge: objectCampfireUrl,
-  crypt: objectStoneShrineUrl,
-  deadTree: objectDeadTreeUrl,
-  oak: objectDeadTreeUrl,
-  rottenTree: objectDeadTreeUrl,
-  soulTree: objectBlueCrystalClusterUrl,
-  specialTree: objectArcanePortalUrl,
-  thornBush: objectRuneBannerUrl,
-  poisonBush: objectBlueCrystalClusterUrl,
-  berryBush: objectBlueCrystalClusterUrl,
-  grave: objectStoneShrineUrl,
-  coffin: objectStoneShrineUrl,
-  shrine: objectStoneShrineUrl,
-  fenceWood: objectWoodenFenceUrl,
-  fenceIron: objectWoodenFenceUrl,
-  gate: objectWoodenFenceUrl,
-  market: objectAbandonedShackUrl,
-  well: objectStoneShrineUrl,
-  cart: objectBrokenCartUrl,
-  farmlandDead: objectRuneBannerUrl,
-  farmlandSprouts: objectBlueCrystalClusterUrl,
-  farmlandCursed: objectArcanePortalUrl,
-  rocks: objectBoulderPileUrl,
-  runeStone: objectRuneBannerUrl,
-  mushrooms: objectBlueCrystalClusterUrl,
-  web: objectRuneBannerUrl,
-};
 
-const BOARD_TEXTURE_URLS = Array.from(new Set([
-  ...Object.values(GROUND_TEXTURE_URL),
-  ...Object.values(DECORATION_TEXTURE_URL),
-  battlefieldEnemyNormalUrl,
-  battlefieldEnemyEliteUrl,
-  battlefieldPathMarkerUrl,
-  battlefieldPlacedUnitUrl,
-  battlefieldSelectedUnitUrl,
-  enemyPortalUrl,
-  ...forestIdleEastUrls,
-  ...forestIdleWestUrls,
-  ...forestIdleSouthUrls,
-  ...forestWalkEastUrls,
-  ...forestWalkWestUrls,
-  ...forestAttackEastUrls,
-  ...forestAttackWestUrls,
-]));
 
 const HUD_MARGIN = 14;
 const DPS_HUD_W = 236;
@@ -231,9 +142,6 @@ function HudPanel({
   return <pixiGraphics draw={draw} x={x} y={y} />;
 }
 
-function sortedGlob(glob: Record<string, string>) {
-  return Object.entries(glob).sort(([a], [b]) => a.localeCompare(b)).map(([, url]) => url);
-}
 
 function cssColorToNumber(color: string | undefined, fallback: number) {
   if (!color || !color.startsWith("#")) return fallback;
@@ -403,74 +311,38 @@ function usePixiDpsSnapshot(state: GameState): PixiDpsSnapshot {
   };
 }
 
-function textureFor(url: string) {
-  return Texture.from(url);
-}
-
-function texturesFor(urls: string[]) {
-  return urls.map(textureFor);
-}
-
 function usePixiBoardTextures() {
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    void Assets.load(BOARD_TEXTURE_URLS).then(() => {
-      if (!cancelled) setReady(true);
-    }).catch((error) => {
-      console.error("Failed to load Pixi board textures", error);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return useMemo(() => ({
-    ready,
-    ground: Object.fromEntries(
-      Object.entries(GROUND_TEXTURE_URL).map(([ground, url]) => [ground, textureFor(url)]),
-    ) as Record<StageDef["ground"], Texture>,
-    decorations: Object.fromEntries(
-      Object.entries(DECORATION_TEXTURE_URL).map(([kind, url]) => [kind, textureFor(url)]),
-    ) as Record<StageDecorationKind, Texture>,
-    enemy: {
-      normal: textureFor(battlefieldEnemyNormalUrl),
-      elite: textureFor(battlefieldEnemyEliteUrl),
-      portal: textureFor(enemyPortalUrl),
-    },
-    battlefield: {
-      pathMarker: textureFor(battlefieldPathMarkerUrl),
-      placedUnit: textureFor(battlefieldPlacedUnitUrl),
-      selectedUnit: textureFor(battlefieldSelectedUnitUrl),
-    },
-    unitAnimation: {
-      idleEast: texturesFor(forestIdleEastUrls),
-      idleWest: texturesFor(forestIdleWestUrls),
-      idleSouth: texturesFor(forestIdleSouthUrls),
-      walkEast: texturesFor(forestWalkEastUrls),
-      walkWest: texturesFor(forestWalkWestUrls),
-      attackEast: texturesFor(forestAttackEastUrls),
-      attackWest: texturesFor(forestAttackWestUrls),
-    },
-  }), [ready]);
+  // 이미지 에셋 제거: 보드의 모든 요소는 Graphics 벡터로 그린다.
+  return useMemo(() => ({ ready: true }), []);
 }
 
 type PixiBoardTextures = ReturnType<typeof usePixiBoardTextures>;
 
 function StageGroundLayer({ stage, textures }: { stage: StageDef; textures: PixiBoardTextures }) {
+  const draw = useMemo<GraphicsDraw>(() => (g) => {
+    g.clear();
+    const base = GROUND_COLOR[stage.ground] ?? 0x3a2c1d;
+    // 절차 노이즈 점 + 비네트로 지면 질감을 코드로만 표현
+    for (let i = 0; i < 240; i++) {
+      const x = (i * 379 + 83) % BOARD_W;
+      const y = (i * 233 + 47) % BOARD_H;
+      const r = 1 + ((i * 7) % 4);
+      const light = i % 6 === 0;
+      g.circle(x, y, r).fill({ color: light ? 0xffffff : base, alpha: light ? 0.025 : 0.35 });
+    }
+    for (let i = 0; i < 26; i++) {
+      const x = (i * 631 + 199) % BOARD_W;
+      const y = (i * 401 + 151) % BOARD_H;
+      g.ellipse(x, y, 34 + (i % 5) * 12, 18 + (i % 3) * 8).fill({ color: 0x000000, alpha: 0.05 });
+    }
+    // 가장자리 비네트
+    g.rect(0, 0, BOARD_W, 46).fill({ color: 0x000000, alpha: 0.16 });
+    g.rect(0, BOARD_H - 46, BOARD_W, 46).fill({ color: 0x000000, alpha: 0.16 });
+    g.rect(0, 0, 46, BOARD_H).fill({ color: 0x000000, alpha: 0.14 });
+    g.rect(BOARD_W - 46, 0, 46, BOARD_H).fill({ color: 0x000000, alpha: 0.14 });
+  }, [stage.ground]);
   if (!textures.ready) return null;
-  return (
-    <pixiSprite
-      alpha={0.55}
-      blendMode="multiply"
-      height={BOARD_H}
-      texture={textures.ground[stage.ground]}
-      width={BOARD_W}
-      x={0}
-      y={0}
-    />
-  );
+  return <pixiGraphics draw={draw} />;
 }
 
 function PathSpriteLayer({
@@ -496,34 +368,30 @@ function PathSpriteLayer({
     return out;
   }, [pathLength, stageId]);
 
-  if (!textures.ready) return null;
+  const draw = useMemo<GraphicsDraw>(() => (g) => {
+    g.clear();
+    // 스폰 포탈 — 마법진
+    const sp = posAtDist(0, stageId);
+    g.circle(sp.x, sp.y, 40).fill({ color: 0x1a0f2e, alpha: 0.75 });
+    g.circle(sp.x, sp.y, 40).stroke({ color: 0xa167ff, width: 3, alpha: 0.85 });
+    g.circle(sp.x, sp.y, 29).stroke({ color: 0xcaa5ff, width: 1.6, alpha: 0.6 });
+    g.circle(sp.x, sp.y, 13).fill({ color: 0xcaa5ff, alpha: 0.4 });
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const rx = sp.x + Math.cos(a) * 35, ry = sp.y + Math.sin(a) * 35;
+      g.poly([rx, ry - 4, rx + 3.5, ry, rx, ry + 4, rx - 3.5, ry]).fill({ color: 0xa167ff, alpha: 0.8 });
+    }
+    // 진행 방향 셰브론
+    for (const m of markers) {
+      const c = Math.cos(m.angle), sn = Math.sin(m.angle);
+      const pt = (lx: number, ly: number) => [m.x + lx * c - ly * sn, m.y + lx * sn + ly * c];
+      g.poly([...pt(-4, -7), ...pt(6, 0), ...pt(-4, 7), ...pt(-1, 0)])
+        .fill({ color: 0xe7b53e, alpha: 0.4 });
+    }
+  }, [markers, stageId]);
 
-  return (
-    <pixiContainer>
-      <pixiSprite
-        alpha={0.4}
-        anchor={0.5}
-        height={92}
-        texture={textures.enemy.portal}
-        width={92}
-        x={posAtDist(0, stageId).x}
-        y={posAtDist(0, stageId).y}
-      />
-      {markers.map((marker, index) => (
-        <pixiSprite
-          alpha={0.58}
-          anchor={0.5}
-          height={28}
-          key={`path-marker-${index}`}
-          rotation={marker.angle}
-          texture={textures.battlefield.pathMarker}
-          width={28}
-          x={marker.x}
-          y={marker.y}
-        />
-      ))}
-    </pixiContainer>
-  );
+  if (!textures.ready) return null;
+  return <pixiGraphics draw={draw} />;
 }
 
 function decorationSize(decoration: StageDecoration) {
@@ -542,50 +410,64 @@ function DecorationSpriteLayer({ stage, textures }: { stage: StageDef; textures:
     [stage.decorations],
   );
 
+  const draw = useMemo<GraphicsDraw>(() => (g) => {
+    g.clear();
+    for (const decoration of decorations) {
+      const size = decorationSize(decoration);
+      const cx = decoration.x + size / 2;
+      const cy = decoration.y + size / 2;
+      drawDecorationShape(g, decoration.kind, cx, cy, size);
+    }
+  }, [decorations]);
+
   if (!textures.ready) return null;
-
-  return (
-    <pixiContainer>
-      {decorations.map((decoration, index) => {
-        const size = decorationSize(decoration);
-        return (
-          <pixiSprite
-            alpha={0.9}
-            anchor={0.5}
-            blendMode="multiply"
-            height={size}
-            key={`${decoration.kind}-${index}`}
-            texture={textures.decorations[decoration.kind]}
-            width={size}
-            x={decoration.x + size / 2}
-            y={decoration.y + size / 2}
-          />
-        );
-      })}
-    </pixiContainer>
-  );
+  return <pixiGraphics draw={draw} />;
 }
 
-function directionForUnit(unit: GameState["units"][number], x = unit.x) {
-  if (unit.order.kind === "move" || unit.order.kind === "attackMove") {
-    const dx = unit.order.x - x;
-    if (Math.abs(dx) > 8) return dx < 0 ? "west" : "east";
+/** 데코 오브젝트를 단순 실루엣 벡터로 표현 (에셋 0) */
+function drawDecorationShape(
+  g: Graphics, kind: StageDecorationKind, cx: number, cy: number, size: number,
+) {
+  const s = size / 2;
+  const k = kind.toLowerCase();
+  const shadow = () => g.ellipse(cx, cy + s * 0.42, s * 0.7, s * 0.2).fill({ color: 0x000000, alpha: 0.16 });
+  if (k.includes("tree") || kind === "oak") {
+    shadow();
+    g.rect(cx - s * 0.08, cy - s * 0.05, s * 0.16, s * 0.5).fill({ color: 0x241a10, alpha: 0.8 });
+    const leaf = kind === "soulTree" ? 0x3f6f8a : kind === "specialTree" ? 0x6a4a8a : 0x27381f;
+    g.circle(cx, cy - s * 0.3, s * 0.42).fill({ color: leaf, alpha: 0.85 });
+    g.circle(cx - s * 0.26, cy - s * 0.1, s * 0.3).fill({ color: leaf, alpha: 0.75 });
+    g.circle(cx + s * 0.26, cy - s * 0.12, s * 0.3).fill({ color: leaf, alpha: 0.75 });
+  } else if (k.includes("house") || kind === "cottage" || kind === "witchHut" || kind === "manor" || kind === "market" || kind === "forge") {
+    shadow();
+    g.rect(cx - s * 0.42, cy - s * 0.1, s * 0.84, s * 0.5).fill({ color: 0x2a2018, alpha: 0.88 });
+    g.poly([cx - s * 0.52, cy - s * 0.1, cx, cy - s * 0.52, cx + s * 0.52, cy - s * 0.1])
+      .fill({ color: 0x1c1410, alpha: 0.9 });
+    g.rect(cx - s * 0.08, cy + s * 0.12, s * 0.16, s * 0.28).fill({ color: 0x0f0b08, alpha: 0.9 });
+  } else if (k.includes("fence") || kind === "gate") {
+    for (let i = -2; i <= 2; i++) {
+      g.rect(cx + i * s * 0.3 - 1.5, cy - s * 0.22, 3, s * 0.44).fill({ color: 0x2a2018, alpha: 0.8 });
+    }
+    g.rect(cx - s * 0.66, cy - s * 0.1, s * 1.32, 2.5).fill({ color: 0x241a10, alpha: 0.8 });
+  } else if (k.includes("rock") || kind === "grave" || kind === "coffin" || kind === "well" || kind === "shrine" || kind === "crypt") {
+    shadow();
+    g.poly([cx - s * 0.4, cy + s * 0.3, cx - s * 0.28, cy - s * 0.25, cx, cy - s * 0.38, cx + s * 0.34, cy - s * 0.16, cx + s * 0.4, cy + s * 0.3])
+      .fill({ color: 0x2e2a26, alpha: 0.88 });
+    g.poly([cx - s * 0.28, cy - s * 0.25, cx, cy - s * 0.38, cx + s * 0.05, cy - s * 0.1, cx - s * 0.18, cy - s * 0.02])
+      .fill({ color: 0x3d3831, alpha: 0.7 });
+  } else if (k.includes("bush") || k.includes("mushroom") || k.includes("farmland")) {
+    g.ellipse(cx, cy, s * 0.42, s * 0.26).fill({ color: 0x24301c, alpha: 0.75 });
+    g.circle(cx - s * 0.18, cy - s * 0.08, s * 0.16).fill({ color: 0x2e3d24, alpha: 0.8 });
+    g.circle(cx + s * 0.16, cy - s * 0.05, s * 0.14).fill({ color: 0x2e3d24, alpha: 0.8 });
+  } else {
+    // 룬/기타 — 마름모 룬 스톤
+    shadow();
+    g.poly([cx, cy - s * 0.4, cx + s * 0.26, cy, cx, cy + s * 0.34, cx - s * 0.26, cy])
+      .fill({ color: 0x2c2535, alpha: 0.85 }).stroke({ color: 0xa167ff, width: 1.2, alpha: 0.4 });
+    g.circle(cx, cy - s * 0.02, s * 0.07).fill({ color: 0xa167ff, alpha: 0.6 });
   }
-  return "south";
 }
 
-function animationForUnit(unit: GameState["units"][number], textures: PixiBoardTextures, x = unit.x) {
-  const direction = directionForUnit(unit, x);
-  if (unit.state === "moving" || unit.state === "chasing") {
-    return direction === "west" ? textures.unitAnimation.walkWest : textures.unitAnimation.walkEast;
-  }
-  if (unit.state === "attacking" || unit.cooldown > 0.05) {
-    return direction === "west" ? textures.unitAnimation.attackWest : textures.unitAnimation.attackEast;
-  }
-  if (direction === "west") return textures.unitAnimation.idleWest;
-  if (direction === "east") return textures.unitAnimation.idleEast;
-  return textures.unitAnimation.idleSouth;
-}
 
 function UnitSpriteLayer({
   paused,
@@ -602,48 +484,44 @@ function UnitSpriteLayer({
   state: GameState;
   textures: PixiBoardTextures;
 }) {
-  if (!textures.ready) return null;
+  const animationTime = paused ? renderTime : renderTime * state.speed;
+  const draw = useMemo<GraphicsDraw>(() => (g) => {
+    g.clear();
+    for (const { unit, x, y } of renderedUnits) {
+      const def = UNIT_BY_ID[unit.defId];
+      const isSelected = selected.has(unit.uid);
+      const r = def.grade === "hidden" ? 21 : def.grade === "legend" ? 19 : def.grade === "hero" ? 17 : 14;
+      drawUnitTokenAt(g, x, y - 6, def.family, def.grade, r, {
+        selected: isSelected,
+        attacking: unit.state === "attacking" || unit.cooldown > 0.05,
+        pulse: animationTime + unit.uid,
+      });
+    }
+  }, [animationTime, renderedUnits, selected]);
 
-  return (
-    <pixiContainer>
-      {renderedUnits.map(({ unit, x, y }) => {
-        const def = UNIT_BY_ID[unit.defId];
-        const isSelected = selected.has(unit.uid);
-        const size = def.grade === "hidden" ? 66 : def.grade === "legend" ? 60 : def.grade === "hero" ? 54 : 48;
-        const tint = FAMILY_COLOR[def.family] ?? 0xffffff;
-        const frames = animationForUnit(unit, textures, x);
-        const frameRate = unit.state === "attacking" ? 14 : unit.state === "moving" || unit.state === "chasing" ? 12 : 7;
-        const animationTime = paused ? renderTime : renderTime * state.speed;
-        const frameIndex = frames.length > 0
-          ? Math.floor(animationTime * frameRate + unit.uid) % frames.length
-          : 0;
-        const frame = frames[frameIndex] ?? Texture.EMPTY;
-        return (
-          <pixiContainer key={`unit-sprite-${unit.uid}`} x={x} y={y}>
-            <pixiSprite
-              alpha={isSelected ? 0.9 : 0.48}
-              anchor={0.5}
-              height={isSelected ? 52 : 42}
-              texture={isSelected ? textures.battlefield.selectedUnit : textures.battlefield.placedUnit}
-              tint={isSelected ? 0xfff0a6 : GRADE_COLOR[def.grade]}
-              width={isSelected ? 46 : 36}
-              x={0}
-              y={9}
-            />
-            <pixiSprite
-              anchor={0.5}
-              height={size}
-              texture={frame}
-              tint={tint}
-              width={size}
-              x={0}
-              y={-12}
-            />
-          </pixiContainer>
-        );
-      })}
-    </pixiContainer>
-  );
+  if (!textures.ready) return null;
+  return <pixiGraphics draw={draw} />;
+}
+
+/** drawUnitTokenShape의 위치 지정 버전 */
+function drawUnitTokenAt(
+  g: Graphics, x: number, y: number, family: string, grade: Grade, r: number,
+  opts: { selected?: boolean; attacking?: boolean; pulse?: number } = {},
+) {
+  const fam = FAMILY_COLOR[family] ?? 0xffffff;
+  const gradeColor = GRADE_COLOR[grade];
+  const pulse = opts.attacking ? 1 + Math.sin((opts.pulse ?? 0) * 14) * 0.06 : 1;
+  const rr = r * pulse;
+  g.ellipse(x, y + rr * 0.85, rr * 0.85, rr * 0.3).fill({ color: 0x000000, alpha: 0.3 });
+  if (opts.selected) {
+    g.circle(x, y, rr + 7).stroke({ color: 0xf6d365, width: 2, alpha: 0.9 });
+    g.circle(x, y, rr + 11).stroke({ color: 0xf6d365, width: 1, alpha: 0.4 });
+  }
+  g.circle(x, y, rr).fill({ color: 0x0d1118, alpha: 0.9 });
+  g.circle(x, y, rr).stroke({ color: gradeColor, width: Math.max(2, rr * 0.16) });
+  g.circle(x, y, rr * 0.7).fill({ color: fam, alpha: 0.85 });
+  g.ellipse(x - rr * 0.22, y - rr * 0.26, rr * 0.3, rr * 0.2).fill({ color: 0xffffff, alpha: 0.3 });
+  g.poly([x, y - rr * 0.38, x + rr * 0.3, y, x, y + rr * 0.38, x - rr * 0.3, y]).fill({ color: 0x0d1118, alpha: 0.55 });
 }
 
 function EnemySpriteLayer({
@@ -655,31 +533,39 @@ function EnemySpriteLayer({
   renderTime: number;
   textures: PixiBoardTextures;
 }) {
-  if (!textures.ready) return null;
+  const draw = useMemo<GraphicsDraw>(() => (g) => {
+    g.clear();
+    for (const { enemy, x, y } of renderedEnemies) {
+      const stunned = enemy.stunUntil > renderTime;
+      const slowed = enemy.slows.length > 0;
+      const r = enemy.isBoss ? 26 : enemy.armor > 0 ? 15 : 12;
+      const cy = y - (enemy.isBoss ? 5 : 2);
+      const body = stunned ? 0x5a4a1e : slowed ? 0x2c4258 : 0x3a2430;
+      const edge = stunned ? 0xffe14d : slowed ? 0x8fdfff : enemy.isBoss ? 0xd85560 : enemy.armor > 0 ? 0xb8c0d4 : 0xc75560;
+      g.ellipse(x, cy + r * 0.8, r * 0.9, r * 0.3).fill({ color: 0x000000, alpha: 0.28 });
+      if (enemy.isBoss) {
+        g.poly([x - r * 0.7, cy - r * 0.45, x - r * 1.05, cy - r * 1.2, x - r * 0.3, cy - r * 0.8]).fill(0xd8a355);
+        g.poly([x + r * 0.7, cy - r * 0.45, x + r * 1.05, cy - r * 1.2, x + r * 0.3, cy - r * 0.8]).fill(0xd8a355);
+      }
+      if (enemy.armor > 0 && !enemy.isBoss) {
+        // 장갑: 육각 실루엣
+        const pts: number[] = [];
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+          pts.push(x + Math.cos(a) * r, cy + Math.sin(a) * r);
+        }
+        g.poly(pts).fill({ color: body, alpha: 0.95 }).stroke({ color: edge, width: 2 });
+      } else {
+        g.circle(x, cy, r).fill({ color: body, alpha: 0.95 }).stroke({ color: edge, width: enemy.isBoss ? 3 : 1.8 });
+      }
+      // 눈
+      g.circle(x - r * 0.28, cy - r * 0.12, Math.max(1.5, r * 0.15)).fill(0xffd7a0);
+      g.circle(x + r * 0.28, cy - r * 0.12, Math.max(1.5, r * 0.15)).fill(0xffd7a0);
+    }
+  }, [renderedEnemies, renderTime]);
 
-  return (
-    <pixiContainer>
-      {renderedEnemies.map(({ enemy, x, y }) => {
-        const stunned = enemy.stunUntil > renderTime;
-        const slowed = enemy.slows.length > 0;
-        const size = enemy.isBoss ? 60 : 34;
-        const tint = stunned ? 0xffe14d : slowed ? 0x8fdfff : enemy.armor > 0 ? 0xb8c0d4 : 0xffffff;
-        return (
-          <pixiSprite
-            alpha={0.96}
-            anchor={0.5}
-            height={size}
-            key={`enemy-sprite-${enemy.eid}`}
-            texture={enemy.isBoss || enemy.armor > 0 ? textures.enemy.elite : textures.enemy.normal}
-            tint={tint}
-            width={size}
-            x={x}
-            y={y - (enemy.isBoss ? 5 : 2)}
-          />
-        );
-      })}
-    </pixiContainer>
-  );
+  if (!textures.ready) return null;
+  return <pixiGraphics draw={draw} />;
 }
 
 function UnitDetailSlot({
@@ -750,22 +636,17 @@ function PixiUnitDetailPanel({
     g.roundRect(388, 61, 130, 44, 5).fill({ color: 0x0a1018, alpha: 0.45 });
   }, [familyColor, gradeColor]);
 
-  const portraitTexture = textures.unitAnimation.idleSouth[0] ?? Texture.EMPTY;
+  const portraitTokenDraw = useMemo<GraphicsDraw>(() => (g) => {
+    g.clear();
+    drawUnitTokenAt(g, 0, 0, def.family, def.grade, 26);
+  }, [def.family, def.grade]);
 
   return (
     <pixiContainer x={UNIT_DETAIL_X} y={UNIT_DETAIL_Y}>
       <HudPanel accent={gradeColor} height={UNIT_DETAIL_H} width={UNIT_DETAIL_W} x={0} y={0} />
       <pixiGraphics draw={portraitDraw} />
       {textures.ready ? (
-        <pixiSprite
-          anchor={0.5}
-          height={76}
-          texture={portraitTexture}
-          tint={familyColor}
-          width={76}
-          x={60}
-          y={68}
-        />
+        <pixiGraphics draw={portraitTokenDraw} x={60} y={68} />
       ) : null}
       {unit.locked ? (
         <pixiText

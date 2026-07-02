@@ -1,9 +1,12 @@
-import { extend } from "@pixi/react";
-import { Container, Graphics, Sprite, Text, type TextStyleOptions } from "pixi.js";
-import { uiTexture } from "../assets/UiTextureRegistry";
+import { useMemo } from "react";
+import { extend, type PixiReactElementProps } from "@pixi/react";
+import { Container, Graphics, Text, type TextStyleOptions } from "pixi.js";
+import { drawKeycapShape } from "../skin/consoleDraw";
 import { GAME_UI_COLORS, GAME_UI_FONT } from "../skin/GameUiTokens";
 
-extend({ Container, Graphics, Sprite, Text });
+extend({ Container, Graphics, Text });
+
+type GraphicsDraw = NonNullable<PixiReactElementProps<typeof Graphics>["draw"]>;
 
 interface GameKeycapProps {
   alpha?: number;
@@ -31,10 +34,14 @@ export function GameKeycap({
     stroke: { color: GAME_UI_COLORS.obsidian, width: 2 },
   };
 
+  const draw = useMemo<GraphicsDraw>(() => (g) => {
+    drawKeycapShape(g, width, height);
+  }, [height, width]);
+
   return (
     <pixiContainer alpha={alpha} x={x} y={y}>
-      <pixiSprite height={height} texture={uiTexture("button.keycap")} width={width} />
-      <pixiText anchor={0.5} eventMode="none" text={label} x={width / 2} y={height / 2} style={style} />
+      <pixiGraphics draw={draw} />
+      <pixiText anchor={0.5} eventMode="none" text={label} x={width / 2} y={height / 2 - 1} style={style} />
     </pixiContainer>
   );
 }

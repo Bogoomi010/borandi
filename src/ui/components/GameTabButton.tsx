@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { extend, type PixiReactElementProps } from "@pixi/react";
 import { Container, Graphics, Sprite, Text } from "pixi.js";
-import { uiTexture } from "../assets/UiTextureRegistry";
+import { drawConsoleFrame } from "../skin/consoleDraw";
 import { GAME_UI_COLORS, GAME_UI_FONT } from "../skin/GameUiTokens";
 import type { UiTextureKey } from "../skin/UiTextureKeys";
 import { GameIcon } from "./GameIcon";
@@ -35,14 +35,11 @@ export function GameTabButton({
 }: GameTabButtonProps) {
   const [hovered, setHovered] = useState(false);
   const draw = useMemo<GraphicsDraw>(() => (g) => {
-    g.clear();
+    drawConsoleFrame(g, active ? "button.rightTab.selected" : "button.rightTab.normal", width, height);
     g.rect(0, 0, width, height).fill({ color: GAME_UI_COLORS.obsidian, alpha: 0.001 });
-    if (active || hovered) {
-      g.roundRect(8, 7, width - 16, height - 13, 7).stroke({
-        color: active ? GAME_UI_COLORS.gold : GAME_UI_COLORS.arcane,
-        width: active ? 2 : 1,
-        alpha: active ? 0.44 : 0.34,
-      });
+    if (hovered && !active) {
+      g.roundRect(4, 4, width - 8, height - 8, 6)
+        .stroke({ color: GAME_UI_COLORS.arcane, width: 1, alpha: 0.4 });
     }
     if (badge) {
       g.circle(width - 15, 12, 4).fill({ color: GAME_UI_COLORS.danger, alpha: 0.96 });
@@ -60,11 +57,6 @@ export function GameTabButton({
       x={x}
       y={y}
     >
-      <pixiSprite
-        height={height}
-        texture={uiTexture(active ? "button.rightTab.selected" : "button.rightTab.normal")}
-        width={width}
-      />
       <pixiGraphics draw={draw} />
       {icon ? <GameIcon height={18} textureKey={icon} width={18} x={12} y={(height - 18) / 2} /> : null}
       <pixiText
